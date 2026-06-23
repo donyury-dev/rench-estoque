@@ -1085,12 +1085,20 @@ def tela_movimentar():
         equipamentos=equipamentos, busca=busca, filtro_tipo=tipo, sugestoes=sugestoes)
 
 
-if __name__ == '__main__':
+# Para produção (Render / Gunicorn)
+# Inicializa o banco automaticamente se estiver vazio
+with app.app_context():
     init_db()
+    # Se não houver equipamentos, importa da planilha
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT COUNT(*) FROM equipamentos")
+    if cur.fetchone()[0] == 0:
+        try:
+            importar_planilha_para_banco()
+        except Exception as e:
+            print(f"Aviso: não foi possível importar planilha automaticamente: {e}")
+
+if __name__ == '__main__':
     print("Acesse: http://localhost:5000")
     app.run(debug=True, port=5000)
-
-# Para produção (Render / Gunicorn)
-# O banco já existe no deploy, não precisa recriar toda vez
-if os.environ.get('RENDER'):
-    init_db()
