@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Movimentar Equipamento - RENCH{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Movimentação de Equipamento</h1>
+    <p class="text-muted mb-0">
+      <strong>{{equip.modelo}}</strong>
+      {% if equip.numero_serie %}<span class="ms-2">Série: <code>{{equip.numero_serie}}</code></span>{% endif %}
+    </p>
+  </div>
+  <a href="{{url_for('detalhe_equipamento', equip_id=equip.id)}}" class="btn btn-outline-secondary">Voltar</a>
+</div>
+
+<div class="alert alert-info border-0" style="background:var(--primary-light);color:var(--primary);">
+  <strong>Como movimentar:</strong>
+  a origem é o local atual do equipamento. Você escolhe o tipo de movimentação e depois informa a empresa/unidade de destino.
+  Exemplo: para enviar para conserto, use <strong>Envio para manutenção</strong> e selecione <strong>R10 - SP</strong>.
+  Para voltar para o estoque, use <strong>Retorno do cliente</strong> ou <strong>Retorno de manutenção</strong> e selecione uma unidade da <strong>RENCH</strong>.
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card card-dashboard p-4">
+      <h5 class="fw-bold mb-3"><i class="bi bi-info-circle me-2"></i>Origem Atual</h5>
+      <table class="table table-borderless table-sm mb-0">
+        <tr><td class="text-muted">Tipo</td><td><span class="badge badge-{{equip.tipo_equipamento}}">{{equip.tipo_equipamento}}</span></td></tr>
+        <tr><td class="text-muted">Fabricante</td><td>{{equip.fabricante or '-'}}</td></tr>
+        <tr><td class="text-muted">Modelo</td><td><strong>{{equip.modelo}}</strong></td></tr>
+        <tr><td class="text-muted">Local atual</td><td><strong>{{equip.local_atual_nome or 'Não informado'}}</strong></td></tr>
+        <tr><td class="text-muted">Status</td><td><span class="status-badge {{'s-estoque' if equip.status=='ativo' else 's-descartado'}}">{{equip.status}}</span></td></tr>
+      </table>
+      <div class="alert alert-info mt-3 mb-0 small">
+        <i class="bi bi-lightbulb"></i>
+        A origem é preenchida automaticamente com o local atual do equipamento.
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card card-dashboard p-4">
+      <h5 class="fw-bold mb-3"><i class="bi bi-arrow-left-right me-2"></i>Registrar nova movimentação</h5>
+      <form method="POST">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Tipo de Movimento *</label>
+            <select name="tipo_movimento" class="form-select" required onchange="ajustarMovimento(this.value)">
+              <option value="">Selecione...</option>
+              <option value="entrada_estoque">Entrada no estoque da Rench</option>
+              <option value="saida_cliente">Saída para cliente / locação</option>
+              <option value="retorno_cliente">Retorno do cliente para Rench</option>
+              <option value="envio_manutencao">Envio para manutenção</option>
+              <option value="retorno_manutencao">Retorno de manutenção</option>
+              <option value="transferencia">Transferência entre locais/unidades</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Data da Movimentação *</label>
+            <input type="date" name="data_movimentacao" id="data_movimentacao" class="form-control" required>
+          </div>
+
+          {# Destino: Empresa + Unidade #}
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Destino - Empresa *</label>
+            <select id="destino_empresa_id" class="form-select" required onchange="carregarDestinoUnidades()">
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Destino - Unidade *</label>
+            <select name="destino_unidade_id" id="destino_unidade_id" class="form-select" required>
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Responsável</label>
+            <input name="responsavel" class="form-control" placeholder="Nome do técnico/responsável">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Origem</label>
+            <input class="form-control" value="{{equip.local_atual_nome or 'Não informado'}}" disabled>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label fw-bold">Observações</label>
+            <textarea name="observacoes" class="form-control" rows="4" placeholder="Motivo da movimentação, estado do equipamento, observações do cliente..."></textarea>
+          </div>
+        </div>
+
+        <div id="dica_movimento" class="alert alert-info mt-3 small" style="display:none;"></div>
+
+        <div class="d-flex gap-2 mt-4">
+          <button type="submit" class="btn btn-rench-primary"><i class="bi bi-check-lg"></i> Registrar Movimentação</button>
+          <a href="{{url_for('detalhe_equipamento', equip_id=equip.id)}}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('data_movimentacao').value = new Date().toISOString().slice(0,10);
+
+// Dados injetados pelo backend
+var destUnidadesMap = {};
+var destEmpresas = {};
+{% for l in locais %}
+  {% if l.unidade_id %}
+    if(!destUnidadesMap[{{l.empresa_id}}]) destUnidadesMap[{{l.empresa_id}}] = [];
+    destUnidadesMap[{{l.empresa_id}}].push({id:{{l.unidade_id}}, nome:"{{l.unidade_nome|escape}}"});
+    destEmpresas[{{l.empresa_id}}] = {nome:"{{l.empresa_nome|escape}}", tipo:"{{l.empresa_tipo}}"};
+  {% endif %}
+{% endfor %}
+
+(function(){
+  const sel = document.getElementById('destino_empresa_id');
+  var grupos = {rench:'', cliente:'', fornecedor:'', assistencia:''};
+  for(var id in destEmpresas){
+    var e = destEmpresas[id];
+    if(e.tipo === 'rench') grupos.rench += '<option value="'+id+'">'+e.nome+'</option>';
+    else if(e.tipo === 'cliente') grupos.cliente += '<option value="'+id+'">'+e.nome+'</option>';
+    else if(e.tipo === 'fornecedor') grupos.fornecedor += '<option value="'+id+'">'+e.nome+'</option>';
+    else if(e.tipo === 'assistencia') grupos.assistencia += '<option value="'+id+'">'+e.nome+'</option>';
+  }
+  sel.innerHTML = '<option value="">Selecione...</option>' +
+    (grupos.rench ? '<optgroup label="RENCH">'+grupos.rench+'</optgroup>' : '') +
+    (grupos.cliente ? '<optgroup label="CLIENTES">'+grupos.cliente+'</optgroup>' : '') +
+    (grupos.fornecedor ? '<optgroup label="FORNECEDORES">'+grupos.fornecedor+'</optgroup>' : '') +
+    (grupos.assistencia ? '<optgroup label="ASSISTÊNCIAS">'+grupos.assistencia+'</optgroup>' : '');
+})();
+
+function carregarDestinoUnidades(){
+  const empId = document.getElementById('destino_empresa_id').value;
+  const sel = document.getElementById('destino_unidade_id');
+  sel.innerHTML = '<option value="">Selecione...</option>';
+  if(empId && destUnidadesMap[empId]){
+    destUnidadesMap[empId].forEach(function(u){
+      sel.innerHTML += '<option value="'+u.id+'">'+u.nome+'</option>';
+    });
+  }
+}
+
+function ajustarMovimento(tipo) {
+  const dica = document.getElementById('dica_movimento');
+  const empSel = document.getElementById('destino_empresa_id');
+  const mensagens = {
+    entrada_estoque: 'Use quando um equipamento entra no controle interno da Rench. Selecione RENCH como empresa.',
+    saida_cliente: 'Use quando o equipamento vai para uma empresa cliente, como SAMIR, AES, Porsche ou Mercadão.',
+    retorno_cliente: 'Use quando o equipamento volta de um cliente para a Rench. Selecione RENCH como empresa.',
+    envio_manutencao: 'Use quando o equipamento vai para assistência técnica. Selecione R10 como empresa.',
+    retorno_manutencao: 'Use quando o equipamento retorna da assistência. Selecione RENCH como empresa.',
+    transferencia: 'Use quando mudar de unidade, setor, depósito ou cliente dentro do mesmo grupo.'
+  };
+  if (mensagens[tipo]) {
+    dica.innerHTML = '<i class="bi bi-info-circle"></i> ' + mensagens[tipo];
+    dica.style.display = 'block';
+  } else {
+    dica.style.display = 'none';
+  }
+}
+</script>
+{% endblock %}

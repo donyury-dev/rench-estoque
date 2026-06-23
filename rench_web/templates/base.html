@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}RENCH Estoque{% endblock %}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<style>
+  :root{--primary:#850001;--primary-dark:#650001;--primary-light:rgba(133,0,1,0.08);--primary-borda:rgba(133,0,1,0.28);--accent:#850001;--success:#176B43;--danger:#850001;--warning:#B76E00;--bg:#FFFFFF;--sidebar-width:260px;}
+  body{background:var(--bg);font-family:'Segoe UI',Arial,sans-serif;color:#222;}
+  .sidebar{position:fixed;top:0;bottom:0;left:0;width:var(--sidebar-width);background:#fff;color:var(--primary);z-index:1000;display:flex;flex-direction:column;border-right:1px solid var(--primary-borda);}
+  .sidebar-header{padding:20px 25px;border-bottom:1px solid var(--primary-borda);}
+  .sidebar-header h2{font-size:26px;font-weight:700;margin:0;}
+  .sidebar-header p{font-size:12px;opacity:0.9;margin:0;color:var(--primary);}
+  .sidebar-logo{max-width:150px;max-height:56px;object-fit:contain;display:block;margin-bottom:8px;}
+  .nav-link{color:var(--primary);padding:12px 25px;font-size:15px;display:flex;align-items:center;gap:10px;transition:0.15s;border-left:4px solid transparent;}
+  .nav-link:hover{color:var(--primary-dark);background:var(--primary-light);}
+  .nav-link.active{color:var(--primary-dark);background:var(--primary-light);border-left-color:var(--primary);font-weight:700;}
+  .nav-link i{font-size:18px;}
+  .main-content{margin-left:var(--sidebar-width);padding:25px 30px;min-height:100vh;}
+  .card-dashboard{border:1px solid var(--primary-borda);border-radius:16px;box-shadow:0 2px 12px rgba(133,0,1,0.05);transition:0.2s;background:#fff;}
+  .card-dashboard:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(133,0,1,0.10);}
+  .icon-circle{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:10px;}
+  .bg-soft-primary{background:var(--primary-light);color:var(--primary);}
+  .bg-soft-accent{background:var(--primary-light);color:var(--accent);}
+  .bg-soft-danger{background:var(--primary-light);color:var(--danger);}
+  .bg-soft-success{background:rgba(23,107,67,0.10);color:var(--success);}
+  .badge-impressora{background:var(--primary-light);color:var(--primary);border:1px solid var(--primary-borda);}
+  .badge-desktop{background:#D6F0E0;color:var(--success);}
+  .badge-notebook{background:#F3E5F5;color:#7B1FA2;}
+  .badge-servidor{background:#FFF3CD;color:var(--warning);}
+  .badge-monitor{background:#FCE4EC;color:#C2185B;}
+  .table-rench{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(133,0,1,0.05);border:1px solid var(--primary-borda);}
+  .table-rench thead th{background:#fff;color:var(--primary);font-weight:700;border-bottom:1px solid var(--primary-borda);font-size:13px;padding:14px 16px;}
+  .table-rench tbody td{padding:13px 16px;font-size:14px;border-bottom:1px solid #eee;vertical-align:middle;}
+  .table-rench tbody tr:hover{background:#f8fafc;}
+  .btn-rench-primary{background:#fff;border-color:var(--primary);color:var(--primary);font-weight:700;}
+  .btn-rench-primary:hover{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .btn-outline-primary{border-color:var(--primary);color:var(--primary);}
+  .btn-outline-primary:hover{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .status-badge{font-size:12px;padding:5px 12px;border-radius:20px;font-weight:600;}
+  .s-estoque{background:#D6F0E0;color:var(--success);}
+  .s-locado{background:#D5E8F0;color:var(--primary);}
+  .s-manutencao{background:#FFF3CD;color:var(--warning);}
+  .s-descartado{background:#F8D7DA;color:var(--danger);}
+  .page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;}
+  .page-header h1{font-size:28px;font-weight:700;color:var(--primary);margin:0;}
+  .filter-bar{background:#fff;border-radius:12px;padding:15px 20px;box-shadow:0 2px 8px rgba(133,0,1,0.04);border:1px solid var(--primary-borda);margin-bottom:20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .timeline{padding-left:20px;border-left:2px solid #e0e0e0;margin-top:15px;}
+  .timeline-item{position:relative;padding:0 0 18px 20px;}
+  .timeline-item::before{content:"";position:absolute;left:-26px;top:3px;width:12px;height:12px;border-radius:50%;background:var(--primary);}
+  .timeline-item.saida::before{background:var(--success);}
+  .timeline-item.retorno::before{background:var(--warning);}
+  .timeline-item.manutencao::before{background:var(--danger);}
+  .mov-card{background:#fff;border-radius:12px;padding:16px 20px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.04);}
+  .mov-card i{font-size:22px;}
+  .mov-info p{margin:0;}
+  .mov-data{font-size:13px;color:#888;}
+</style>
+{% block head %}{% endblock %}
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-header">
+    <img src="{{url_for('static', filename='logo_rench.png')}}" alt="Rench" class="sidebar-logo">
+    <p>Controle de Estoque</p>
+  </div>
+  <nav class="d-flex flex-column">
+    <a class="nav-link {{'active' if request.endpoint=='index' else ''}}" href="/">
+      <i class="bi bi-grid"></i> Dashboard
+    </a>
+    <a class="nav-link {{'active' if request.endpoint=='lista_equipamentos' else ''}}" href="{{url_for('lista_equipamentos')}}">
+      <i class="bi bi-printer"></i> Equipamentos
+    </a>
+    <a class="nav-link {{'active' if request.endpoint=='tela_movimentar' else ''}}" href="{{url_for('tela_movimentar')}}">
+      <i class="bi bi-arrow-left-right"></i> Movimentar
+    </a>
+    <a class="nav-link {{'active' if request.endpoint=='novo_equipamento' else ''}}" href="{{url_for('novo_equipamento')}}">
+      <i class="bi bi-plus-circle"></i> Novo Cadastro
+    </a>
+    <a class="nav-link {{'active' if request.endpoint=='lista_locais' else ''}}" href="{{url_for('lista_locais')}}">
+      <i class="bi bi-geo-alt"></i> Empresas / Unidades
+    </a>
+    <a class="nav-link {{'active' if request.endpoint=='historico' else ''}}" href="{{url_for('historico')}}">
+      <i class="bi bi-clock-history"></i> Histórico
+    </a>
+    <a class="nav-link text-danger" href="{{url_for('logout')}}">
+      <i class="bi bi-box-arrow-right"></i> Sair
+    </a>
+  </nav>
+  <div class="mt-auto p-3 text-center" style="border-top:1px solid rgba(255,255,255,0.1);font-size:12px;opacity:0.6;">
+    v1.0 &mdash; Rench Solu&ccedil;&otilde;es
+  </div>
+</div>
+
+<div class="main-content">
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      {% for cat, msg in msgs %}
+        <div class="alert alert-{{cat.replace('danger','danger')|replace('success','success')|replace('info','info')|replace('warning','warning')}} alert-dismissible fade show" role="alert">
+          {{msg}}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

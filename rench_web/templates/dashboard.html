@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - RENCH Estoque{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="text-muted mb-0">Visão geral do controle de equipamentos</p>
+  </div>
+  <a href="{{url_for('novo_equipamento')}}" class="btn btn-rench-primary"><i class="bi bi-plus-lg"></i> Novo Equipamento</a>
+</div>
+
+<!-- Cards resumo -->
+<div class="row g-3 mb-4">
+  {% set tipos = [
+    ('impressora','Impressoras','bg-soft-primary','bi-printer'),
+    ('desktop','Desktops','bg-soft-success','bi-pc-display'),
+    ('notebook','Notebooks','bg-soft-primary','bi-laptop'),
+    ('servidor','Servidores','bg-soft-accent','bi-hdd-stack'),
+    ('monitor','Monitores','bg-soft-danger','bi-display'),
+    ('periferico','Periféricos','bg-soft-primary','bi-usb')
+  ] %}
+  {% for tipo, label, cls, icon in tipos %}
+    <div class="col-6 col-md-4 col-xl-2">
+      <a href="{{url_for('lista_equipamentos', tipo=tipo)}}" class="text-decoration-none">
+        <div class="card card-dashboard h-100 p-3">
+          <div class="icon-circle {{cls}}"><i class="bi {{icon}}"></i></div>
+          <h3 class="fw-bold mb-0">{{por_tipo.get(tipo,0)}}</h3>
+          <small class="text-muted">{{label}}</small>
+        </div>
+      </a>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3">
+  <!-- Locais -->
+  <div class="col-lg-4">
+    <div class="card card-dashboard p-4">
+      <h5 class="fw-bold text-secondary mb-3"><i class="bi bi-geo-alt me-2"></i>Equipamentos por Local</h5>
+      {% for l in por_local %}
+        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+          <span>{{l.local_atual_nome or 'Não definido'}}</span>
+          <span class="badge rounded-pill bg-primary">{{l.qtd}}</span>
+        </div>
+      {% else %}
+        <p class="text-muted mb-0">Nenhum equipamento alocado.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Movimentações -->
+  <div class="col-lg-8">
+    <div class="card card-dashboard p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold text-secondary mb-0"><i class="bi bi-arrow-left-right me-2"></i>Últimas Movimentações</h5>
+        <a href="{{url_for('historico')}}" class="btn btn-sm btn-outline-primary">Ver histórico</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-rench mb-0">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Equipamento</th>
+              <th>Movimento</th>
+              <th>Destino</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for m in ultimas_mov %}
+            <tr>
+              <td><small class="text-muted">{{m.data_movimentacao}}</small></td>
+              <td>
+                <span class="badge badge-{{m.tipo_equipamento}}">{{m.tipo_equipamento}}</span>
+                <strong>{{m.modelo}}</strong>
+              </td>
+              <td>{{m.tipo_movimento.replace('_',' ')|title}}</td>
+              <td>{{m.destino_local}}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="text-center text-muted py-4">Nenhuma movimentação registrada.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

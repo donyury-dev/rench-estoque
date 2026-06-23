@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block title %}Editar {{equip.modelo}} - RENCH{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Editar Equipamento</h1>
+    <p class="text-muted mb-0">
+      <strong>{{equip.modelo}}</strong>
+      {% if equip.codigo %}<span class="ms-2">Rastreio: <code>{{equip.codigo}}</code></span>{% endif %}
+    </p>
+  </div>
+  <a href="{{url_for('detalhe_equipamento', equip_id=equip.id)}}" class="btn btn-outline-secondary">Voltar</a>
+</div>
+
+<div class="alert alert-info border-0" style="background:var(--primary-light);color:var(--primary);">
+  <strong>Como editar:</strong>
+  use esta tela para corrigir informações do equipamento, principalmente <strong>contadores</strong>,
+  modelo, série, patrimônio, observações e local atual. O Nº de Rastreio não é alterado, pois ele é a identificação fixa do equipamento.
+  Para registrar saída, retorno ou troca de cliente/unidade, prefira usar o botão <strong>Movimentar</strong>.
+</div>
+
+<div class="card card-dashboard p-4">
+  <form method="POST">
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label fw-bold">Nº de Rastreio</label>
+        <input class="form-control" value="{{equip.codigo or '-'}}" disabled>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-bold">Tipo</label>
+        <input class="form-control" value="{{equip.tipo_equipamento}}" disabled>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-bold">Status</label>
+        <select name="status" class="form-select">
+          <option value="ativo" {{'selected' if equip.status=='ativo' else ''}}>Ativo</option>
+          <option value="inativo" {{'selected' if equip.status=='inativo' else ''}}>Inativo</option>
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label fw-bold">Fabricante</label>
+        <input name="fabricante" class="form-control" value="{{equip.fabricante or ''}}" placeholder="OKI, Epson, Dell, HP...">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-bold">Modelo *</label>
+        <input name="modelo" class="form-control" value="{{equip.modelo or ''}}" required>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-bold">Serial / Nº Série</label>
+        <input name="numero_serie" class="form-control" value="{{equip.numero_serie or ''}}">
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label fw-bold">Empresa / Cliente</label>
+        <select id="empresa_id" class="form-select" onchange="carregarUnidades()">
+          <option value="">Selecione...</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-bold">Unidade / Filial</label>
+        <select name="unidade_id" id="unidade_id" class="form-select" onchange="preencherLocal()">
+          <option value="">Selecione...</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-bold">Patrimônio / TAG</label>
+        <input name="patrimonio" class="form-control" value="{{equip.patrimonio or ''}}">
+      </div>
+      <input type="hidden" name="local_atual_nome" id="local_atual_nome" value="{{equip.local_atual_nome or ''}}">
+    </div>
+
+    <hr class="my-4">
+
+    {% if equip.tipo_equipamento == 'impressora' or equip.tipo_equipamento == 'periferico' %}
+    <div id="bloco-impressora">
+      <h5 class="fw-bold text-secondary mb-3"><i class="bi bi-printer"></i> Dados de Impressora</h5>
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Função</label>
+          <select name="funcao" class="form-select">
+            <option value="">Selecione...</option>
+            <option value="impressora" {{'selected' if equip.funcao=='impressora' else ''}}>Impressora</option>
+            <option value="multifuncional" {{'selected' if equip.funcao=='multifuncional' else ''}}>Multifuncional</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Tipo</label>
+          <select name="tipo_impressao" class="form-select">
+            <option value="">Selecione...</option>
+            <option value="laser" {{'selected' if equip.tipo_impressao=='laser' else ''}}>Laser</option>
+            <option value="jato_de_tinta" {{'selected' if equip.tipo_impressao=='jato_de_tinta' else ''}}>Jato de tinta</option>
+            <option value="etiqueta" {{'selected' if equip.tipo_impressao=='etiqueta' else ''}}>Etiqueta</option>
+            <option value="termica" {{'selected' if equip.tipo_impressao=='termica' else ''}}>Térmica</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Tamanho Papel</label>
+          <select name="tamanho_papel" class="form-select">
+            <option value="">Selecione...</option>
+            <option value="A3" {{'selected' if equip.tamanho_papel=='A3' else ''}}>A3</option>
+            <option value="A4" {{'selected' if equip.tamanho_papel=='A4' else ''}}>A4</option>
+            <option value="etiqueta" {{'selected' if equip.tamanho_papel=='etiqueta' else ''}}>Etiqueta</option>
+            <option value="cupom" {{'selected' if equip.tamanho_papel=='cupom' else ''}}>Cupom</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Funcionalidades</label>
+          <input name="funcionalidades" class="form-control" value="{{equip.funcionalidades or ''}}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Contador Mono</label>
+          <input type="number" name="contador_mono" class="form-control" min="0" value="{{equip.contador_mono or 0}}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Contador Color</label>
+          <input type="number" name="contador_color" class="form-control" min="0" value="{{equip.contador_color or 0}}">
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if equip.tipo_equipamento in ['desktop','notebook','servidor'] %}
+    <div id="bloco-computador">
+      <h5 class="fw-bold text-secondary mb-3"><i class="bi bi-pc-display"></i> Configuração Técnica</h5>
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Processador</label>
+          <select name="processador_modelo" class="form-select">
+            <option value="">Selecione...</option>
+            <optgroup label="Intel">
+              <option value="Core i3" {{'selected' if equip.processador_modelo=='Core i3' else ''}}>Core i3</option>
+              <option value="Core i5" {{'selected' if equip.processador_modelo=='Core i5' else ''}}>Core i5</option>
+              <option value="Core i7" {{'selected' if equip.processador_modelo=='Core i7' else ''}}>Core i7</option>
+              <option value="Core i9" {{'selected' if equip.processador_modelo=='Core i9' else ''}}>Core i9</option>
+              <option value="Intel Core Ultra" {{'selected' if equip.processador_modelo=='Intel Core Ultra' else ''}}>Intel Core Ultra</option>
+              <option value="Xeon" {{'selected' if equip.processador_modelo=='Xeon' else ''}}>Xeon</option>
+            </optgroup>
+            <optgroup label="AMD Ryzen">
+              <option value="Ryzen 3" {{'selected' if equip.processador_modelo=='Ryzen 3' else ''}}>Ryzen 3</option>
+              <option value="Ryzen 5" {{'selected' if equip.processador_modelo=='Ryzen 5' else ''}}>Ryzen 5</option>
+              <option value="Ryzen 7" {{'selected' if equip.processador_modelo=='Ryzen 7' else ''}}>Ryzen 7</option>
+              <option value="Ryzen AI" {{'selected' if equip.processador_modelo=='Ryzen AI' else ''}}>Ryzen AI</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Geração</label>
+          <select name="processador_geracao" class="form-select">
+            <option value="">Selecione...</option>
+            {% for g in range(3,15) %}
+            <option value="{{ g }}ª" {{'selected' if equip.processador_geracao==(g|string + 'ª') else ''}}>{{ g }}ª Geração</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3"><label class="form-label fw-bold">Velocidade</label><input name="processador_velocidade" class="form-control" value="{{equip.processador_velocidade or ''}}"></div>
+        <div class="col-md-3"><label class="form-label fw-bold">Memória</label><input name="memoria_capacidade" class="form-control" value="{{equip.memoria_capacidade or ''}}"></div>
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Tipo Memória</label>
+          <select name="memoria_tipo" class="form-select">
+            <option value="">Selecione...</option>
+            {% for ddr in ['DDR1','DDR2','DDR3','DDR4','DDR5'] %}
+            <option value="{{ddr}}" {{'selected' if equip.memoria_tipo==ddr else ''}}>{{ddr}}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3"><label class="form-label fw-bold">Velocidade Memória</label><input name="memoria_velocidade" class="form-control" value="{{equip.memoria_velocidade or ''}}"></div>
+        <div class="col-md-4"><label class="form-label fw-bold">Armazenamento 1</label><input name="armazenamento_1_capacidade" class="form-control" value="{{equip.armazenamento_1_capacidade or ''}}"></div>
+        <div class="col-md-2">
+          <label class="form-label fw-bold">Tipo</label>
+          <select name="armazenamento_1_tipo" class="form-select">
+            <option value="">Selecione...</option>
+            {% for t in ['SSD','HD','NVME'] %}
+            <option value="{{t}}" {{'selected' if equip.armazenamento_1_tipo==t else ''}}>{{t}}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4"><label class="form-label fw-bold">Armazenamento 2</label><input name="armazenamento_2_capacidade" class="form-control" value="{{equip.armazenamento_2_capacidade or ''}}"></div>
+        <div class="col-md-2">
+          <label class="form-label fw-bold">Tipo</label>
+          <select name="armazenamento_2_tipo" class="form-select">
+            <option value="">Selecione...</option>
+            {% for t in ['SSD','HD','NVME'] %}
+            <option value="{{t}}" {{'selected' if equip.armazenamento_2_tipo==t else ''}}>{{t}}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4"><label class="form-label fw-bold">Armazenamento 3</label><input name="armazenamento_3_capacidade" class="form-control" value="{{equip.armazenamento_3_capacidade or ''}}"></div>
+        <div class="col-md-2">
+          <label class="form-label fw-bold">Tipo</label>
+          <select name="armazenamento_3_tipo" class="form-select">
+            <option value="">Selecione...</option>
+            {% for t in ['SSD','HD','NVME'] %}
+            <option value="{{t}}" {{'selected' if equip.armazenamento_3_tipo==t else ''}}>{{t}}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <hr class="my-4">
+
+    <div class="row g-3">
+      <div class="col-12">
+        <label class="form-label fw-bold">Observações</label>
+        <textarea name="observacoes" class="form-control" rows="4">{{equip.observacoes or ''}}</textarea>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-4">
+      <button type="submit" class="btn btn-rench-primary"><i class="bi bi-check-lg"></i> Salvar Alterações</button>
+      <a href="{{url_for('detalhe_equipamento', equip_id=equip.id)}}" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<script>
+var unidadesMap = {};
+var empresasMap = {};
+{% for l in locais %}
+  if (!unidadesMap[{{l.empresa_id}}]){ unidadesMap[{{l.empresa_id}}] = []; }
+  {% if l.unidade_id %}
+  unidadesMap[{{l.empresa_id}}].push({id:{{l.unidade_id}}, nome:"{{l.unidade_nome|escape}}"});
+  {% endif %}
+  empresasMap[{{l.empresa_id}}] = {nome:"{{l.empresa_nome|escape}}", tipo:"{{l.empresa_tipo}}"};
+{% endfor %}
+
+function carregarUnidades(){
+  const empId = document.getElementById('empresa_id').value;
+  const sel = document.getElementById('unidade_id');
+  sel.innerHTML = '<option value="">Selecione...</option>';
+  document.getElementById('local_atual_nome').value = '';
+  if(empId && unidadesMap[empId]){
+    unidadesMap[empId].forEach(function(u){
+      sel.innerHTML += '<option value="'+u.id+'">'+u.nome+'</option>';
+    });
+  }
+}
+
+function preencherLocal(){
+  const sel = document.getElementById('unidade_id');
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('local_atual_nome').value = opt ? (opt.text || '') : '';
+}
+
+(function(){
+  const empresaSel = document.getElementById('empresa_id');
+  var grupos = {rench:'', cliente:'', fornecedor:'', assistencia:''};
+  for(var id in empresasMap){
+    var e = empresasMap[id];
+    var selected = '';
+    if(e.tipo === 'rench') grupos.rench += '<option value="'+id+'" '+selected+'>'+e.nome+'</option>';
+    if(e.tipo === 'cliente') grupos.cliente += '<option value="'+id+'" '+selected+'>'+e.nome+'</option>';
+    if(e.tipo === 'fornecedor') grupos.fornecedor += '<option value="'+id+'" '+selected+'>'+e.nome+'</option>';
+    if(e.tipo === 'assistencia') grupos.assistencia += '<option value="'+id+'" '+selected+'>'+e.nome+'</option>';
+  }
+  empresaSel.innerHTML = '<option value="">Selecione...</option>' +
+    (grupos.rench ? '<optgroup label="RENCH">'+grupos.rench+'</optgroup>' : '') +
+    (grupos.cliente ? '<optgroup label="CLIENTES">'+grupos.cliente+'</optgroup>' : '') +
+    (grupos.fornecedor ? '<optgroup label="FORNECEDORES">'+grupos.fornecedor+'</optgroup>' : '') +
+    (grupos.assistencia ? '<optgroup label="ASSISTÊNCIAS">'+grupos.assistencia+'</optgroup>' : '');
+
+  const unidadeAtual = "{{equip.unidade_id or ''}}";
+  if(unidadeAtual){
+    for(var empId in unidadesMap){
+      if(unidadesMap[empId].some(function(u){ return String(u.id) === String(unidadeAtual); })){
+        empresaSel.value = empId;
+        carregarUnidades();
+        document.getElementById('unidade_id').value = unidadeAtual;
+        break;
+      }
+    }
+  }
+})();
+</script>
+{% endblock %}

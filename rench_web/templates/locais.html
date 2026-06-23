@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Empresas, Fornecedores e Unidades - RENCH Estoque{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Empresas, Fornecedores e Unidades</h1>
+    <p class="text-muted mb-0">Cadastre clientes, fornecedores, assistências e as unidades/filiais usadas no estoque e movimentações</p>
+  </div>
+</div>
+
+<div class="alert alert-info border-0" style="background:var(--primary-light);color:var(--primary);">
+  <strong>Como usar:</strong> primeiro cadastre a empresa/fornecedor. Depois cadastre uma ou mais unidades vinculadas a ela.
+  Exemplo: Empresa <strong>SAMIR</strong> → Unidade <strong>HMU Guarulhos</strong>. Empresa <strong>R10</strong> → Unidade <strong>R10 - SP</strong>.
+  Clique no lápis para <strong>editar</strong> e na lixeira para <strong>excluir</strong> (exclusão lógica — não apaga do sistema, apenas oculta).
+</div>
+
+<div class="row g-4 mb-5">
+  <div class="col-lg-5">
+    <div class="card card-dashboard p-4">
+      <h5 class="fw-bold mb-3"><i class="bi bi-building me-2"></i>Nova Empresa / Fornecedor</h5>
+      <form method="POST">
+        <input type="hidden" name="acao" value="empresa">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Nome</label>
+          <input name="nome" class="form-control" required placeholder="Ex: Samir, AES, Mercadão, R10, fornecedor...">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Tipo</label>
+          <select name="tipo" class="form-select">
+            <option value="cliente">Cliente</option>
+            <option value="fornecedor">Fornecedor</option>
+            <option value="assistencia">Assistência Técnica</option>
+            <option value="rench">RENCH</option>
+          </select>
+        </div>
+        <button class="btn btn-rench-primary w-100"><i class="bi bi-check-lg"></i> Salvar Empresa / Fornecedor</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card card-dashboard p-4">
+      <h5 class="fw-bold mb-3"><i class="bi bi-geo-alt me-2"></i>Nova Unidade / Filial</h5>
+      <form method="POST">
+        <input type="hidden" name="acao" value="unidade">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Empresa / Fornecedor</label>
+            <select name="empresa_id" class="form-select" required>
+              <option value="">Selecione...</option>
+              {% for emp in empresas %}
+              <option value="{{emp.id}}">{{emp.nome}} ({{emp.tipo}})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Nome da Unidade / Filial</label>
+            <input name="unidade_nome" class="form-control" required placeholder="Ex: Loja Santos, Endoscopia, R10 - SP...">
+          </div>
+          <div class="col-md-12">
+            <label class="form-label fw-bold">Setor / Observação</label>
+            <input name="setor" class="form-control" placeholder="Setor, endereço, contato, observação...">
+          </div>
+        </div>
+        <button class="btn btn-rench-primary w-100 mt-3"><i class="bi bi-check-lg"></i> Salvar Unidade</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="card card-dashboard p-4">
+  <h5 class="fw-bold mb-3"><i class="bi bi-list me-2"></i>Cadastros existentes</h5>
+  <div class="table-responsive table-rench">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>Empresa / Fornecedor</th>
+          <th>Tipo</th>
+          <th>Unidade / Filial</th>
+          <th>Setor / Observação</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% set empresa_atual = namespace(id=-1) %}
+      {% for l in locais %}
+        {% if empresa_atual.id != l.empresa_id %}
+          {# Linha da Empresa visual #}
+          <tr style="background:#fafafa;" id="empresa-row-{{l.empresa_id}}">
+            <td colspan="5">
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-primary">{{l.empresa_nome}}</span>
+                <span class="badge bg-light text-dark border">{{l.empresa_tipo}}</span>
+                <div class="d-flex gap-1 ms-auto">
+                  <button type="button" class="btn btn-sm btn-outline-secondary"
+                    onclick="document.getElementById('empresa-edit-{{l.empresa_id}}').style.display='table-row'; document.getElementById('empresa-row-{{l.empresa_id}}').style.display='none';">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <form method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta empresa e todas suas unidades?');">
+                    <input type="hidden" name="acao" value="empresa_excluir">
+                    <input type="hidden" name="empresa_id" value="{{l.empresa_id}}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                  </form>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {# Linha de edição da Empresa #}
+          <tr id="empresa-edit-{{l.empresa_id}}" style="display:none;">
+            <td colspan="5">
+              <form method="POST" class="d-flex flex-wrap gap-2 align-items-center">
+                <input type="hidden" name="acao" value="empresa_editar">
+                <input type="hidden" name="empresa_id" value="{{l.empresa_id}}">
+                <input name="nome" class="form-control form-control-sm" value="{{l.empresa_nome}}" style="max-width:260px;" required>
+                <select name="tipo" class="form-select form-select-sm" style="max-width:160px;">
+                  <option value="cliente" {{'selected' if l.empresa_tipo=='cliente' else ''}}>Cliente</option>
+                  <option value="fornecedor" {{'selected' if l.empresa_tipo=='fornecedor' else ''}}>Fornecedor</option>
+                  <option value="assistencia" {{'selected' if l.empresa_tipo=='assistencia' else ''}}>Assistência</option>
+                  <option value="rench" {{'selected' if l.empresa_tipo=='rench' else ''}}>RENCH</option>
+                </select>
+                <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                  onclick="document.getElementById('empresa-edit-{{l.empresa_id}}').style.display='none'; document.getElementById('empresa-row-{{l.empresa_id}}').style.display='table-row';">
+                  Cancelar
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% set empresa_atual.id = l.empresa_id %}
+        {% endif %}
+        {# Linha de Unidade visual #}
+        <tr id="unidade-row-{{l.unidade_id}}">
+          <td></td>
+          <td></td>
+          <td>{{l.unidade_nome or '-'}}</td>
+          <td class="text-muted">{{l.setor or '-'}}</td>
+          <td>
+            <div class="d-flex gap-1">
+              <button type="button" class="btn btn-sm btn-outline-secondary"
+                onclick="document.getElementById('unidade-edit-{{l.unidade_id}}').style.display='table-row'; document.getElementById('unidade-row-{{l.unidade_id}}').style.display='none';">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <form method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta unidade?');">
+                <input type="hidden" name="acao" value="unidade_excluir">
+                <input type="hidden" name="unidade_id" value="{{l.unidade_id}}">
+                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {# Linha de edição da Unidade #}
+        <tr id="unidade-edit-{{l.unidade_id}}" style="display:none;">
+          <td colspan="5">
+            <form method="POST" class="d-flex flex-wrap gap-2 align-items-center">
+              <input type="hidden" name="acao" value="unidade_editar">
+              <input type="hidden" name="unidade_id" value="{{l.unidade_id}}">
+              <input name="unidade_nome" class="form-control form-control-sm" value="{{l.unidade_nome or ''}}" style="max-width:260px;" required>
+              <input name="setor" class="form-control form-control-sm" value="{{l.setor or ''}}" style="max-width:320px;" placeholder="Setor / Observação">
+              <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary"
+                onclick="document.getElementById('unidade-edit-{{l.unidade_id}}').style.display='none'; document.getElementById('unidade-row-{{l.unidade_id}}').style.display='table-row';">
+                Cancelar
+              </button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" class="text-center text-muted py-4">Nenhum cadastro encontrado.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

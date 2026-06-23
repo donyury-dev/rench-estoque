@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Movimentar Equipamento - RENCH Estoque{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Movimentar</h1>
+    <p class="text-muted mb-0">Selecione o equipamento para registrar saída, retorno ou transferência</p>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <form method="GET" action="{{url_for('tela_movimentar')}}" class="d-flex gap-2 align-items-center flex-wrap w-100">
+    <div class="input-group" style="max-width:360px;">
+      <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+      <input type="text" name="q" class="form-control border-start-0" placeholder="Rastreio, série, modelo, cliente..." value="{{busca}}">
+    </div>
+    <select name="tipo" class="form-select" style="width:auto;" onchange="this.form.submit()">
+      <option value="">Todos</option>
+      <option value="impressora" {{'selected' if filtro_tipo=='impressora' else ''}}>Impressora</option>
+      <option value="desktop" {{'selected' if filtro_tipo=='desktop' else ''}}>Desktop</option>
+      <option value="notebook" {{'selected' if filtro_tipo=='notebook' else ''}}>Notebook</option>
+      <option value="servidor" {{'selected' if filtro_tipo=='servidor' else ''}}>Servidor</option>
+      <option value="monitor" {{'selected' if filtro_tipo=='monitor' else ''}}>Monitor</option>
+      <option value="periferico" {{'selected' if filtro_tipo=='periferico' else ''}}>Periférico</option>
+    </select>
+    <button type="submit" class="btn btn-rench-primary"><i class="bi bi-funnel"></i></button>
+    <a href="{{url_for('tela_movimentar')}}" class="btn btn-outline-secondary">Limpar</a>
+  </form>
+</div>
+
+{% if busca and not equipamentos %}
+<div class="alert alert-warning">
+  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+  <strong>Equipamento não cadastrado.</strong><br>
+  Não encontramos <code>{{busca}}</code> no sistema.
+</div>
+{% endif %}
+
+<div class="table-responsive table-rench">
+  <table class="table mb-0">
+    <thead>
+      <tr>
+        <th>Equipamento</th>
+        <th>Série / Rastreio</th>
+        <th>Local Atual</th>
+        <th style="width:120px;">Ação</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for e in equipamentos %}
+      <tr>
+        <td>
+          <span class="badge badge-{{e.tipo_equipamento}} mb-1">{{e.tipo_equipamento}}</span><br>
+          <strong>{{e.fabricante or '-'}} {{e.modelo}}</strong>
+        </td>
+        <td>
+          <code>{{e.numero_serie or '-'}}</code><br>
+          <small class="text-muted">{{e.codigo or '-'}}</small>
+        </td>
+        <td>
+          <strong>{{e.local_atual_nome or e.local_nome or '-'}}</strong><br>
+          <small class="text-muted">{{e.cliente_atual or e.empresa_nome or '-'}}</small>
+        </td>
+        <td>
+          <a href="{{url_for('movimentar', equip_id=e.id)}}" class="btn btn-sm btn-success w-100" style="background:#176B43;border-color:#176B43;">
+            <i class="bi bi-arrow-left-right"></i> Movimentar
+          </a>
+        </td>
+      </tr>
+    {% else %}
+      <tr>
+        <td colspan="4" class="text-center py-5 text-muted">
+          <i class="bi bi-inbox" style="font-size:42px;"></i>
+          <p class="mt-3 mb-1">Nenhum equipamento encontrado.</p>
+          <a href="{{url_for('novo_equipamento')}}" class="btn btn-rench-primary mt-2">Cadastrar</a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

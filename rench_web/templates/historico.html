@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Histórico - RENCH Estoque{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Histórico do Equipamento</h1>
+    <p class="text-muted mb-0">Consulte por série, rastreio, modelo, cliente ou unidade — mesmo com pequenos erros de digitação</p>
+  </div>
+</div>
+
+<div class="alert alert-info border-0" style="background:var(--primary-light);color:var(--primary);">
+  <strong>Como consultar:</strong>
+  digite o Nº de Rastreio, número de série, modelo, cliente ou unidade.
+  A busca aceita pequenos erros de digitação e pode mostrar equipamentos parecidos.
+  Use esta tela para conferir por onde o equipamento passou antes de chegar ao local atual.
+</div>
+
+<div class="card card-dashboard p-4 mb-4">
+  <form method="GET" action="{{url_for('historico')}}" class="row g-3 align-items-end">
+    <div class="col-md-6">
+      <label class="form-label fw-bold">Pesquisar equipamento</label>
+      <input name="serie" class="form-control" value="{{serie or ''}}" placeholder="Série, rastreio, modelo, cliente ou unidade">
+    </div>
+    <div class="col-md-3">
+      <button class="btn btn-rench-primary w-100"><i class="bi bi-search"></i> Consultar</button>
+    </div>
+    <div class="col-md-3">
+      <a href="{{url_for('historico')}}" class="btn btn-outline-secondary w-100">Limpar</a>
+    </div>
+  </form>
+</div>
+
+{% if equip %}
+  <div class="card card-dashboard p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <span class="badge badge-{{equip.tipo_equipamento}}">{{equip.tipo_equipamento}}</span>
+        <h4 class="fw-bold mt-2 mb-1">{{equip.fabricante or '-'}} {{equip.modelo}}</h4>
+        <p class="text-muted mb-0">
+          Série: <code>{{equip.numero_serie or '-'}}</code>
+          <span class="ms-3">Rastreio: <code>{{equip.codigo or '-'}}</code></span>
+          <span class="ms-3">Local atual: <strong>{{equip.local_atual_nome or '-'}}</strong></span>
+          <span class="ms-3">Cliente atual: <strong>{{equip.cliente_atual or '-'}}</strong></span>
+        </p>
+      </div>
+      <a href="{{url_for('detalhe_equipamento', equip_id=equip.id)}}" class="btn btn-outline-primary">Abrir ficha</a>
+    </div>
+  </div>
+
+  {% if sugestoes %}
+  <div class="alert alert-info border-0" style="background:var(--primary-light);color:var(--primary);">
+    <strong>Outros equipamentos parecidos:</strong>
+    <div class="d-flex flex-wrap gap-2 mt-2">
+      {% for s in sugestoes %}
+        <a class="btn btn-sm btn-outline-primary" href="{{url_for('historico', equipamento_id=s.id)}}">
+          {{s.modelo}}{% if s.numero_serie %} - {{s.numero_serie}}{% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card card-dashboard p-4">
+    <h5 class="fw-bold mb-3"><i class="bi bi-clock-history me-2"></i>Linha do tempo</h5>
+    {% if movimentacoes %}
+      <div class="timeline">
+        {% for m in movimentacoes %}
+        <div class="timeline-item">
+          <div class="d-flex justify-content-between">
+            <p class="fw-bold mb-1">{{m.tipo_movimento.replace('_',' ')|title}}</p>
+            <small class="text-muted">{{m.data_movimentacao}}</small>
+          </div>
+          <p class="mb-1">
+            <span class="text-muted">Origem:</span> <strong>{{m.origem_local or '-'}}</strong>
+            <span class="mx-2">→</span>
+            <span class="text-muted">Destino:</span> <strong>{{m.destino_local}}</strong>
+            {% if m.destino_unidade %}<small class="text-muted">({{m.destino_unidade}})</small>{% endif %}
+          </p>
+          {% if m.responsavel %}<p class="small text-muted mb-1">Responsável: {{m.responsavel}}</p>{% endif %}
+          {% if m.observacoes %}<p class="small fst-italic mb-0">“{{m.observacoes}}”</p>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-muted mb-0">Este equipamento ainda não tem movimentações registradas.</p>
+    {% endif %}
+  </div>
+{% elif serie %}
+  <div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <strong>Equipamento não cadastrado.</strong><br>
+    Não encontramos nenhum equipamento com a série <code>{{serie}}</code> no sistema.
+    Verifique se digitou corretamente ou cadastre o equipamento primeiro.
+  </div>
+{% else %}
+  <div class="alert alert-info">
+    Informe uma série, rastreio, modelo, cliente ou unidade para consultar o histórico.
+  </div>
+{% endif %}
+{% endblock %}
