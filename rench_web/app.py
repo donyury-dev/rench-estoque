@@ -612,7 +612,7 @@ def lista_equipamentos():
                 equipamento["empresa_nome"],
                 equipamento["unidade_setor"],
             )
-            if pontuacao >= 180:
+            if pontuacao >= 50:
                 filtrados.append((pontuacao, equipamento))
 
         filtrados.sort(key=lambda item: item[0], reverse=True)
@@ -1008,7 +1008,7 @@ def historico():
 
         encontrados.sort(key=lambda item: item[0], reverse=True)
         # Só aceita resultado se a pontuacao for alta (evita devolver qualquer coisa parecida)
-        if encontrados and encontrados[0][0] >= 180:
+        if encontrados and encontrados[0][0] >= 50:
             equip = encontrados[0][1]
             sugestoes = [item[1] for item in encontrados[1:6]]
             cur.execute("""
@@ -1075,7 +1075,7 @@ def tela_movimentar():
                 eq["numero_serie"], eq["patrimonio"], eq["cliente_atual"],
                 eq["local_nome"], eq["empresa_nome"], eq["unidade_setor"],
             )
-            if pontuacao >= 180:
+            if pontuacao >= 50:
                 filtrados.append((pontuacao, eq))
         filtrados.sort(key=lambda i: i[0], reverse=True)
         equipamentos = [i[1] for i in filtrados]
