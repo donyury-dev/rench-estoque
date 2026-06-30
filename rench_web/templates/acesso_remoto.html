@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Acesso Remoto - RENCH Equipamentos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Acesso Remoto</h1>
+    <p class="text-muted mb-0">AnyDesk das unidades e clientes</p>
+  </div>
+  <button class="btn btn-rench-primary" data-bs-toggle="modal" data-bs-target="#modalNovo"><i class="bi bi-plus-lg"></i> Novo</button>
+</div>
+
+<div class="filter-bar">
+  <form method="GET" action="{{url_for('acesso_remoto')}}" class="d-flex gap-2 align-items-center flex-wrap w-100">
+    <div class="input-group" style="max-width:360px;">
+      <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+      <input type="text" name="q" class="form-control border-start-0" placeholder="Buscar por local, AnyDesk..." value="{{busca}}">
+    </div>
+    <button type="submit" class="btn btn-rench-primary"><i class="bi bi-funnel"></i></button>
+    <a href="{{url_for('acesso_remoto')}}" class="btn btn-outline-secondary">Limpar</a>
+  </form>
+</div>
+
+<div class="table-responsive table-rench">
+  <table class="table mb-0">
+    <thead>
+      <tr>
+        <th>Local / Unidade</th>
+        <th>AnyDesk</th>
+        <th>Senha</th>
+        <th style="width:140px;">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for a in acessos %}
+      <tr>
+        <td><strong>{{a.local}}</strong>{% if a.observacoes %}<br><small class="text-muted">{{a.observacoes}}</small>{% endif %}</td>
+        <td>
+          <div class="input-group" style="max-width:200px;">
+            <input type="text" class="form-control form-control-sm" value="{{a.anydesk or '-'}}" id="anydesk-{{a.id}}" readonly>
+            <button class="btn btn-sm btn-outline-secondary" type="button" onclick="copiar('anydesk-{{a.id}}')" title="Copiar AnyDesk"><i class="bi bi-copy"></i></button>
+          </div>
+        </td>
+        <td>
+          <div class="input-group" style="max-width:200px;">
+            <input type="text" class="form-control form-control-sm" value="{{a.senha or '-'}}" id="senha-{{a.id}}" readonly>
+            <button class="btn btn-sm btn-outline-secondary" type="button" onclick="copiar('senha-{{a.id}}')" title="Copiar senha"><i class="bi bi-copy"></i></button>
+          </div>
+        </td>
+        <td>
+          <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditar" data-id="{{a.id}}" data-local="{{a.local}}" data-anydesk="{{a.anydesk}}" data-senha="{{a.senha}}" data-obs="{{a.observacoes}}" onclick="preencherEdicao(this)"><i class="bi bi-pencil"></i></button>
+            <form method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este acesso?');">
+              <input type="hidden" name="acao" value="excluir">
+              <input type="hidden" name="id" value="{{a.id}}">
+              <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </div>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="text-center text-muted py-5">Nenhum acesso remoto cadastrado.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal Novo -->
+<div class="modal fade" id="modalNovo" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{url_for('acesso_remoto')}}">
+        <div class="modal-header">
+          <h5 class="modal-title">Novo Acesso Remoto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="acao" value="novo">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Local / Unidade</label>
+            <input type="text" name="local" class="form-control" required placeholder="Ex: Hosp CAJAMAR">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">AnyDesk</label>
+            <input type="text" name="anydesk" class="form-control" placeholder="Ex: 1087299432">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Senha</label>
+            <input type="text" name="senha" class="form-control" placeholder="Senha de acesso">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Observações</label>
+            <textarea name="observacoes" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-rench-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar -->
+<div class="modal fade" id="modalEditar" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{url_for('acesso_remoto')}}">
+        <div class="modal-header">
+          <h5 class="modal-title">Editar Acesso Remoto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="acao" value="editar">
+          <input type="hidden" name="id" id="edit-id">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Local / Unidade</label>
+            <input type="text" name="local" id="edit-local" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">AnyDesk</label>
+            <input type="text" name="anydesk" id="edit-anydesk" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Senha</label>
+            <input type="text" name="senha" id="edit-senha" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Observações</label>
+            <textarea name="observacoes" id="edit-obs" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-rench-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function copiar(elementId) {
+  var el = document.getElementById(elementId);
+  el.select();
+  el.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(el.value).then(function() {
+    var btn = el.nextElementSibling;
+    var original = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+    setTimeout(function(){ btn.innerHTML = original; }, 1200);
+  });
+}
+function preencherEdicao(btn) {
+  document.getElementById('edit-id').value = btn.dataset.id;
+  document.getElementById('edit-local').value = btn.dataset.local;
+  document.getElementById('edit-anydesk').value = btn.dataset.anydesk;
+  document.getElementById('edit-senha').value = btn.dataset.senha;
+  document.getElementById('edit-obs').value = btn.dataset.obs;
+}
+</script>
+{% endblock %}

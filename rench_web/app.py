@@ -272,6 +272,17 @@ def init_db():
         r10_id = cur.fetchone()[0]
         cur.execute("INSERT INTO unidades (empresa_id, nome, setor) VALUES (?, ?, ?)", (r10_id, 'R10 - Matriz SP', 'Assistência técnica'))
 
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS acesso_remoto (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            local TEXT NOT NULL,
+            anydesk TEXT,
+            senha TEXT,
+            observacoes TEXT,
+            ativo INTEGER DEFAULT 1
+        )
+    ''')
+
     db.commit()
     db.close()
     print("Banco de dados inicializado!")
@@ -960,6 +971,58 @@ def lista_locais():
     cur.execute("SELECT id, nome, tipo FROM empresas WHERE ativo=1 ORDER BY tipo DESC, nome")
     empresas = cur.fetchall()
     return render_template('locais.html', locais=locais, empresas=empresas)
+
+@app.route('/acesso-remoto', methods=['GET', 'POST'])
+@login_required
+def acesso_remoto():
+    db = get_db()
+    cur = db.cursor()
+    busca = request.args.get('q', '')
+
+    if request.method == 'POST':
+        acao = request.form.get('acao')
+        if acao == 'novo':
+            cur.execute("""
+                INSERT INTO acesso_remoto (local, anydesk, senha, observacoes)
+                VALUES (?, ?, ?, ?)
+            """, (
+                request.form.get('local'),
+                request.form.get('anydesk'),
+                request.form.get('senha'),
+                request.form.get('observacoes')
+            ))
+            db.commit()
+            flash('Acesso remoto cadastrado com sucesso!', 'success')
+        elif acao == 'editar':
+            cur.execute("""
+                UPDATE acesso_remoto
+                SET local=?, anydesk=?, senha=?, observacoes=?
+                WHERE id=?
+            """, (
+                request.form.get('local'),
+                request.form.get('anydesk'),
+                request.form.get('senha'),
+                request.form.get('observacoes'),
+                request.form.get('id')
+            ))
+            db.commit()
+            flash('Acesso remoto atualizado com sucesso!', 'success')
+        elif acao == 'excluir':
+            cur.execute("UPDATE acesso_remoto SET ativo=0 WHERE id=?", (request.form.get('id'),))
+            db.commit()
+            flash('Acesso remoto excluido.', 'success')
+        return redirect(url_for('acesso_remoto', q=busca))
+
+    sql = "SELECT * FROM acesso_remoto WHERE ativo=1"
+    params = []
+    if busca:
+        sql += " AND (local LIKE ? OR anydesk LIKE ? OR senha LIKE ? OR observacoes LIKE ?)"
+        like = f'%{busca}%'
+        params = [like, like, like, like]
+    sql += " ORDER BY local"
+    cur.execute(sql, params)
+    acessos = cur.fetchall()
+    return render_template('acesso_remoto.html', acessos=acessos, busca=busca)
 
 @app.route('/historico')
 @login_required

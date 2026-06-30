@@ -86,6 +86,9 @@
     <a class="nav-link {{'active' if request.endpoint=='historico' else ''}}" href="{{url_for('historico')}}">
       <i class="bi bi-clock-history"></i> Histórico
     </a>
+    <a class="nav-link {{'active' if request.endpoint=='acesso_remoto' else ''}}" href="{{url_for('acesso_remoto')}}">
+      <i class="bi bi-laptop"></i> Acesso Remoto
+    </a>
     <a class="nav-link text-danger" href="{{url_for('logout')}}">
       <i class="bi bi-box-arrow-right"></i> Sair
     </a>
