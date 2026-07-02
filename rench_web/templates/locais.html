@@ -13,6 +13,9 @@
   <strong>Como usar:</strong> primeiro cadastre a empresa/fornecedor. Depois cadastre uma ou mais unidades vinculadas a ela.
   Exemplo: Empresa <strong>SAMIR</strong> → Unidade <strong>HMU Guarulhos</strong>. Empresa <strong>R10</strong> → Unidade <strong>R10 - SP</strong>.
   Clique no lápis para <strong>editar</strong> e na lixeira para <strong>excluir</strong> (exclusão lógica — não apaga do sistema, apenas oculta).
+  <br>
+  <strong>Trocou uma unidade de empresa por engano?</strong> Clique no lápis da unidade e use o campo <strong>"Empresa / Fornecedor"</strong>
+  para selecionar a empresa correta — a unidade é transferida na hora, sem precisar excluir e recadastrar.
 </div>
 
 <div class="row g-4 mb-5">
@@ -155,8 +158,13 @@
             <form method="POST" class="d-flex flex-wrap gap-2 align-items-center">
               <input type="hidden" name="acao" value="unidade_editar">
               <input type="hidden" name="unidade_id" value="{{l.unidade_id}}">
-              <input name="unidade_nome" class="form-control form-control-sm" value="{{l.unidade_nome or ''}}" style="max-width:260px;" required>
-              <input name="setor" class="form-control form-control-sm" value="{{l.setor or ''}}" style="max-width:320px;" placeholder="Setor / Observação">
+              <input name="unidade_nome" class="form-control form-control-sm" value="{{l.unidade_nome or ''}}" style="max-width:220px;" required>
+              <input name="setor" class="form-control form-control-sm" value="{{l.setor or ''}}" style="max-width:220px;" placeholder="Setor / Observação">
+              <select name="empresa_id" class="form-select form-select-sm" style="max-width:220px;" required title="Transferir esta unidade para outra empresa/cliente">
+                {% for emp in empresas %}
+                <option value="{{emp.id}}" {{'selected' if emp.id==l.empresa_id else ''}}>{{emp.nome}} ({{emp.tipo}})</option>
+                {% endfor %}
+              </select>
               <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
               <button type="button" class="btn btn-sm btn-outline-secondary"
                 onclick="document.getElementById('unidade-edit-{{l.unidade_id}}').style.display='none'; document.getElementById('unidade-row-{{l.unidade_id}}').style.display='table-row';">

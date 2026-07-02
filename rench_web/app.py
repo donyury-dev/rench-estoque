@@ -944,8 +944,9 @@ def lista_locais():
             unidade_id = request.form.get('unidade_id')
             nome = request.form.get('unidade_nome')
             setor = request.form.get('setor')
-            if unidade_id and nome:
-                cur.execute("UPDATE unidades SET nome=?, setor=? WHERE id=?", (nome, setor, unidade_id))
+            empresa_id = request.form.get('empresa_id')
+            if unidade_id and nome and empresa_id:
+                cur.execute("UPDATE unidades SET nome=?, setor=?, empresa_id=? WHERE id=?", (nome, setor, empresa_id, unidade_id))
                 db.commit()
                 flash("Unidade atualizada com sucesso!", "success")
             return redirect(url_for('lista_locais'))
