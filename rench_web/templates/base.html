@@ -74,6 +74,9 @@
     <a class="nav-link {{'active' if request.endpoint=='lista_equipamentos' else ''}}" href="{{url_for('lista_equipamentos')}}">
       <i class="bi bi-printer"></i> Equipamentos
     </a>
+    <a class="nav-link {{'active' if request.endpoint=='equipamentos_por_unidade' else ''}}" href="{{url_for('equipamentos_por_unidade')}}">
+      <i class="bi bi-buildings"></i> Equipamentos por Unidade
+    </a>
     <a class="nav-link {{'active' if request.endpoint=='tela_movimentar' else ''}}" href="{{url_for('tela_movimentar')}}">
       <i class="bi bi-arrow-left-right"></i> Movimentar
     </a>

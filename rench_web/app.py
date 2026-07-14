@@ -841,6 +841,58 @@ def editar_equipamento(equip_id):
 
     return render_template('equipamento_editar.html', equip=equip, locais=locais)
 
+@app.route('/equipamentos-por-unidade')
+@login_required
+def equipamentos_por_unidade():
+    db = get_db()
+    cur = db.cursor()
+
+    empresa_id = request.args.get('empresa_id', '')
+    unidade_id = request.args.get('unidade_id', '')
+    tipo = request.args.get('tipo', '')
+
+    cur.execute("SELECT id, nome FROM empresas WHERE ativo=1 ORDER BY nome")
+    empresas = cur.fetchall()
+
+    unidades = []
+    equipamentos = []
+    unidade_selecionada = None
+
+    if empresa_id:
+        cur.execute("""
+            SELECT id, nome, setor FROM unidades
+            WHERE empresa_id=? AND ativo=1
+            ORDER BY nome
+        """, (empresa_id,))
+        unidades = cur.fetchall()
+
+    if unidade_id:
+        cur.execute("SELECT u.*, e.nome as empresa_nome FROM unidades u LEFT JOIN empresas e ON e.id=u.empresa_id WHERE u.id=?", (unidade_id,))
+        unidade_selecionada = cur.fetchone()
+
+        sql = """
+            SELECT e.*, COALESCE(u.nome, e.local_atual_nome) as local_nome,
+                   emp.nome as empresa_nome
+            FROM equipamentos e
+            LEFT JOIN unidades u ON e.unidade_id = u.id
+            LEFT JOIN empresas emp ON emp.id = u.empresa_id
+            WHERE e.ativo=1 AND e.unidade_id = ?
+        """
+        params = [unidade_id]
+        if tipo:
+            sql += " AND e.tipo_equipamento = ?"
+            params.append(tipo)
+        sql += " ORDER BY e.tipo_equipamento, e.modelo"
+        cur.execute(sql, params)
+        equipamentos = cur.fetchall()
+
+    return render_template('equipamentos_por_unidade.html',
+        empresas=empresas, unidades=unidades, equipamentos=equipamentos,
+        filtro_empresa_id=empresa_id, filtro_unidade_id=unidade_id,
+        filtro_tipo=tipo, unidade_selecionada=unidade_selecionada
+    )
+
+
 @app.route('/equipamento/<int:equip_id>/excluir', methods=['POST'])
 @login_required
 def excluir_equipamento(equip_id):
