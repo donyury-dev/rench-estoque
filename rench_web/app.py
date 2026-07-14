@@ -977,6 +977,20 @@ def lista_locais():
                 flash("Unidade excluida com sucesso.", "success")
             return redirect(url_for('lista_locais'))
 
+        # Unificar unidades duplicadas
+        if request.form.get('acao') == 'unidade_unificar':
+            manter_id = request.form.get('manter_id')
+            remover_id = request.form.get('remover_id')
+            if manter_id and remover_id and manter_id != remover_id:
+                # Atualiza equipamentos apontando para a unidade a manter
+                cur.execute("UPDATE equipamentos SET unidade_id=? WHERE unidade_id=?", (manter_id, remover_id))
+                cur.execute("UPDATE equipamentos SET local_atual_nome=(SELECT nome FROM unidades WHERE id=?) WHERE unidade_id=? AND local_atual_nome=(SELECT nome FROM unidades WHERE id=?)", (manter_id, manter_id, remover_id))
+                # Desativa a unidade duplicada
+                cur.execute("UPDATE unidades SET ativo=0 WHERE id=?", (remover_id,))
+                db.commit()
+                flash("Unidades unificadas com sucesso!", "success")
+            return redirect(url_for('lista_locais'))
+
     cur.execute("""
         SELECT e.id as empresa_id, e.nome as empresa_nome, e.tipo as empresa_tipo,
                u.id as unidade_id, u.nome as unidade_nome, u.setor

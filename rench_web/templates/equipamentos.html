@@ -95,6 +95,9 @@
             <a href="{{url_for('detalhe_equipamento', equip_id=e.id)}}" class="btn btn-sm btn-outline-primary" title="Ficha"><i class="bi bi-eye"></i></a>
             <a href="{{url_for('editar_equipamento', equip_id=e.id)}}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
             <a href="{{url_for('movimentar', equip_id=e.id)}}" class="btn btn-sm btn-success" style="background:#176B43;border-color:#176B43;" title="Movimentar"><i class="bi bi-arrow-left-right"></i></a>
+            <form method="POST" action="{{url_for('excluir_equipamento', equip_id=e.id)}}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este equipamento? A ação pode ser desfeita editando o equipamento e reativando-o.');">
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir"><i class="bi bi-trash"></i></button>
+            </form>
           </div>
         </td>
       </tr>
