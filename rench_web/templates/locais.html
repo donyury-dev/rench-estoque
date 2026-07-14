@@ -11,11 +11,11 @@
 
 <div class="alert alert-info border-0" style="background:var(--primary-light);color:var(--primary);">
   <strong>Como usar:</strong> primeiro cadastre a empresa/fornecedor. Depois cadastre uma ou mais unidades vinculadas a ela.
-  Exemplo: Empresa <strong>SAMIR</strong> → Unidade <strong>HMU Guarulhos</strong>. Empresa <strong>R10</strong> → Unidade <strong>R10 - SP</strong>.
-  Clique no lápis para <strong>editar</strong> e na lixeira para <strong>excluir</strong> (exclusão lógica — não apaga do sistema, apenas oculta).
+  Exemplo: Empresa <strong>SAMIR</strong> -> Unidade <strong>HMU Guarulhos</strong>. Empresa <strong>R10</strong> -> Unidade <strong>R10 - SP</strong>.
+  Clique no lapis para <strong>editar</strong> e na lixeira para <strong>excluir</strong> (exclusao logica - nao apaga do sistema, apenas oculta).
   <br>
   <strong>Trocou uma unidade de empresa por engano?</strong> Clique no lápis da unidade e use o campo <strong>"Empresa / Fornecedor"</strong>
-  para selecionar a empresa correta — a unidade é transferida na hora, sem precisar excluir e recadastrar.
+  para selecionar a empresa correta - a unidade e transferida na hora, sem precisar excluir e recadastrar.
 </div>
 
 <div class="row g-4 mb-5">
@@ -90,9 +90,7 @@
       {% set prev_unidade = namespace(nome='', id=None, empresa_id=None) %}
       {% for l in locais %}
         {% if empresa_atual.id != l.empresa_id %}
-          {% set prev_unidade.nome = '' %}
-          {% set prev_unidade.id = None %}
-          {% set prev_unidade.empresa_id = None %}
+          {% set prev_unidade = namespace(nome='', id=None, empresa_id=None) %}
           {# Linha da Empresa visual #}
           <tr style="background:#fafafa;" id="empresa-row-{{l.empresa_id}}">
             <td colspan="5">
@@ -144,7 +142,7 @@
         {# Linha de Unidade visual #}
         <tr id="unidade-row-{{l.unidade_id}}">
           <td></td>
-          <td>{% if eh_dup %}<span class="badge bg-warning text-dark" title="Nome duplicado">⚠ duplicado</span>{% endif %}</td>
+          <td>{% if eh_dup %}<span class="badge bg-warning text-dark" title="Nome duplicado">! duplicado</span>{% endif %}</td>
           <td>{{l.unidade_nome or '-'}}</td>
           <td class="text-muted">{{l.setor or '-'}}</td>
           <td>
@@ -158,14 +156,14 @@
                 <input type="hidden" name="unidade_id" value="{{l.unidade_id}}">
                 <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
               </form>
-              {% if eh_dup %}
+          {% if eh_dup %}
               <form method="POST" class="d-inline" onsubmit="return confirm('Unificar esta unidade com a anterior? Os equipamentos serão transferidos e esta entrada será ocultada.');">
                 <input type="hidden" name="acao" value="unidade_unificar">
                 <input type="hidden" name="manter_id" value="{{prev_unidade.id}}">
                 <input type="hidden" name="remover_id" value="{{l.unidade_id}}">
                 <button type="submit" class="btn btn-sm btn-outline-warning" title="Unificar com a anterior"><i class="bi bi-sign-merge-left"></i></button>
               </form>
-              {% endif %}
+          {% endif %}
             </div>
           </td>
         </tr>
