@@ -25,6 +25,12 @@
       <option value="monitor" {{'selected' if filtro_tipo=='monitor' else ''}}>Monitor</option>
       <option value="periferico" {{'selected' if filtro_tipo=='periferico' else ''}}>Periférico</option>
     </select>
+    <select name="unidade_id" class="form-select" style="min-width:220px;width:auto;max-width:320px;" onchange="this.form.submit()">
+      <option value="">Todas as unidades</option>
+      {% for u in unidades_filtro %}
+      <option value="{{u.id}}" {{'selected' if filtro_unidade_id|string==u.id|string else ''}}>{{u.empresa_nome}} - {{u.nome}}</option>
+      {% endfor %}
+    </select>
     <select name="mov_recente" class="form-select" style="width:auto;" onchange="this.form.submit()">
       <option value="">Todas as mov.</option>
       <option value="7d" {{'selected' if filtro_mov=='7d' else ''}}>Últimos 7 dias</option>

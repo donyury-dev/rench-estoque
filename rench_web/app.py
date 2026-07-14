@@ -584,6 +584,7 @@ def lista_equipamentos():
     tipo = request.args.get('tipo', '')
     busca = request.args.get('q', '')
     mov_recente = request.args.get('mov_recente', '')
+    unidade_id = request.args.get('unidade_id', '')
     sugestoes = []
 
     sql = """
@@ -606,6 +607,9 @@ def lista_equipamentos():
     if tipo:
         sql += " AND e.tipo_equipamento = ?"
         params.append(tipo)
+    if unidade_id:
+        sql += " AND e.unidade_id = ?"
+        params.append(unidade_id)
     sql += " ORDER BY e.tipo_equipamento, e.modelo"
 
     cur.execute(sql, params)
@@ -634,8 +638,19 @@ def lista_equipamentos():
         equipamentos = [item[1] for item in filtrados]
         sugestoes = buscar_sugestoes_locais(cur, busca)
 
+    # Lista de unidades para o filtro
+    cur.execute("""
+        SELECT u.id, u.nome, e.nome as empresa_nome
+        FROM unidades u
+        JOIN empresas e ON e.id = u.empresa_id
+        WHERE u.ativo=1
+        ORDER BY e.nome, u.nome
+    """)
+    unidades_filtro = cur.fetchall()
+
     return render_template('equipamentos.html',
-        equipamentos=equipamentos, filtro_tipo=tipo, filtro_mov=mov_recente, busca=busca, sugestoes=sugestoes
+        equipamentos=equipamentos, filtro_tipo=tipo, filtro_mov=mov_recente, busca=busca,
+        filtro_unidade_id=unidade_id, unidades_filtro=unidades_filtro, sugestoes=sugestoes
     )
 
 @app.route('/equipamento/<int:equip_id>')
