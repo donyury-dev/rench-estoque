@@ -78,6 +78,18 @@
             {% if m.destino_unidade %}<small class="text-muted">({{m.destino_unidade}})</small>{% endif %}
           </p>
           {% if m.responsavel %}<p class="small text-muted mb-1">Responsável: {{m.responsavel}}</p>{% endif %}
+          {% if m.contador_mono_anterior is not none or m.contador_mono_novo is not none %}
+          <p class="small mb-1">
+            <i class="bi bi-printer me-1"></i>
+            <span class="text-muted">Contador mono:</span>
+            <strong>{{m.contador_mono_anterior or 0}}</strong> → <strong>{{m.contador_mono_novo or 0}}</strong>
+            {% if m.contador_color_anterior is not none %}
+              <span class="mx-2">|</span>
+              <span class="text-muted">Color:</span>
+              <strong>{{m.contador_color_anterior or 0}}</strong> → <strong>{{m.contador_color_novo or 0}}</strong>
+            {% endif %}
+          </p>
+          {% endif %}
           {% if m.observacoes %}<p class="small fst-italic mb-0">“{{m.observacoes}}”</p>{% endif %}
         </div>
         {% endfor %}

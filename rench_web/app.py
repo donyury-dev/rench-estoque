@@ -213,6 +213,10 @@ def init_db():
             )),
             responsavel TEXT,
             observacoes TEXT,
+            contador_mono_anterior INTEGER,
+            contador_mono_novo INTEGER,
+            contador_color_anterior INTEGER,
+            contador_color_novo INTEGER,
             FOREIGN KEY (equipamento_id) REFERENCES equipamentos(id)
         )
     ''')
@@ -850,6 +854,14 @@ def movimentar(equip_id):
         destino_unidade_id = request.form.get('destino_unidade_id')
         responsavel = request.form.get('responsavel')
         obs = request.form.get('observacoes')
+        contador_mono_novo = request.form.get('contador_mono_novo', '').strip()
+        contador_color_novo = request.form.get('contador_color_novo', '').strip()
+
+        # Converte para inteiros
+        contador_mono_anterior = int(equip['contador_mono'] or 0)
+        contador_color_anterior = int(equip['contador_color'] or 0)
+        contador_mono_novo_int = int(contador_mono_novo) if contador_mono_novo else contador_mono_anterior
+        contador_color_novo_int = int(contador_color_novo) if contador_color_novo else contador_color_anterior
 
         # Nome da unidade de destino
         destino_unidade_nome = None
@@ -862,17 +874,22 @@ def movimentar(equip_id):
         # Inserir movimentacao
         cur.execute("""
             INSERT INTO movimentacoes (equipamento_id, data_movimentacao, tipo_movimento,
-                origem_local, origem_unidade, destino_local, destino_unidade, responsavel, observacoes)
-            VALUES (?,?,?,?,?,?,?,?,?)
+                origem_local, origem_unidade, destino_local, destino_unidade, responsavel, observacoes,
+                contador_mono_anterior, contador_mono_novo, contador_color_anterior, contador_color_novo)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (equip_id, data_mov, tipo_mov,
               equip['local_atual_nome'], equip['unidade_nome'] or equip['local_atual_nome'],
               destino_unidade_nome or "Sem unidade", destino_unidade_nome,
-              responsavel, obs))
+              responsavel, obs,
+              contador_mono_anterior, contador_mono_novo_int,
+              contador_color_anterior, contador_color_novo_int))
 
         # Atualizar equipamento
         cur.execute("""
-            UPDATE equipamentos SET unidade_id=?, local_atual_nome=?, cliente_atual=? WHERE id=?
-        """, (destino_unidade_id, destino_unidade_nome, None, equip_id))
+            UPDATE equipamentos SET unidade_id=?, local_atual_nome=?, cliente_atual=?,
+                contador_mono=?, contador_color=? WHERE id=?
+        """, (destino_unidade_id, destino_unidade_nome, None,
+              contador_mono_novo_int, contador_color_novo_int, equip_id))
 
         db.commit()
         flash("Movimentacao registrada com sucesso!", "success")

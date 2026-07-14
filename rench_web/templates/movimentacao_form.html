@@ -83,6 +83,27 @@
             <input class="form-control" value="{{equip.local_atual_nome or 'Não informado'}}" disabled>
           </div>
 
+          {# Contadores #}
+          <div class="col-12 mt-2">
+            <h6 class="fw-bold border-bottom pb-2 mb-3" style="color:var(--primary)"><i class="bi bi-printer me-2"></i>Contadores de Impressão</h6>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Mono atual</label>
+            <input class="form-control" value="{{equip.contador_mono or 0}}" disabled>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Mono novo *</label>
+            <input type="number" name="contador_mono_novo" class="form-control" min="0" value="{{equip.contador_mono or 0}}" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Color atual</label>
+            <input class="form-control" value="{{equip.contador_color or 0}}" disabled>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Color novo *</label>
+            <input type="number" name="contador_color_novo" class="form-control" min="0" value="{{equip.contador_color or 0}}" required>
+          </div>
+
           <div class="col-12">
             <label class="form-label fw-bold">Observações</label>
             <textarea name="observacoes" class="form-control" rows="4" placeholder="Motivo da movimentação, estado do equipamento, observações do cliente..."></textarea>
