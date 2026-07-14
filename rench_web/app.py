@@ -1069,7 +1069,17 @@ def lista_locais():
     locais = cur.fetchall()
     cur.execute("SELECT id, nome, tipo FROM empresas WHERE ativo=1 ORDER BY tipo DESC, nome")
     empresas = cur.fetchall()
-    return render_template('locais.html', locais=locais, empresas=empresas)
+
+    cur.execute("""
+        SELECT u.id, u.nome, u.setor, e.nome as empresa_nome
+        FROM unidades u
+        JOIN empresas e ON e.id = u.empresa_id
+        WHERE u.ativo=1 AND e.ativo=1
+        ORDER BY e.nome, u.nome
+    """)
+    todas_unidades = cur.fetchall()
+
+    return render_template('locais.html', locais=locais, empresas=empresas, todas_unidades=todas_unidades)
 
 @app.route('/acesso-remoto', methods=['GET', 'POST'])
 @login_required

@@ -72,6 +72,35 @@
   </div>
 </div>
 
+<div class="card card-dashboard p-4 mb-4">
+  <h5 class="fw-bold mb-3"><i class="bi bi-sign-merge-left me-2"></i>Unificar Unidades Similares</h5>
+  <p class="text-muted mb-3">Use esta ferramenta quando duas unidades são a mesma, mas estão escritas de formas diferentes (ex: <strong>Humana Pompeia</strong> e <strong>Humana Magna Pompeia</strong>). Os equipamentos da unidade removida são transferidos para a unidade que será mantida.</p>
+  <form method="POST" class="row g-3 align-items-end" onsubmit="return confirm('Tem certeza que deseja unificar estas unidades? Esta ação não pode ser desfeita automaticamente.');">
+    <input type="hidden" name="acao" value="unidade_unificar">
+    <div class="col-md-5">
+      <label class="form-label fw-bold">Unidade a ser mantida</label>
+      <select name="manter_id" class="form-select" required>
+        <option value="">Selecione...</option>
+        {% for u in todas_unidades %}
+        <option value="{{u.id}}">{{u.empresa_nome}} - {{u.nome}}{% if u.setor %} ({{u.setor}}){% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-5">
+      <label class="form-label fw-bold">Unidade a ser removida / unificada</label>
+      <select name="remover_id" class="form-select" required>
+        <option value="">Selecione...</option>
+        {% for u in todas_unidades %}
+        <option value="{{u.id}}">{{u.empresa_nome}} - {{u.nome}}{% if u.setor %} ({{u.setor}}){% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-rench-primary w-100"><i class="bi bi-sign-merge-left"></i> Unificar</button>
+    </div>
+  </form>
+</div>
+
 <div class="card card-dashboard p-4">
   <h5 class="fw-bold mb-3"><i class="bi bi-list me-2"></i>Cadastros existentes</h5>
   <div class="table-responsive table-rench">
