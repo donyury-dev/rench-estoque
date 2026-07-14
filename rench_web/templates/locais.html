@@ -77,28 +77,51 @@
   <p class="text-muted mb-3">Use esta ferramenta quando duas unidades são a mesma, mas estão escritas de formas diferentes (ex: <strong>Humana Pompeia</strong> e <strong>Humana Magna Pompeia</strong>). Os equipamentos da unidade removida são transferidos para a unidade que será mantida.</p>
   <form method="POST" class="row g-3 align-items-end" onsubmit="return confirm('Tem certeza que deseja unificar estas unidades? Esta ação não pode ser desfeita automaticamente.');">
     <input type="hidden" name="acao" value="unidade_unificar">
+
     <div class="col-md-5">
       <label class="form-label fw-bold">Unidade a ser mantida</label>
-      <select name="manter_id" class="form-select" required>
+      <input type="text" id="busca-manter" class="form-control form-control-sm mb-2" placeholder="Digite para pesquisar...">
+      <select name="manter_id" id="select-manter" class="form-select" required>
         <option value="">Selecione...</option>
         {% for u in todas_unidades %}
         <option value="{{u.id}}">{{u.empresa_nome}} - {{u.nome}}{% if u.setor %} ({{u.setor}}){% endif %}</option>
         {% endfor %}
       </select>
     </div>
+
     <div class="col-md-5">
       <label class="form-label fw-bold">Unidade a ser removida / unificada</label>
-      <select name="remover_id" class="form-select" required>
+      <input type="text" id="busca-remover" class="form-control form-control-sm mb-2" placeholder="Digite para pesquisar...">
+      <select name="remover_id" id="select-remover" class="form-select" required>
         <option value="">Selecione...</option>
         {% for u in todas_unidades %}
         <option value="{{u.id}}">{{u.empresa_nome}} - {{u.nome}}{% if u.setor %} ({{u.setor}}){% endif %}</option>
         {% endfor %}
       </select>
     </div>
+
     <div class="col-md-2">
       <button type="submit" class="btn btn-rench-primary w-100"><i class="bi bi-sign-merge-left"></i> Unificar</button>
     </div>
   </form>
+
+  <script>
+  function filtrarSelect(inputId, selectId) {
+    const input = document.getElementById(inputId);
+    const select = document.getElementById(selectId);
+    input.addEventListener('input', function() {
+      const termo = this.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const options = select.querySelectorAll('option');
+      options.forEach(function(opt) {
+        if (!opt.value) { opt.style.display = ''; return; }
+        const texto = opt.textContent.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        opt.style.display = texto.includes(termo) ? '' : 'none';
+      });
+    });
+  }
+  filtrarSelect('busca-manter', 'select-manter');
+  filtrarSelect('busca-remover', 'select-remover');
+  </script>
 </div>
 
 <div class="card card-dashboard p-4">

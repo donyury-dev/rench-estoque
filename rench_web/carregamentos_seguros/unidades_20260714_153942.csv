@@ -1,0 +1,202 @@
+﻿id,empresa_id,nome,setor,ativo
+1,4,LOCAL ATUAL,,1
+2,4,Ama e Capao Redondo,"Avenida Comendador Sant'Anna, 542 - São Paulo/SP",1
+3,4,Ama Capao Redondo,"Avenida Comendador Sant'Anna, 774 - São Paulo/SP",1
+4,3,Araguaya,,1
+5,4,PU Saquarema (B),"Rua Coronel Madureira, 113 - SAQUAREMA/RJ",1
+7,4,Complexo Saúde Cajamar,"Avenida Doutor Antonio João Abdalla, 1500 - Cajamar/SP",1
+8,4,Hosp Irmã Dulce 4Id (Praia Grande ),,1
+9,8,Humana Verbo Divino,,1
+10,4,Amparo,,1
+11,9,Porsche Matriz,,1
+12,10,R10 - SP,Assistência técnica,1
+13,11,Mercadão-Pirajussara,,1
+14,9,Porsche - Florianopolis,,1
+15,4,Hosp Paulo de Frontin (P),,1
+16,13,"AES São Caetano  (Rua Rafael Corrêa Sampaio,361)",,1
+17,4,UPA Americana,"Av. de Cillo, 2222 - Americana/SP",1
+18,11,"Mercadão - R. Professor Teresinha rodruigues kaliz, Peruibe 881 - loja - 4",,1
+19,11,Mercadão - Cotia - Loja 2,,1
+20,11,Mercadão -  Av. Santos drumont  - Loja 3,,1
+21,11,Mercadão - Rod. Arivaldo de Almeida - Loja 1,,1
+22,4,O.S Manutenção,,1
+23,4,Amparo - US,,1
+24,4,HD Mboi Mirim,"Avenida dos Funcionários Públicos, 379 - São Paulo/SP",1
+25,8,Humana Ibirapuera,,1
+26,4,PS Miracatu,"Av. Doná Evarista de Castro Ferreira, 77 - Miracatu/SP",1
+27,4,UBS Vila das Belezas,"Rua Isaías Branco de Araújo, 105 - São Paulo/SP",1
+28,16,Micnet,,1
+29,13,Aes Brasilandia,,1
+30,57,cs24hrs,,1
+31,4,Hospital Do Ipiranga,,1
+32,4,Hosp Mun Cubatão,Avenida Henry Borden - Cubatão/SP,1
+33,4,Hosp Henrique Buccoline,"JOSÉ ANTONIO NUNES, 90 - Juquitiba/SP",1
+34,4,UPA São Dimas,"R. José Bueno de Godói, 37 - AMPARO/SP",1
+35,4,Upa Itu,,1
+36,4,Ama Prates,,1
+37,4,Ama Joamar 4ID,,1
+38,4,PA Jd Alvorada,"Rua das Imbuias, 355 - Nova Odessa/SP",1
+39,57,CSI 24hrs,,1
+40,4,PA Jd Macedônia,"R. Louis Boulogne, 133 - São Paulo/SP",1
+41,4,Hosp Regional Just Luz - BK,"Praça Antenor Neiva, 184, 184 - PICOS/PI",1
+42,4,Samir - Rondonia,,1
+43,4,Ubs Jundiapeba,,1
+44,4,UPA Jordanesia,"R. Alfredo Del'vigna, 253 - CAJAMAR/SP",1
+45,4,Hosp Irmã Dulce  Praia Grande 4ID,,1
+46,4,PU Saquarema (P),"Rua Coronel Madureira, 113 - SAQUAREMA/RJ",1
+47,4,Centro Exames da Mulher (Capela do Socorro - D.O),"Largo do Socorro, 60 - São Paulo/SP",1
+48,4,Ama Pq Novo Sto Amaro,"R. Porta do Prado, 18 - São Paulo/SP",1
+49,4,Hisa,,1
+50,11,Mercadão - M'Boi Mirim,,1
+51,11,Mercadão Bertioga,,1
+52,4,Ama Jd Capela,Rua Barão de Paiva Manso - São Paulo/SP,1
+53,4,HMU-Samir-Gru,,1
+54,4,PA Dr José Zenedin - P,"Rua Jovino Martins da Silva, 260 - Santa Cruz das Palmeiras/SP",1
+55,4,HM Brasilandia - Samir,,1
+56,4,Hosp Regional Just Luz - L,"Praça Antenor Neiva, 184, 184 - PICOS/PI",1
+57,4,Hosp Geral de Arraial do Cabo (P),,1
+58,11,Mercadão Pereque,,1
+59,4,Upa Sta Helena,,1
+61,13,AES São Bernado,,1
+62,4,Samir - Guarulhos - HMU,,1
+63,4,Americana,,1
+64,4,RJ - São Gonçalo,,1
+65,4,RJ Saõ Gonçalo,,1
+66,4,Centro Exames da Mulher (Capela do Socorro - US),"Largo do Socorro, 60 - São Paulo/SP",1
+67,11,Mercadão - Itanhem,,1
+68,4,Hosp Regional Vilhena (P),"Av. Sabino Bezerra de Queiroz, 4531 - VILHENA/RO",1
+69,4,HD Hc Campo Limpo,"Avenida Amadeu da Silva Samelo, 423 - São Paulo/SP",1
+70,4,PA Irio Tanio,"AV. JOSÉ MARIA SIQUEIRA MELO, 682 - Biritiba Mirim/SP",1
+71,13,AES (São Bernado),,1
+72,4,o.s Manutenção,,1
+73,4,Samir - Espirito Santo  (BK),,1
+74,4,Samir - Espirito Santo,,1
+75,11,Mercadão - Pirajussara,,1
+76,13,AES Matriz,,1
+77,4,UPA San Marino,"R. Cacilda Pinto da Silva, s/n - TAUBATÉ/SP",1
+78,9,Porsche MATRIZ,,1
+79,9,Porsche Campinas,,1
+80,4,Hosp Mun Cachoeiras Macacu (P),"Rua Prefeito José da Silva, 177 - CACHOEIRAS DE MACACU/RJ",1
+81,4,Campo Limpo Paulista,,1
+82,4,STA Casa Chavantes,"R. Maria Ferreira, 22 - CHAVANTES/SP",1
+83,4,Hosp N S Nazareth,"RUA O. LTO VERDE VALE, 259 - SAQUAREMA/RJ",1
+84,4,Hosp Nelson Sales US - RJ laudo,,1
+85,4,Hosp Nelson Sales US - RJ Imagem,,1
+86,4,RX de Amparo,,1
+87,4,Hosp Regional Just Luz - P,"Praça Antenor Neiva, 184, 184 - PICOS/PI",1
+88,4,Hosp Materno Infantil (P),Rua Adaucto Morais da Silva - Serra/ES,1
+89,4,Hosp Materno Infantil (B),Rua Adaucto Morais da Silva - Serra/ES,1
+90,10,r10,,0
+91,11,Mercadão Registro,,1
+92,4,Hosp Geral de Arraial do Cabo (B),,1
+93,4,Policlinica Saquarema,"RJ-128, 37 - SAQUAREMA/RJ",1
+94,4,Hosp Regional Campo Maior,Av. do Contorno S/N - Campo Maior/PI,1
+95,4,Hosp Geral de Arraial do Cabo - Rec Raiox,,1
+96,4,URSI Zona Norte - Teste Ergométrico,"Rua José Vicente, 79 - São Paulo/SP",1
+97,4,Policlinica Saquarema,"RJ-128, 37 - SAQUAREMA/RJ",1
+98,4,Hospital Israelita Albert Sabin,,1
+99,4,Hospital Geral de Arraial - Teste Ergometrico,,1
+100,4,RX P.S Figuera  - Arraial do Cabo,,1
+101,4,Hosp Geral de Arraial do Cabo USG,,1
+102,11,Mercadão Guaruja,,1
+103,4,Hosp Mun Americana,"Avenida da Saúde, 415 - Americana/SP",1
+104,9,Porsche Porto Alegre,,1
+105,11,Mercadão Enseada,,1
+106,4,UPA Vera Cruz,"Avenida dos Funcionários Públicos, 378 - São Paulo/SP",1
+107,4,STA Casa São Roque,"Rua Santa Izabel, 186 - São Roque/SP",1
+108,4,Piaui,,1
+109,4,Hosp Mun Cubatão,Avenida Henry Borden - Cubatão/SP,1
+110,4,Policlinica Saquarema (P),"RJ-128, 37 - SAQUAREMA/RJ",1
+111,4,Policlinica Saquarema (B),"RJ-128, 37 - SAQUAREMA/RJ",1
+112,4,Hosp Paulo de Frontin,,1
+113,4,Ama Pq Figueira Grande,"Rua Daniel Klein, 211 - São Paulo/SP",1
+114,4,URSI Zona Norte,"Rua José Vicente, 79 - São Paulo/SP",1
+115,4,PA Dr José Zenedin - BK,"Rua Jovino Martins da Silva, 260 - Santa Cruz das Palmeiras/SP",1
+116,4,Hosp Mun Quissama,"RJ-196, 411 - QUISSAMÃ/RJ",1
+117,8,Humana Pompeia,,1
+118,34,Atix,,1
+119,4,Hosp Mun Nova Odessa,R. Aristídes Bassora - NOVA ODESSA/SP,1
+120,4,PS Pindamonhangaba,"Rua Major José dos Santos Moreira, 595 - Pindamonhangaba/SP",1
+121,8,Humana Magda Pompeia,,1
+122,9,Porsche Itaim,,1
+123,9,Porsche Ribeirão Preto,,1
+124,13,Hosp Dia São Matheus AES,,1
+125,4,Upa Alto da Ponte São José do Campos,,1
+126,4,Hora Certa Cidade Ademar,,1
+127,4,Hospital Geral de Arraial - Raio x,,1
+128,11,Mercadão de Santos,,1
+129,4,Hosp Mun Cajamar,"Avenida Bento da Silva Bueno, 202 - Cajamar/SP",1
+130,4,Hosp Caridade Anita Costa,"Praça Dr. Luís Ramos e Silva, 238 - SANTO ANASTÁCIO/SP",1
+131,4,Hosp Mun Cajamar,"Avenida Bento da Silva Bueno, 202 - Cajamar/SP",1
+132,4,Guará,,1
+133,4,Francisco Morato,,1
+134,4,Iotec,,1
+135,4,Hosp Mun Americana,"Avenida da Saúde, 415 - Americana/SP",1
+136,4,Hosp Mun Itu,Rua da Convenção - Itu/SP,1
+137,4,Hosp Regional Vilhena (B),"Av. Sabino Bezerra de Queiroz, 4531 - VILHENA/RO",1
+138,11,Mercadão de Itanhaem,,1
+139,4,Samir Embu,,1
+140,9,Porsche Maringa,,1
+141,4,Hospital da Brasilandia,,1
+142,4,Hosp Mun Itu,Rua da Convenção - Itu/SP,1
+143,4,UPA Dona Rosa,"Rua da Solidariedade, 1080 - Americana/SP",1
+144,4,Hospital Geral de Arraial,,1
+145,4,UPA Americana,"Av. de Cillo, 2222 - Americana/SP",1
+146,11,Mercadão Praia Grande,,1
+147,4,Hosp Regional Just Luz,"Praça Antenor Neiva, 184, 184 - PICOS/PI",1
+148,4,Ama Jd Sao Luiz,"Rua Luís Antônio Verney, 98 - São Paulo/SP",1
+149,4,Hosp Ipiranga 4id,,1
+150,4,AME Carapicuiba,"Avenida Presidente Tancredo de Almeida Neves, 1304 - Carapicuíba/SP",1
+151,4,Ama Pq Fernanda,"Rua Ernesto Soares Filho, 301 - São Paulo/SP",1
+152,11,Mercadão Morumbi,,1
+153,4,UND Mista Saude Cid Nova,Avenida Princesa do Norte - Pindamonhangaba/SP,1
+154,4,UPA Jd Angela,"Estrada Guavirituba, 49 - São Paulo/SP",1
+155,4,Hosp do Homem RJ,,1
+156,13,AES São Matheus,,1
+157,57,CDI Suzano,,1
+158,4,Hosp Bertioga 4ID,,1
+159,9,Porsche Naçoes Unidas,,1
+160,4,Ama Pq Figueira Grande,"Rua Daniel Klein, 211 - São Paulo/SP",1
+161,4,Hospital Geral de Arraial do Cabo,,1
+162,4,Hosp Mun Cachoeiras Macacu (B),"Rua Prefeito José da Silva, 177 - CACHOEIRAS DE MACACU/RJ",1
+163,4,Hosp Regional Teodoro Sampaio (Comp de apoio),,1
+164,4,Hosp Regional Teodoro Sampaio (Servidor ),,1
+165,4,Hosp Regional Teodoro Sampaio (Backup),,1
+166,4,URSI Zona Norte,"Rua José Vicente, 79 - São Paulo/SP",1
+167,57,Pronto Socorro Central de Praia Grande,,1
+168,4,Centro Exames da Mulher,"Largo do Socorro, 60 - São Paulo/SP",1
+169,11,Mercadão de Mongagua,,1
+170,4,STA Casa São Roque,"Rua Santa Izabel, 186 - São Roque/SP",1
+171,4,Hospital do Homem,,1
+172,4,Deposito,,1
+173,4,Hospital de Arraial,,1
+174,4,PA Cachoeira Paulista,"Rua Antônio Saciloti Fº 122, 122 - CACHOEIRA PAULISTA/SP",1
+175,4,Hosp N S Nazareth,"RUA O. LTO VERDE VALE, 259 - SAQUAREMA/RJ",1
+176,11,Mercadão Itanhaem,,1
+177,4,Samir - Itapevi,,1
+178,4,PA Cachoeira Paulista - RX,"Rua Antônio Saciloti Fº 122, 122 - CACHOEIRA PAULISTA/SP",1
+179,4,PA Cachoeira Paulista - Laudo,"Rua Antônio Saciloti Fº 122, 122 - CACHOEIRA PAULISTA/SP",1
+180,4,PA Cachoeira Paulista - Backup,"Rua Antônio Saciloti Fº 122, 122 - CACHOEIRA PAULISTA/SP",1
+181,4,HISA,,1
+182,4,PU Saquarema,"Rua Coronel Madureira, 113 - SAQUAREMA/RJ",1
+183,4,Ama Prates - Pacs,,1
+184,4,PA Jd Macedônia,"R. Louis Boulogne, 133 - São Paulo/SP",1
+185,4,Ama Prates - consultorio 1,,1
+186,4,RD - Hosp da Criança e ado. GRU,,1
+187,4,UPA Vera Cruz - Sala Nova de RX,"Avenida dos Funcionários Públicos, 378 - São Paulo/SP",1
+188,4,Ama Pq Novo Sto Amaro,"R. Porta do Prado, 18 - São Paulo/SP",1
+189,4,Ama Prates - consultorio 2,,1
+190,4,P.S Barra Funda,,1
+191,4,Samir - Guarulhos HMU,,1
+192,4,RD,,1
+193,4,Vila Dirce,,1
+194,4,Chacara Santana,,1
+195,4,Hosp Nelson Sales US - RJ,,1
+196,4,URSI Zona Norte,"Rua José Vicente, 79 - São Paulo/SP",1
+197,4,HD Hc Campo Limpo,"Avenida Amadeu da Silva Samelo, 423 - São Paulo/SP",1
+198,13,Aes São Bernado Clinica RR,,1
+199,55,RENCH - Estoque,,1
+200,55,RENCH - Deposito,,1
+201,4,Samir,,1
+202,13,AES,,1
+204,11,Mercadao Atacadista,,1
