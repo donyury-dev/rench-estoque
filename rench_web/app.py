@@ -876,9 +876,9 @@ def equipamentos_por_unidade():
             FROM equipamentos e
             LEFT JOIN unidades u ON e.unidade_id = u.id
             LEFT JOIN empresas emp ON emp.id = u.empresa_id
-            WHERE e.ativo=1 AND e.unidade_id = ?
+            WHERE e.ativo=1 AND (e.unidade_id = ? OR e.local_atual_nome = (SELECT nome FROM unidades WHERE id=?))
         """
-        params = [unidade_id]
+        params = [unidade_id, unidade_id]
         if tipo:
             sql += " AND e.tipo_equipamento = ?"
             params.append(tipo)
