@@ -109,18 +109,27 @@
   function filtrarSelect(inputId, selectId) {
     const input = document.getElementById(inputId);
     const select = document.getElementById(selectId);
+    if (!input || !select) return;
     input.addEventListener('input', function() {
       const termo = this.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const options = select.querySelectorAll('option');
+      let primeiraVisivel = null;
       options.forEach(function(opt) {
-        if (!opt.value) { opt.style.display = ''; return; }
+        if (!opt.value) {
+          opt.style.display = '';
+          return;
+        }
         const texto = opt.textContent.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        opt.style.display = texto.includes(termo) ? '' : 'none';
+        const visivel = texto.indexOf(termo) !== -1;
+        opt.style.display = visivel ? '' : 'none';
+        if (visivel && !primeiraVisivel) primeiraVisivel = opt;
       });
     });
   }
-  filtrarSelect('busca-manter', 'select-manter');
-  filtrarSelect('busca-remover', 'select-remover');
+  document.addEventListener('DOMContentLoaded', function() {
+    filtrarSelect('busca-manter', 'select-manter');
+    filtrarSelect('busca-remover', 'select-remover');
+  });
   </script>
 </div>
 

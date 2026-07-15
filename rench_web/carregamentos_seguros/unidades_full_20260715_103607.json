@@ -1,0 +1,1409 @@
+[
+  {
+    "id": 1,
+    "empresa_id": 4,
+    "nome": "LOCAL ATUAL",
+    "setor": "",
+    "ativo": 1
+  },
+  {
+    "id": 2,
+    "empresa_id": 4,
+    "nome": "Ama e Capao Redondo",
+    "setor": "Avenida Comendador Sant'Anna, 542 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 3,
+    "empresa_id": 4,
+    "nome": "Ama Capao Redondo",
+    "setor": "Avenida Comendador Sant'Anna, 774 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 4,
+    "empresa_id": 3,
+    "nome": "Araguaya",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 5,
+    "empresa_id": 4,
+    "nome": "PU Saquarema (B)",
+    "setor": "Rua Coronel Madureira, 113 - SAQUAREMA/RJ",
+    "ativo": 1
+  },
+  {
+    "id": 7,
+    "empresa_id": 4,
+    "nome": "Complexo Saúde Cajamar",
+    "setor": "Avenida Doutor Antonio João Abdalla, 1500 - Cajamar/SP",
+    "ativo": 1
+  },
+  {
+    "id": 8,
+    "empresa_id": 4,
+    "nome": "Hosp Irmã Dulce 4Id (Praia Grande )",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 9,
+    "empresa_id": 8,
+    "nome": "Humana Verbo Divino",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 10,
+    "empresa_id": 4,
+    "nome": "Amparo",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 11,
+    "empresa_id": 9,
+    "nome": "Porsche Matriz",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 12,
+    "empresa_id": 10,
+    "nome": "R10 - SP",
+    "setor": "Assistência técnica",
+    "ativo": 1
+  },
+  {
+    "id": 13,
+    "empresa_id": 11,
+    "nome": "Mercadão-Pirajussara",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 14,
+    "empresa_id": 9,
+    "nome": "Porsche - Florianopolis",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 15,
+    "empresa_id": 4,
+    "nome": "Hosp Paulo de Frontin (P)",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 16,
+    "empresa_id": 13,
+    "nome": "AES São Caetano  (Rua Rafael Corrêa Sampaio,361)",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 17,
+    "empresa_id": 4,
+    "nome": "UPA Americana",
+    "setor": "Av. de Cillo, 2222 - Americana/SP",
+    "ativo": 1
+  },
+  {
+    "id": 18,
+    "empresa_id": 11,
+    "nome": "Mercadão - R. Professor Teresinha rodruigues kaliz, Peruibe 881 - loja - 4",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 19,
+    "empresa_id": 11,
+    "nome": "Mercadão - Cotia - Loja 2",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 20,
+    "empresa_id": 11,
+    "nome": "Mercadão -  Av. Santos drumont  - Loja 3",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 21,
+    "empresa_id": 11,
+    "nome": "Mercadão - Rod. Arivaldo de Almeida - Loja 1",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 22,
+    "empresa_id": 4,
+    "nome": "O.S Manutenção",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 23,
+    "empresa_id": 4,
+    "nome": "Amparo - US",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 24,
+    "empresa_id": 4,
+    "nome": "HD Mboi Mirim",
+    "setor": "Avenida dos Funcionários Públicos, 379 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 25,
+    "empresa_id": 8,
+    "nome": "Humana Ibirapuera",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 26,
+    "empresa_id": 4,
+    "nome": "PS Miracatu",
+    "setor": "Av. Doná Evarista de Castro Ferreira, 77 - Miracatu/SP",
+    "ativo": 1
+  },
+  {
+    "id": 27,
+    "empresa_id": 4,
+    "nome": "UBS Vila das Belezas",
+    "setor": "Rua Isaías Branco de Araújo, 105 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 28,
+    "empresa_id": 16,
+    "nome": "Micnet",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 29,
+    "empresa_id": 13,
+    "nome": "Aes Brasilandia",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 30,
+    "empresa_id": 57,
+    "nome": "cs24hrs",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 31,
+    "empresa_id": 4,
+    "nome": "Hospital Do Ipiranga",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 32,
+    "empresa_id": 4,
+    "nome": "Hosp Mun Cubatão",
+    "setor": "Avenida Henry Borden - Cubatão/SP",
+    "ativo": 1
+  },
+  {
+    "id": 33,
+    "empresa_id": 4,
+    "nome": "Hosp Henrique Buccoline",
+    "setor": "JOSÉ ANTONIO NUNES, 90 - Juquitiba/SP",
+    "ativo": 1
+  },
+  {
+    "id": 34,
+    "empresa_id": 4,
+    "nome": "UPA São Dimas",
+    "setor": "R. José Bueno de Godói, 37 - AMPARO/SP",
+    "ativo": 1
+  },
+  {
+    "id": 35,
+    "empresa_id": 4,
+    "nome": "Upa Itu",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 36,
+    "empresa_id": 4,
+    "nome": "Ama Prates",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 37,
+    "empresa_id": 4,
+    "nome": "Ama Joamar 4ID",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 38,
+    "empresa_id": 4,
+    "nome": "PA Jd Alvorada",
+    "setor": "Rua das Imbuias, 355 - Nova Odessa/SP",
+    "ativo": 1
+  },
+  {
+    "id": 39,
+    "empresa_id": 57,
+    "nome": "CSI 24hrs",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 40,
+    "empresa_id": 4,
+    "nome": "PA Jd Macedônia",
+    "setor": "R. Louis Boulogne, 133 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 41,
+    "empresa_id": 4,
+    "nome": "Hosp Regional Just Luz - BK",
+    "setor": "Praça Antenor Neiva, 184, 184 - PICOS/PI",
+    "ativo": 1
+  },
+  {
+    "id": 42,
+    "empresa_id": 4,
+    "nome": "Samir - Rondonia",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 43,
+    "empresa_id": 4,
+    "nome": "Ubs Jundiapeba",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 44,
+    "empresa_id": 4,
+    "nome": "UPA Jordanesia",
+    "setor": "R. Alfredo Del'vigna, 253 - CAJAMAR/SP",
+    "ativo": 1
+  },
+  {
+    "id": 45,
+    "empresa_id": 4,
+    "nome": "Hosp Irmã Dulce  Praia Grande 4ID",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 46,
+    "empresa_id": 4,
+    "nome": "PU Saquarema (P)",
+    "setor": "Rua Coronel Madureira, 113 - SAQUAREMA/RJ",
+    "ativo": 1
+  },
+  {
+    "id": 47,
+    "empresa_id": 4,
+    "nome": "Centro Exames da Mulher (Capela do Socorro - D.O)",
+    "setor": "Largo do Socorro, 60 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 48,
+    "empresa_id": 4,
+    "nome": "Ama Pq Novo Sto Amaro",
+    "setor": "R. Porta do Prado, 18 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 49,
+    "empresa_id": 4,
+    "nome": "Hisa",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 50,
+    "empresa_id": 11,
+    "nome": "Mercadão - M'Boi Mirim",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 51,
+    "empresa_id": 11,
+    "nome": "Mercadão Bertioga",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 52,
+    "empresa_id": 4,
+    "nome": "Ama Jd Capela",
+    "setor": "Rua Barão de Paiva Manso - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 53,
+    "empresa_id": 4,
+    "nome": "HMU-Samir-Gru",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 54,
+    "empresa_id": 4,
+    "nome": "PA Dr José Zenedin - P",
+    "setor": "Rua Jovino Martins da Silva, 260 - Santa Cruz das Palmeiras/SP",
+    "ativo": 1
+  },
+  {
+    "id": 55,
+    "empresa_id": 4,
+    "nome": "HM Brasilandia - Samir",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 56,
+    "empresa_id": 4,
+    "nome": "Hosp Regional Just Luz - L",
+    "setor": "Praça Antenor Neiva, 184, 184 - PICOS/PI",
+    "ativo": 1
+  },
+  {
+    "id": 57,
+    "empresa_id": 4,
+    "nome": "Hosp Geral de Arraial do Cabo (P)",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 58,
+    "empresa_id": 11,
+    "nome": "Mercadão Pereque",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 59,
+    "empresa_id": 4,
+    "nome": "Upa Sta Helena",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 61,
+    "empresa_id": 13,
+    "nome": "AES São Bernado",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 62,
+    "empresa_id": 4,
+    "nome": "Samir - Guarulhos - HMU",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 63,
+    "empresa_id": 4,
+    "nome": "Americana",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 64,
+    "empresa_id": 4,
+    "nome": "RJ - São Gonçalo",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 65,
+    "empresa_id": 4,
+    "nome": "RJ Saõ Gonçalo",
+    "setor": null,
+    "ativo": 0
+  },
+  {
+    "id": 66,
+    "empresa_id": 4,
+    "nome": "Centro Exames da Mulher (Capela do Socorro - US)",
+    "setor": "Largo do Socorro, 60 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 67,
+    "empresa_id": 11,
+    "nome": "Mercadão - Itanhem",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 68,
+    "empresa_id": 4,
+    "nome": "Hosp Regional Vilhena (P)",
+    "setor": "Av. Sabino Bezerra de Queiroz, 4531 - VILHENA/RO",
+    "ativo": 1
+  },
+  {
+    "id": 69,
+    "empresa_id": 4,
+    "nome": "HD Hc Campo Limpo",
+    "setor": "Avenida Amadeu da Silva Samelo, 423 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 70,
+    "empresa_id": 4,
+    "nome": "PA Irio Tanio",
+    "setor": "AV. JOSÉ MARIA SIQUEIRA MELO, 682 - Biritiba Mirim/SP",
+    "ativo": 1
+  },
+  {
+    "id": 71,
+    "empresa_id": 13,
+    "nome": "AES (São Bernado)",
+    "setor": null,
+    "ativo": 0
+  },
+  {
+    "id": 72,
+    "empresa_id": 4,
+    "nome": "o.s Manutenção",
+    "setor": null,
+    "ativo": 0
+  },
+  {
+    "id": 73,
+    "empresa_id": 4,
+    "nome": "Samir - Espirito Santo  (BK)",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 74,
+    "empresa_id": 4,
+    "nome": "Samir - Espirito Santo",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 75,
+    "empresa_id": 11,
+    "nome": "Mercadão - Pirajussara",
+    "setor": null,
+    "ativo": 0
+  },
+  {
+    "id": 76,
+    "empresa_id": 13,
+    "nome": "AES Matriz",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 77,
+    "empresa_id": 4,
+    "nome": "UPA San Marino",
+    "setor": "R. Cacilda Pinto da Silva, s/n - TAUBATÉ/SP",
+    "ativo": 1
+  },
+  {
+    "id": 78,
+    "empresa_id": 9,
+    "nome": "Porsche MATRIZ",
+    "setor": null,
+    "ativo": 0
+  },
+  {
+    "id": 79,
+    "empresa_id": 9,
+    "nome": "Porsche Campinas",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 80,
+    "empresa_id": 4,
+    "nome": "Hosp Mun Cachoeiras Macacu (P)",
+    "setor": "Rua Prefeito José da Silva, 177 - CACHOEIRAS DE MACACU/RJ",
+    "ativo": 1
+  },
+  {
+    "id": 81,
+    "empresa_id": 4,
+    "nome": "Campo Limpo Paulista",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 82,
+    "empresa_id": 4,
+    "nome": "STA Casa Chavantes",
+    "setor": "R. Maria Ferreira, 22 - CHAVANTES/SP",
+    "ativo": 1
+  },
+  {
+    "id": 83,
+    "empresa_id": 4,
+    "nome": "Hosp N S Nazareth",
+    "setor": "RUA O. LTO VERDE VALE, 259 - SAQUAREMA/RJ",
+    "ativo": 1
+  },
+  {
+    "id": 84,
+    "empresa_id": 4,
+    "nome": "Hosp Nelson Sales US - RJ laudo",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 85,
+    "empresa_id": 4,
+    "nome": "Hosp Nelson Sales US - RJ Imagem",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 86,
+    "empresa_id": 4,
+    "nome": "RX de Amparo",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 87,
+    "empresa_id": 4,
+    "nome": "Hosp Regional Just Luz - P",
+    "setor": "Praça Antenor Neiva, 184, 184 - PICOS/PI",
+    "ativo": 1
+  },
+  {
+    "id": 88,
+    "empresa_id": 4,
+    "nome": "Hosp Materno Infantil (P)",
+    "setor": "Rua Adaucto Morais da Silva - Serra/ES",
+    "ativo": 1
+  },
+  {
+    "id": 89,
+    "empresa_id": 4,
+    "nome": "Hosp Materno Infantil (B)",
+    "setor": "Rua Adaucto Morais da Silva - Serra/ES",
+    "ativo": 1
+  },
+  {
+    "id": 90,
+    "empresa_id": 10,
+    "nome": "r10",
+    "setor": null,
+    "ativo": 0
+  },
+  {
+    "id": 91,
+    "empresa_id": 11,
+    "nome": "Mercadão Registro",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 92,
+    "empresa_id": 4,
+    "nome": "Hosp Geral de Arraial do Cabo (B)",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 93,
+    "empresa_id": 4,
+    "nome": "Policlinica Saquarema",
+    "setor": "RJ-128, 37 - SAQUAREMA/RJ",
+    "ativo": 1
+  },
+  {
+    "id": 94,
+    "empresa_id": 4,
+    "nome": "Hosp Regional Campo Maior",
+    "setor": "Av. do Contorno S/N - Campo Maior/PI",
+    "ativo": 1
+  },
+  {
+    "id": 95,
+    "empresa_id": 4,
+    "nome": "Hosp Geral de Arraial do Cabo - Rec Raiox",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 96,
+    "empresa_id": 4,
+    "nome": "URSI Zona Norte - Teste Ergométrico",
+    "setor": "Rua José Vicente, 79 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 97,
+    "empresa_id": 4,
+    "nome": "Policlinica Saquarema",
+    "setor": "RJ-128, 37 - SAQUAREMA/RJ",
+    "ativo": 0
+  },
+  {
+    "id": 98,
+    "empresa_id": 4,
+    "nome": "Hospital Israelita Albert Sabin",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 99,
+    "empresa_id": 4,
+    "nome": "Hospital Geral de Arraial - Teste Ergometrico",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 100,
+    "empresa_id": 4,
+    "nome": "RX P.S Figuera  - Arraial do Cabo",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 101,
+    "empresa_id": 4,
+    "nome": "Hosp Geral de Arraial do Cabo USG",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 102,
+    "empresa_id": 11,
+    "nome": "Mercadão Guaruja",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 103,
+    "empresa_id": 4,
+    "nome": "Hosp Mun Americana",
+    "setor": "Avenida da Saúde, 415 - Americana/SP",
+    "ativo": 1
+  },
+  {
+    "id": 104,
+    "empresa_id": 9,
+    "nome": "Porsche Porto Alegre",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 105,
+    "empresa_id": 11,
+    "nome": "Mercadão Enseada",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 106,
+    "empresa_id": 4,
+    "nome": "UPA Vera Cruz",
+    "setor": "Avenida dos Funcionários Públicos, 378 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 107,
+    "empresa_id": 4,
+    "nome": "STA Casa São Roque",
+    "setor": "Rua Santa Izabel, 186 - São Roque/SP",
+    "ativo": 1
+  },
+  {
+    "id": 108,
+    "empresa_id": 4,
+    "nome": "Piaui",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 109,
+    "empresa_id": 4,
+    "nome": "Hosp Mun Cubatão",
+    "setor": "Avenida Henry Borden - Cubatão/SP",
+    "ativo": 0
+  },
+  {
+    "id": 110,
+    "empresa_id": 4,
+    "nome": "Policlinica Saquarema (P)",
+    "setor": "RJ-128, 37 - SAQUAREMA/RJ",
+    "ativo": 1
+  },
+  {
+    "id": 111,
+    "empresa_id": 4,
+    "nome": "Policlinica Saquarema (B)",
+    "setor": "RJ-128, 37 - SAQUAREMA/RJ",
+    "ativo": 1
+  },
+  {
+    "id": 112,
+    "empresa_id": 4,
+    "nome": "Hosp Paulo de Frontin",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 113,
+    "empresa_id": 4,
+    "nome": "Ama Pq Figueira Grande",
+    "setor": "Rua Daniel Klein, 211 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 114,
+    "empresa_id": 4,
+    "nome": "URSI Zona Norte",
+    "setor": "Rua José Vicente, 79 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 115,
+    "empresa_id": 4,
+    "nome": "PA Dr José Zenedin - BK",
+    "setor": "Rua Jovino Martins da Silva, 260 - Santa Cruz das Palmeiras/SP",
+    "ativo": 1
+  },
+  {
+    "id": 116,
+    "empresa_id": 4,
+    "nome": "Hosp Mun Quissama",
+    "setor": "RJ-196, 411 - QUISSAMÃ/RJ",
+    "ativo": 1
+  },
+  {
+    "id": 117,
+    "empresa_id": 8,
+    "nome": "Humana Pompeia",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 118,
+    "empresa_id": 34,
+    "nome": "Atix",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 119,
+    "empresa_id": 4,
+    "nome": "Hosp Mun Nova Odessa",
+    "setor": "R. Aristídes Bassora - NOVA ODESSA/SP",
+    "ativo": 1
+  },
+  {
+    "id": 120,
+    "empresa_id": 4,
+    "nome": "PS Pindamonhangaba",
+    "setor": "Rua Major José dos Santos Moreira, 595 - Pindamonhangaba/SP",
+    "ativo": 1
+  },
+  {
+    "id": 121,
+    "empresa_id": 8,
+    "nome": "Humana Magda Pompeia",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 122,
+    "empresa_id": 9,
+    "nome": "Porsche Itaim",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 123,
+    "empresa_id": 9,
+    "nome": "Porsche Ribeirão Preto",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 124,
+    "empresa_id": 13,
+    "nome": "Hosp Dia São Matheus AES",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 125,
+    "empresa_id": 4,
+    "nome": "Upa Alto da Ponte São José do Campos",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 126,
+    "empresa_id": 4,
+    "nome": "Hora Certa Cidade Ademar",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 127,
+    "empresa_id": 4,
+    "nome": "Hospital Geral de Arraial - Raio x",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 128,
+    "empresa_id": 11,
+    "nome": "Mercadão de Santos",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 129,
+    "empresa_id": 4,
+    "nome": "Hosp Mun Cajamar",
+    "setor": "Avenida Bento da Silva Bueno, 202 - Cajamar/SP",
+    "ativo": 1
+  },
+  {
+    "id": 130,
+    "empresa_id": 4,
+    "nome": "Hosp Caridade Anita Costa",
+    "setor": "Praça Dr. Luís Ramos e Silva, 238 - SANTO ANASTÁCIO/SP",
+    "ativo": 1
+  },
+  {
+    "id": 131,
+    "empresa_id": 4,
+    "nome": "Hosp Mun Cajamar",
+    "setor": "Avenida Bento da Silva Bueno, 202 - Cajamar/SP",
+    "ativo": 0
+  },
+  {
+    "id": 132,
+    "empresa_id": 4,
+    "nome": "Guará",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 133,
+    "empresa_id": 4,
+    "nome": "Francisco Morato",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 134,
+    "empresa_id": 4,
+    "nome": "Iotec",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 135,
+    "empresa_id": 4,
+    "nome": "Hosp Mun Americana",
+    "setor": "Avenida da Saúde, 415 - Americana/SP",
+    "ativo": 0
+  },
+  {
+    "id": 136,
+    "empresa_id": 4,
+    "nome": "Hosp Mun Itu",
+    "setor": "Rua da Convenção - Itu/SP",
+    "ativo": 1
+  },
+  {
+    "id": 137,
+    "empresa_id": 4,
+    "nome": "Hosp Regional Vilhena (B)",
+    "setor": "Av. Sabino Bezerra de Queiroz, 4531 - VILHENA/RO",
+    "ativo": 1
+  },
+  {
+    "id": 138,
+    "empresa_id": 11,
+    "nome": "Mercadão de Itanhaem",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 139,
+    "empresa_id": 4,
+    "nome": "Samir Embu",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 140,
+    "empresa_id": 9,
+    "nome": "Porsche Maringa",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 141,
+    "empresa_id": 4,
+    "nome": "Hospital da Brasilandia",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 142,
+    "empresa_id": 4,
+    "nome": "Hosp Mun Itu",
+    "setor": "Rua da Convenção - Itu/SP",
+    "ativo": 0
+  },
+  {
+    "id": 143,
+    "empresa_id": 4,
+    "nome": "UPA Dona Rosa",
+    "setor": "Rua da Solidariedade, 1080 - Americana/SP",
+    "ativo": 1
+  },
+  {
+    "id": 144,
+    "empresa_id": 4,
+    "nome": "Hospital Geral de Arraial",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 145,
+    "empresa_id": 4,
+    "nome": "UPA Americana",
+    "setor": "Av. de Cillo, 2222 - Americana/SP",
+    "ativo": 0
+  },
+  {
+    "id": 146,
+    "empresa_id": 11,
+    "nome": "Mercadão Praia Grande",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 147,
+    "empresa_id": 4,
+    "nome": "Hosp Regional Just Luz",
+    "setor": "Praça Antenor Neiva, 184, 184 - PICOS/PI",
+    "ativo": 1
+  },
+  {
+    "id": 148,
+    "empresa_id": 4,
+    "nome": "Ama Jd Sao Luiz",
+    "setor": "Rua Luís Antônio Verney, 98 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 149,
+    "empresa_id": 4,
+    "nome": "Hosp Ipiranga 4id",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 150,
+    "empresa_id": 4,
+    "nome": "AME Carapicuiba",
+    "setor": "Avenida Presidente Tancredo de Almeida Neves, 1304 - Carapicuíba/SP",
+    "ativo": 1
+  },
+  {
+    "id": 151,
+    "empresa_id": 4,
+    "nome": "Ama Pq Fernanda",
+    "setor": "Rua Ernesto Soares Filho, 301 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 152,
+    "empresa_id": 11,
+    "nome": "Mercadão Morumbi",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 153,
+    "empresa_id": 4,
+    "nome": "UND Mista Saude Cid Nova",
+    "setor": "Avenida Princesa do Norte - Pindamonhangaba/SP",
+    "ativo": 1
+  },
+  {
+    "id": 154,
+    "empresa_id": 4,
+    "nome": "UPA Jd Angela",
+    "setor": "Estrada Guavirituba, 49 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 155,
+    "empresa_id": 4,
+    "nome": "Hosp do Homem RJ",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 156,
+    "empresa_id": 13,
+    "nome": "AES São Matheus",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 157,
+    "empresa_id": 57,
+    "nome": "CDI Suzano",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 158,
+    "empresa_id": 4,
+    "nome": "Hosp Bertioga 4ID",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 159,
+    "empresa_id": 9,
+    "nome": "Porsche Naçoes Unidas",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 160,
+    "empresa_id": 4,
+    "nome": "Ama Pq Figueira Grande",
+    "setor": "Rua Daniel Klein, 211 - São Paulo/SP",
+    "ativo": 0
+  },
+  {
+    "id": 161,
+    "empresa_id": 4,
+    "nome": "Hospital Geral de Arraial do Cabo",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 162,
+    "empresa_id": 4,
+    "nome": "Hosp Mun Cachoeiras Macacu (B)",
+    "setor": "Rua Prefeito José da Silva, 177 - CACHOEIRAS DE MACACU/RJ",
+    "ativo": 1
+  },
+  {
+    "id": 163,
+    "empresa_id": 4,
+    "nome": "Hosp Regional Teodoro Sampaio (Comp de apoio)",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 164,
+    "empresa_id": 4,
+    "nome": "Hosp Regional Teodoro Sampaio (Servidor )",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 165,
+    "empresa_id": 4,
+    "nome": "Hosp Regional Teodoro Sampaio (Backup)",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 166,
+    "empresa_id": 4,
+    "nome": "URSI Zona Norte",
+    "setor": "Rua José Vicente, 79 - São Paulo/SP",
+    "ativo": 0
+  },
+  {
+    "id": 167,
+    "empresa_id": 57,
+    "nome": "Pronto Socorro Central de Praia Grande",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 168,
+    "empresa_id": 4,
+    "nome": "Centro Exames da Mulher",
+    "setor": "Largo do Socorro, 60 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 169,
+    "empresa_id": 11,
+    "nome": "Mercadão de Mongagua",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 170,
+    "empresa_id": 4,
+    "nome": "STA Casa São Roque",
+    "setor": "Rua Santa Izabel, 186 - São Roque/SP",
+    "ativo": 0
+  },
+  {
+    "id": 171,
+    "empresa_id": 4,
+    "nome": "Hospital do Homem",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 172,
+    "empresa_id": 4,
+    "nome": "Deposito",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 173,
+    "empresa_id": 4,
+    "nome": "Hospital de Arraial",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 174,
+    "empresa_id": 4,
+    "nome": "PA Cachoeira Paulista",
+    "setor": "Rua Antônio Saciloti Fº 122, 122 - CACHOEIRA PAULISTA/SP",
+    "ativo": 1
+  },
+  {
+    "id": 175,
+    "empresa_id": 4,
+    "nome": "Hosp N S Nazareth",
+    "setor": "RUA O. LTO VERDE VALE, 259 - SAQUAREMA/RJ",
+    "ativo": 0
+  },
+  {
+    "id": 176,
+    "empresa_id": 11,
+    "nome": "Mercadão Itanhaem",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 177,
+    "empresa_id": 4,
+    "nome": "Samir - Itapevi",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 178,
+    "empresa_id": 4,
+    "nome": "PA Cachoeira Paulista - RX",
+    "setor": "Rua Antônio Saciloti Fº 122, 122 - CACHOEIRA PAULISTA/SP",
+    "ativo": 1
+  },
+  {
+    "id": 179,
+    "empresa_id": 4,
+    "nome": "PA Cachoeira Paulista - Laudo",
+    "setor": "Rua Antônio Saciloti Fº 122, 122 - CACHOEIRA PAULISTA/SP",
+    "ativo": 1
+  },
+  {
+    "id": 180,
+    "empresa_id": 4,
+    "nome": "PA Cachoeira Paulista - Backup",
+    "setor": "Rua Antônio Saciloti Fº 122, 122 - CACHOEIRA PAULISTA/SP",
+    "ativo": 1
+  },
+  {
+    "id": 181,
+    "empresa_id": 4,
+    "nome": "HISA",
+    "setor": null,
+    "ativo": 0
+  },
+  {
+    "id": 182,
+    "empresa_id": 4,
+    "nome": "PU Saquarema",
+    "setor": "Rua Coronel Madureira, 113 - SAQUAREMA/RJ",
+    "ativo": 1
+  },
+  {
+    "id": 183,
+    "empresa_id": 4,
+    "nome": "Ama Prates - Pacs",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 184,
+    "empresa_id": 4,
+    "nome": "PA Jd Macedônia",
+    "setor": "R. Louis Boulogne, 133 - São Paulo/SP",
+    "ativo": 0
+  },
+  {
+    "id": 185,
+    "empresa_id": 4,
+    "nome": "Ama Prates - consultorio 1",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 186,
+    "empresa_id": 4,
+    "nome": "RD - Hosp da Criança e ado. GRU",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 187,
+    "empresa_id": 4,
+    "nome": "UPA Vera Cruz - Sala Nova de RX",
+    "setor": "Avenida dos Funcionários Públicos, 378 - São Paulo/SP",
+    "ativo": 1
+  },
+  {
+    "id": 188,
+    "empresa_id": 4,
+    "nome": "Ama Pq Novo Sto Amaro",
+    "setor": "R. Porta do Prado, 18 - São Paulo/SP",
+    "ativo": 0
+  },
+  {
+    "id": 189,
+    "empresa_id": 4,
+    "nome": "Ama Prates - consultorio 2",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 190,
+    "empresa_id": 4,
+    "nome": "P.S Barra Funda",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 191,
+    "empresa_id": 4,
+    "nome": "Samir - Guarulhos HMU",
+    "setor": null,
+    "ativo": 0
+  },
+  {
+    "id": 192,
+    "empresa_id": 4,
+    "nome": "RD",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 193,
+    "empresa_id": 4,
+    "nome": "Vila Dirce",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 194,
+    "empresa_id": 4,
+    "nome": "Chacara Santana",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 195,
+    "empresa_id": 4,
+    "nome": "Hosp Nelson Sales US - RJ",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 196,
+    "empresa_id": 4,
+    "nome": "URSI Zona Norte",
+    "setor": "Rua José Vicente, 79 - São Paulo/SP",
+    "ativo": 0
+  },
+  {
+    "id": 197,
+    "empresa_id": 4,
+    "nome": "HD Hc Campo Limpo",
+    "setor": "Avenida Amadeu da Silva Samelo, 423 - São Paulo/SP",
+    "ativo": 0
+  },
+  {
+    "id": 198,
+    "empresa_id": 13,
+    "nome": "Aes São Bernado Clinica RR",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 199,
+    "empresa_id": 55,
+    "nome": "RENCH - Estoque",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 200,
+    "empresa_id": 55,
+    "nome": "RENCH - Deposito",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 201,
+    "empresa_id": 4,
+    "nome": "Samir",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 202,
+    "empresa_id": 13,
+    "nome": "AES",
+    "setor": null,
+    "ativo": 1
+  },
+  {
+    "id": 204,
+    "empresa_id": 11,
+    "nome": "Mercadao Atacadista",
+    "setor": null,
+    "ativo": 1
+  }
+]

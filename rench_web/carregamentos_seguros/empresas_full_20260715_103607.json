@@ -1,0 +1,68 @@
+[
+  {
+    "id": 3,
+    "nome": "Araguaya",
+    "tipo": "cliente",
+    "ativo": 1
+  },
+  {
+    "id": 4,
+    "nome": "SAMIR",
+    "tipo": "cliente",
+    "ativo": 1
+  },
+  {
+    "id": 8,
+    "nome": "Humana Magna",
+    "tipo": "cliente",
+    "ativo": 1
+  },
+  {
+    "id": 9,
+    "nome": "Stuttgart Porsche",
+    "tipo": "cliente",
+    "ativo": 1
+  },
+  {
+    "id": 10,
+    "nome": "R10",
+    "tipo": "assistencia",
+    "ativo": 1
+  },
+  {
+    "id": 11,
+    "nome": "Mercadão",
+    "tipo": "cliente",
+    "ativo": 1
+  },
+  {
+    "id": 13,
+    "nome": "AES",
+    "tipo": "cliente",
+    "ativo": 1
+  },
+  {
+    "id": 16,
+    "nome": "Micnet",
+    "tipo": "fornecedor",
+    "ativo": 1
+  },
+  {
+    "id": 34,
+    "nome": "Atix",
+    "tipo": "cliente",
+    "ativo": 1
+  },
+  {
+    "id": 55,
+    "nome": "RENCH",
+    "tipo": "rench",
+    "ativo": 1
+  },
+  {
+    "id": 57,
+    "nome": "4ID",
+    "tipo": "cliente",
+    "ativo": 1
+  }
+]
