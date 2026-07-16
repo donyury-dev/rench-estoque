@@ -45,7 +45,7 @@
       <div class="p-2 border-bottom bg-white">
         <input type="text" id="busca-empresa-lista" class="form-control form-control-sm" placeholder="Buscar empresa, cliente ou fornecedor...">
       </div>
-      <div id="lista-empresas" style="max-height:360px; overflow-y:auto;">
+      <div id="lista-empresas" style="max-height:600px; overflow-y:auto;">
         {% for emp in empresas %}
         <div class="empresa-item px-3 py-2 border-bottom" data-empresa-id="{{emp.id}}" data-nome="{{emp.nome|lower}}" onclick="selecionarEmpresa({{emp.id}})">
           <div class="d-flex justify-content-between align-items-center">
@@ -59,13 +59,6 @@
     </div>
 
     <div class="col-md-8">
-      <div id="painel-vazio" class="d-flex align-items-center justify-content-center text-muted p-4" style="min-height:360px;">
-        <div class="text-center">
-          <i class="bi bi-building" style="font-size:2rem;"></i>
-          <p class="mt-2 mb-0">Clique em uma empresa na lista à esquerda<br>para ver e gerenciar suas unidades.</p>
-        </div>
-      </div>
-
       {% for emp in empresas %}
       <div id="painel-empresa-{{emp.id}}" class="painel-empresa p-3" style="display:none;">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2 pb-2 border-bottom">
@@ -108,7 +101,7 @@
         <input type="text" class="form-control form-control-sm mb-2 busca-unidade-local"
           placeholder="Buscar unidade dentro de {{emp.nome}}..." data-target="unidades-lista-{{emp.id}}">
 
-        <div id="unidades-lista-{{emp.id}}" style="max-height:280px; overflow-y:auto;">
+        <div id="unidades-lista-{{emp.id}}" style="max-height:600px; overflow-y:auto;">
           {% if grupos[emp.id] %}
             {% for u in grupos[emp.id] %}
             <div id="unidade-row-{{u.unidade_id}}" class="unidade-row d-flex justify-content-between align-items-start border rounded p-2 mb-2" data-nome="{{(u.unidade_nome or '')|lower}}">

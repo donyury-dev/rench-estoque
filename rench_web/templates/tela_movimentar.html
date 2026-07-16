@@ -38,10 +38,10 @@
 {% endif %}
 
 <div class="row g-3">
-  <div class="col-lg-3">
+  <div class="col-lg-2">
     <div class="card card-dashboard p-2" style="position:sticky; top:1rem;">
       <div class="px-2 py-1 text-muted small text-uppercase fw-bold">Empresas</div>
-      <div class="list-group list-group-flush" style="max-height:520px; overflow-y:auto;">
+      <div class="list-group list-group-flush" style="max-height:600px; overflow-y:auto;">
         <a href="{{url_for('tela_movimentar', tipo=filtro_tipo, q=busca)}}"
            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2 {{'active-empresa-side' if not filtro_empresa_id else ''}}">
           <span>Todas</span>
@@ -65,7 +65,7 @@
     </div>
   </div>
 
-  <div class="col-lg-9">
+  <div class="col-lg-10">
     <div class="table-responsive table-rench">
       <table class="table mb-0">
         <thead>
