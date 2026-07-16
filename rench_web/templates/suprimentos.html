@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Suprimentos - RENCH Equipamentos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Suprimentos</h1>
+    <p class="text-muted mb-0">Registro de entregas de toner, drum, fusor, transfer, coletor e outros suprimentos</p>
+  </div>
+  <a href="{{url_for('novo_suprimento')}}" class="btn btn-rench-primary">
+    <i class="bi bi-plus-lg me-1"></i> Nova Entrega
+  </a>
+</div>
+
+<div class="filter-bar">
+  <form method="GET" class="d-flex flex-wrap gap-2 align-items-center w-100">
+    <div class="input-group" style="max-width:320px;">
+      <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+      <input type="text" class="form-control border-start-0" name="q" value="{{busca}}" placeholder="Buscar por unidade, tipo de suprimento...">
+    </div>
+    <select name="unidade_id" class="form-select" style="max-width:280px;">
+      <option value="">Todas as unidades</option>
+      {% set empresa_atual = namespace(val='') %}
+      {% for l in locais %}
+        {% if l.unidade_id %}
+          {% if empresa_atual.val != l.empresa_nome %}
+            {% if not loop.first %}</optgroup>{% endif %}
+            <optgroup label="{{l.empresa_nome}}">
+            {% set empresa_atual.val = l.empresa_nome %}
+          {% endif %}
+          <option value="{{l.unidade_id}}" {{'selected' if filtro_unidade|string==l.unidade_id|string else ''}}>{{l.unidade_nome}}</option>
+        {% endif %}
+      {% endfor %}
+      {% if locais %}</optgroup>{% endif %}
+    </select>
+    <select name="tipo" class="form-select" style="max-width:220px;">
+      <option value="">Todos os tipos</option>
+      {% for t in tipos %}
+      <option value="{{t}}" {{'selected' if filtro_tipo==t else ''}}>{{t}}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-outline-primary"><i class="bi bi-funnel"></i> Filtrar</button>
+    <a href="{{url_for('lista_suprimentos')}}" class="btn btn-outline-secondary">Limpar</a>
+  </form>
+</div>
+
+{% if entregas %}
+  <div class="row g-3">
+    {% for e in entregas %}
+    <div class="col-12">
+      <div class="card card-dashboard p-3">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+          <div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <h5 class="fw-bold mb-0">{{e.unidade_nome}}</h5>
+              <span class="badge bg-light text-dark border">{{e.empresa_nome}}</span>
+              <span class="badge bg-soft-primary">{{e.data_entrega|default('-', true)}}</span>
+            </div>
+            {% if e.responsavel %}<small class="text-muted">Responsável: {{e.responsavel}}</small>{% endif %}
+          </div>
+          <form method="POST" action="{{url_for('excluir_suprimento', entrega_id=e.id)}}" onsubmit="return confirm('Tem certeza que deseja excluir este registro?');">
+            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+          </form>
+        </div>
+
+        {% if e.observacoes %}<p class="small text-muted mb-2"><i class="bi bi-journal-text me-1"></i>{{e.observacoes}}</p>{% endif %}
+
+        <div class="table-responsive">
+          <table class="table table-sm table-borderless mb-0">
+            <thead class="border-bottom">
+              <tr class="text-muted small">
+                <th>Suprimento</th>
+                <th>Modelo da impressora</th>
+                <th>Qtd</th>
+                <th>Motivo da troca</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in e.itens %}
+              <tr>
+                <td><span class="badge bg-soft-primary">{{item.tipo}}</span></td>
+                <td>{{item.modelo or '-'}}</td>
+                <td><strong>{{item.quantidade}}</strong></td>
+                <td class="text-muted small">{{item.motivo or '-'}}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="text-center text-muted py-5">
+    <i class="bi bi-box-seam" style="font-size:48px;"></i>
+    <p class="mt-3 mb-0">Nenhuma entrega de suprimentos registrada ainda.</p>
+    <a href="{{url_for('novo_suprimento')}}" class="btn btn-rench-primary mt-3">Registrar primeira entrega</a>
+  </div>
+{% endif %}
+{% endblock %}

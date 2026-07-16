@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Nova Entrega de Suprimentos - RENCH Equipamentos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Nova Entrega de Suprimentos</h1>
+    <p class="text-muted mb-0">Informe a unidade, os suprimentos entregues e o motivo de cada troca</p>
+  </div>
+  <a href="{{url_for('lista_suprimentos')}}" class="btn btn-outline-secondary">Voltar</a>
+</div>
+
+<form method="POST" id="form-suprimento">
+  <div class="row g-3">
+    <div class="col-lg-4">
+      <div class="card card-dashboard p-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-geo-alt me-2"></i>Destino</h5>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Data da entrega</label>
+          <input type="date" class="form-control" name="data_entrega" value="{{hoje}}" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Unidade</label>
+          <select class="form-select" name="unidade_id" id="select_unidade" required>
+            <option value="" disabled selected>Selecione a unidade...</option>
+            {% set empresa_atual = namespace(val='') %}
+            {% for l in locais %}
+              {% if l.unidade_id %}
+                {% if empresa_atual.val != l.empresa_nome %}
+                  {% if not loop.first %}</optgroup>{% endif %}
+                  <optgroup label="{{l.empresa_nome}}">
+                  {% set empresa_atual.val = l.empresa_nome %}
+                {% endif %}
+                <option value="{{l.unidade_id}}">{{l.unidade_nome}}</option>
+              {% endif %}
+            {% endfor %}
+            {% if locais %}</optgroup>{% endif %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Responsável</label>
+          <input type="text" class="form-control" name="responsavel" placeholder="Quem entregou/instalou">
+        </div>
+        <div class="mb-0">
+          <label class="form-label fw-bold">Observações gerais</label>
+          <textarea class="form-control" name="observacoes" rows="4" placeholder="Ex: atendimento urgente, chamado #123..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card card-dashboard p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold mb-0"><i class="bi bi-box-seam me-2"></i>Itens entregues</h5>
+          <button type="button" class="btn btn-sm btn-outline-primary" onclick="adicionarItem()">
+            <i class="bi bi-plus-lg"></i> Adicionar item
+          </button>
+        </div>
+
+        <div id="itens-container">
+          <div class="row g-2 item-row align-items-end border rounded p-3 mb-2">
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">Tipo de suprimento</label>
+              <select class="form-select" name="tipo_suprimento[]" required>
+                <option value="" disabled selected>Selecione...</option>
+                <option value="Toner">Toner</option>
+                <option value="Toner Black">Toner Black</option>
+                <option value="Toner Ciano">Toner Ciano</option>
+                <option value="Toner Magenta">Toner Magenta</option>
+                <option value="Toner Amarelo">Toner Amarelo</option>
+                <option value="Drum">Drum</option>
+                <option value="Drum Black">Drum Black</option>
+                <option value="Drum Ciano">Drum Ciano</option>
+                <option value="Drum Magenta">Drum Magenta</option>
+                <option value="Drum Amarelo">Drum Amarelo</option>
+                <option value="Fusor">Fusor</option>
+                <option value="Transfer">Transfer</option>
+                <option value="Coletor">Coletor</option>
+                <option value="Esteira">Esteira</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">Modelo da impressora</label>
+              <input type="text" class="form-control" name="modelo_impressora[]" placeholder="Ex: C711, M3170">
+            </div>
+            <div class="col-md-1">
+              <label class="form-label small fw-bold">Qtd</label>
+              <input type="number" class="form-control" name="quantidade[]" value="1" min="1" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Motivo da troca</label>
+              <input type="text" class="form-control" name="motivo[]" placeholder="Ex: troca preventiva, fim de vida">
+            </div>
+            <div class="col-md-1">
+              <button type="button" class="btn btn-outline-danger w-100" onclick="removerItem(this)" title="Remover item">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="alert alert-info small mb-0 mt-3">
+          <i class="bi bi-lightbulb me-1"></i>
+          Exemplo: Ama Capão — 2 Toner Black (modelo C711), 1 Drum Black (modelo C711), 1 Drum Ciano (modelo C711). Cada linha representa um tipo de suprimento.
+        </div>
+      </div>
+
+      <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+        <a href="{{url_for('lista_suprimentos')}}" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-rench-primary px-5"><i class="bi bi-check-lg me-1"></i>Salvar Entrega</button>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const container = document.getElementById('itens-container');
+const template = container.innerHTML.trim();
+
+function adicionarItem(){
+  container.insertAdjacentHTML('beforeend', template);
+}
+
+function removerItem(btn){
+  if(container.querySelectorAll('.item-row').length > 1){
+    btn.closest('.item-row').remove();
+  } else {
+    alert('Pelo menos um item é necessário.');
+  }
+}
+</script>
+{% endblock %}

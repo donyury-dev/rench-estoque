@@ -259,6 +259,28 @@ def init_db():
         )
     """)
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS suprimentos_entregas (
+            id SERIAL PRIMARY KEY,
+            unidade_id INTEGER NOT NULL REFERENCES unidades(id),
+            data_entrega VARCHAR(50) NOT NULL,
+            responsavel VARCHAR(255),
+            observacoes TEXT,
+            data_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS suprimentos_itens (
+            id SERIAL PRIMARY KEY,
+            entrega_id INTEGER NOT NULL REFERENCES suprimentos_entregas(id) ON DELETE CASCADE,
+            tipo_suprimento VARCHAR(100) NOT NULL,
+            modelo_impressora VARCHAR(255),
+            quantidade INTEGER NOT NULL DEFAULT 1,
+            motivo TEXT
+        )
+    """)
+
     db.commit()
     cur.close()
 
@@ -1310,6 +1332,142 @@ def tela_movimentar():
     return render_template('tela_movimentar.html',
         equipamentos=equipamentos, busca=busca, filtro_tipo=tipo, sugestoes=sugestoes,
         filtro_empresa_id=empresa_id, empresas_filtro=empresas_filtro, qtd_sem_empresa=qtd_sem_empresa)
+
+@app.route('/suprimentos', methods=['GET', 'POST'])
+@login_required
+def lista_suprimentos():
+    db = get_db()
+    cur = db.cursor()
+
+    busca = request.args.get('q', '').strip()
+    unidade_id = request.args.get('unidade_id', '').strip()
+    tipo = request.args.get('tipo', '').strip()
+
+    sql = """
+        SELECT se.id, se.data_entrega, se.responsavel, se.observacoes,
+               u.nome as unidade_nome, emp.nome as empresa_nome,
+               si.id as item_id, si.tipo_suprimento, si.modelo_impressora, si.quantidade, si.motivo
+        FROM suprimentos_entregas se
+        JOIN unidades u ON u.id = se.unidade_id
+        JOIN empresas emp ON emp.id = u.empresa_id
+        LEFT JOIN suprimentos_itens si ON si.entrega_id = se.id
+        WHERE 1=1
+    """
+    params = []
+
+    if unidade_id:
+        sql += " AND se.unidade_id = %s"
+        params.append(unidade_id)
+    if tipo:
+        sql += " AND si.tipo_suprimento = %s"
+        params.append(tipo)
+    if busca:
+        sql += """ AND (
+            unaccent(lower(u.nome)) LIKE unaccent(lower(%s))
+            OR unaccent(lower(emp.nome)) LIKE unaccent(lower(%s))
+            OR unaccent(lower(si.tipo_suprimento)) LIKE unaccent(lower(%s))
+        )"""
+        params.extend([f'%{busca}%', f'%{busca}%', f'%{busca}%'])
+
+    sql += " ORDER BY se.data_entrega DESC, se.id DESC, si.id"
+    cur.execute(sql, params)
+    rows = cur.fetchall()
+
+    entregas = {}
+    for r in rows:
+        eid = r['id']
+        if eid not in entregas:
+            entregas[eid] = {
+                'id': eid,
+                'data_entrega': r['data_entrega'],
+                'responsavel': r['responsavel'],
+                'observacoes': r['observacoes'],
+                'unidade_nome': r['unidade_nome'],
+                'empresa_nome': r['empresa_nome'],
+                'itens': []
+            }
+        if r['item_id']:
+            entregas[eid]['itens'].append({
+                'tipo': r['tipo_suprimento'],
+                'modelo': r['modelo_impressora'],
+                'quantidade': r['quantidade'],
+                'motivo': r['motivo']
+            })
+
+    cur.execute("""
+        SELECT emp.id as empresa_id, emp.nome as empresa_nome,
+               u.id as unidade_id, u.nome as unidade_nome
+        FROM empresas emp
+        LEFT JOIN unidades u ON u.empresa_id = emp.id AND u.ativo=1
+        WHERE emp.ativo=1
+        ORDER BY emp.tipo DESC, emp.nome, u.nome
+    """)
+    locais = cur.fetchall()
+
+    cur.execute("SELECT DISTINCT tipo_suprimento FROM suprimentos_itens ORDER BY tipo_suprimento")
+    tipos = [row['tipo_suprimento'] for row in cur.fetchall()]
+
+    return render_template('suprimentos.html',
+        entregas=list(entregas.values()), locais=locais, tipos=tipos,
+        busca=busca, filtro_unidade=unidade_id, filtro_tipo=tipo)
+
+@app.route('/suprimentos/novo', methods=['GET', 'POST'])
+@login_required
+def novo_suprimento():
+    db = get_db()
+    cur = db.cursor()
+
+    if request.method == 'POST':
+        unidade_id = request.form['unidade_id']
+        data_entrega = request.form['data_entrega']
+        responsavel = request.form.get('responsavel')
+        observacoes = request.form.get('observacoes')
+
+        cur.execute("""
+            INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes)
+            VALUES (%s, %s, %s, %s) RETURNING id
+        """, (unidade_id, data_entrega, responsavel, observacoes))
+        entrega_id = cur.fetchone()['id']
+
+        tipos = request.form.getlist('tipo_suprimento[]')
+        modelos = request.form.getlist('modelo_impressora[]')
+        quantidades = request.form.getlist('quantidade[]')
+        motivos = request.form.getlist('motivo[]')
+
+        for tipo, modelo, qtd, motivo in zip(tipos, modelos, quantidades, motivos):
+            tipo = (tipo or '').strip()
+            if tipo:
+                cur.execute("""
+                    INSERT INTO suprimentos_itens (entrega_id, tipo_suprimento, modelo_impressora, quantidade, motivo)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (entrega_id, tipo, modelo.strip() or None, int(qtd or 1), motivo.strip() or None))
+
+        db.commit()
+        flash('Entrega de suprimentos registrada com sucesso!', 'success')
+        return redirect(url_for('lista_suprimentos'))
+
+    cur.execute("""
+        SELECT emp.id as empresa_id, emp.nome as empresa_nome, emp.tipo as empresa_tipo,
+               u.id as unidade_id, u.nome as unidade_nome, u.setor
+        FROM empresas emp
+        LEFT JOIN unidades u ON u.empresa_id = emp.id AND u.ativo=1
+        WHERE emp.ativo=1
+        ORDER BY emp.tipo DESC, emp.nome, u.nome
+    """)
+    locais = cur.fetchall()
+
+    hoje = datetime.now().strftime('%Y-%m-%d')
+    return render_template('suprimento_form.html', locais=locais, hoje=hoje)
+
+@app.route('/suprimentos/excluir/<int:entrega_id>', methods=['POST'])
+@login_required
+def excluir_suprimento(entrega_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("DELETE FROM suprimentos_entregas WHERE id=%s", (entrega_id,))
+    db.commit()
+    flash('Registro excluido com sucesso!', 'success')
+    return redirect(url_for('lista_suprimentos'))
 
 
 # Para produção (Render / Gunicorn)
