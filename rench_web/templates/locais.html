@@ -284,6 +284,11 @@ function selecionarEmpresa(id) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  var primeiraEmpresa = document.querySelector('.empresa-item');
+  if (primeiraEmpresa) {
+    selecionarEmpresa(primeiraEmpresa.dataset.empresaId);
+  }
+
   var buscaEmpresa = document.getElementById('busca-empresa-lista');
   if (buscaEmpresa) {
     buscaEmpresa.addEventListener('input', function() {

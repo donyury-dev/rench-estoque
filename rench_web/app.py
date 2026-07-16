@@ -589,11 +589,12 @@ def lista_equipamentos():
     busca = request.args.get('q', '')
     mov_recente = request.args.get('mov_recente', '')
     unidade_id = request.args.get('unidade_id', '')
+    empresa_id = request.args.get('empresa_id', '')
     sugestoes = []
 
     sql = """
         SELECT e.*, COALESCE(u.nome, e.local_atual_nome) as local_nome,
-               emp.nome as empresa_nome, u.setor as unidade_setor,
+               emp.nome as empresa_nome, emp.id as empresa_id, u.setor as unidade_setor,
                m.ultima_movimentacao
         FROM equipamentos e
         LEFT JOIN unidades u ON e.unidade_id = u.id
@@ -614,6 +615,11 @@ def lista_equipamentos():
     if unidade_id:
         sql += " AND e.unidade_id = %s"
         params.append(unidade_id)
+    if empresa_id == 'sem_empresa':
+        sql += " AND emp.id IS NULL"
+    elif empresa_id:
+        sql += " AND emp.id = %s"
+        params.append(empresa_id)
     sql += " ORDER BY e.tipo_equipamento, e.modelo"
 
     cur.execute(sql, params)
@@ -652,9 +658,28 @@ def lista_equipamentos():
     """)
     unidades_filtro = cur.fetchall()
 
+    cur.execute("""
+        SELECT emp.id, emp.nome, COUNT(eq.id) as qtd
+        FROM empresas emp
+        LEFT JOIN unidades u ON u.empresa_id = emp.id AND u.ativo=1
+        LEFT JOIN equipamentos eq ON eq.unidade_id = u.id AND eq.ativo=1
+        WHERE emp.ativo=1
+        GROUP BY emp.id, emp.nome
+        ORDER BY emp.nome
+    """)
+    empresas_filtro = cur.fetchall()
+
+    cur.execute("""
+        SELECT COUNT(*) as qtd FROM equipamentos e
+        LEFT JOIN unidades u ON e.unidade_id = u.id
+        WHERE e.ativo=1 AND (e.unidade_id IS NULL OR u.empresa_id IS NULL)
+    """)
+    qtd_sem_empresa = cur.fetchone()['qtd']
+
     return render_template('equipamentos.html',
         equipamentos=equipamentos, filtro_tipo=tipo, filtro_mov=mov_recente, busca=busca,
-        filtro_unidade_id=unidade_id, unidades_filtro=unidades_filtro, sugestoes=sugestoes
+        filtro_unidade_id=unidade_id, unidades_filtro=unidades_filtro, sugestoes=sugestoes,
+        filtro_empresa_id=empresa_id, empresas_filtro=empresas_filtro, qtd_sem_empresa=qtd_sem_empresa
     )
 
 @app.route('/equipamento/<int:equip_id>')
@@ -1196,6 +1221,7 @@ def tela_movimentar():
     cur = db.cursor()
     busca = request.args.get('q', '')
     tipo = request.args.get('tipo', '')
+    empresa_id = request.args.get('empresa_id', '')
     sugestoes = []
     equipamento = None
 
@@ -1206,7 +1232,7 @@ def tela_movimentar():
 
     sql = """
         SELECT e.*, COALESCE(u.nome, e.local_atual_nome) as local_nome,
-               emp.nome as empresa_nome, u.setor as unidade_setor,
+               emp.nome as empresa_nome, emp.id as empresa_id, u.setor as unidade_setor,
                m.ultima_movimentacao
         FROM equipamentos e
         LEFT JOIN unidades u ON e.unidade_id = u.id
@@ -1224,6 +1250,11 @@ def tela_movimentar():
     if tipo:
         sql += " AND e.tipo_equipamento = %s"
         params.append(tipo)
+    if empresa_id == 'sem_empresa':
+        sql += " AND emp.id IS NULL"
+    elif empresa_id:
+        sql += " AND emp.id = %s"
+        params.append(empresa_id)
     sql += " ORDER BY e.tipo_equipamento, e.modelo"
 
     cur.execute(sql, params)
@@ -1244,8 +1275,27 @@ def tela_movimentar():
         equipamentos = [i[1] for i in filtrados]
         sugestoes = buscar_sugestoes_locais(cur, busca)
 
+    cur.execute("""
+        SELECT emp.id, emp.nome, COUNT(eq.id) as qtd
+        FROM empresas emp
+        LEFT JOIN unidades u ON u.empresa_id = emp.id AND u.ativo=1
+        LEFT JOIN equipamentos eq ON eq.unidade_id = u.id AND eq.ativo=1
+        WHERE emp.ativo=1
+        GROUP BY emp.id, emp.nome
+        ORDER BY emp.nome
+    """)
+    empresas_filtro = cur.fetchall()
+
+    cur.execute("""
+        SELECT COUNT(*) as qtd FROM equipamentos e
+        LEFT JOIN unidades u ON e.unidade_id = u.id
+        WHERE e.ativo=1 AND (e.unidade_id IS NULL OR u.empresa_id IS NULL)
+    """)
+    qtd_sem_empresa = cur.fetchone()['qtd']
+
     return render_template('tela_movimentar.html',
-        equipamentos=equipamentos, busca=busca, filtro_tipo=tipo, sugestoes=sugestoes)
+        equipamentos=equipamentos, busca=busca, filtro_tipo=tipo, sugestoes=sugestoes,
+        filtro_empresa_id=empresa_id, empresas_filtro=empresas_filtro, qtd_sem_empresa=qtd_sem_empresa)
 
 
 # Para produção (Render / Gunicorn)
