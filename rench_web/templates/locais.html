@@ -12,7 +12,7 @@
 <div class="alert alert-info border-0" style="background:var(--primary-light);color:var(--primary);">
   <strong>Como usar:</strong> primeiro cadastre a empresa/fornecedor. Depois cadastre uma ou mais unidades vinculadas a ela.
   Exemplo: Empresa <strong>SAMIR</strong> -> Unidade <strong>HMU Guarulhos</strong>. Empresa <strong>R10</strong> -> Unidade <strong>R10 - SP</strong>.
-  Clique no lapis para <strong>editar</strong> e na lixeira para <strong>excluir</strong> (exclusao logica - nao apaga do sistema, apenas oculta).
+  Na lista abaixo, <strong>busque e clique na empresa</strong> à esquerda para ver e gerenciar suas unidades à direita.
   <br>
   <strong>Trocou uma unidade de empresa por engano?</strong> Clique no lápis da unidade e use o campo <strong>"Empresa / Fornecedor"</strong>
   para selecionar a empresa correta - a unidade e transferida na hora, sem precisar excluir e recadastrar.
@@ -129,108 +129,184 @@
 </div>
 
 <div class="card card-dashboard p-4">
-  <h5 class="fw-bold mb-3"><i class="bi bi-list me-2"></i>Cadastros existentes</h5>
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h5 class="fw-bold mb-0"><i class="bi bi-list me-2"></i>Cadastros existentes</h5>
+    <span class="text-muted small">{{empresas|length}} empresas/fornecedores cadastrados</span>
+  </div>
 
-  <div class="accordion" id="accordionEmpresas">
-    {% set empresa_atual = namespace(id=-1) %}
-    {% set grupos = {} %}
-    {% for l in locais %}
-      {% if l.empresa_id not in grupos %}
-        {% set _ = grupos.update({l.empresa_id: []}) %}
-      {% endif %}
-      {% if l.unidade_id %}
-        {% set _ = grupos[l.empresa_id].append(l) %}
-      {% endif %}
-    {% endfor %}
+  {% set grupos = {} %}
+  {% for emp in empresas %}
+    {% set _ = grupos.update({emp.id: []}) %}
+  {% endfor %}
+  {% for l in locais %}
+    {% if l.unidade_id and l.empresa_id in grupos %}
+      {% set _ = grupos[l.empresa_id].append(l) %}
+    {% endif %}
+  {% endfor %}
 
-    <div class="row">
-      {% for empresa_id, unidades_emp in grupos.items() %}
-        {% if unidades_emp %}
-        {% set primeiro = unidades_emp[0] %}
-        <div class="col-md-6 col-lg-4 mb-3">
-          <div class="card h-100 border">
-            <div class="card-header d-flex justify-content-between align-items-center" style="background:#fafafa;">
-              <span class="fw-bold text-primary">{{primeiro.empresa_nome}}</span>
-              <span class="badge bg-light text-dark border">{{primeiro.empresa_tipo}}</span>
-            </div>
-            <div class="card-body p-0">
-              <ul class="list-group list-group-flush">
-              {% for u in unidades_emp %}
-                <li class="list-group-item d-flex justify-content-between align-items-start">
-                  <div class="me-auto">
-                    <div class="fw-bold">{{u.unidade_nome or '-'}}</div>
-                    <small class="text-muted">{{u.setor or '-'}}</small>
-                  </div>
-                  <div class="d-flex gap-1">
-                    <button type="button" class="btn btn-sm btn-outline-secondary"
-                      onclick="document.getElementById('unidade-edit-{{u.unidade_id}}').style.display='block'; document.getElementById('unidade-row-{{u.unidade_id}}').style.display='none';">
-                      <i class="bi bi-pencil"></i>
-                    </button>
-                    <form method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta unidade?');">
-                      <input type="hidden" name="acao" value="unidade_excluir">
-                      <input type="hidden" name="unidade_id" value="{{u.unidade_id}}">
-                      <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                    </form>
-                  </div>
-                </li>
-                <li id="unidade-edit-{{u.unidade_id}}" class="list-group-item" style="display:none;">
-                  <form method="POST" class="d-flex flex-wrap gap-2 align-items-center">
-                    <input type="hidden" name="acao" value="unidade_editar">
-                    <input type="hidden" name="unidade_id" value="{{u.unidade_id}}">
-                    <input name="unidade_nome" class="form-control form-control-sm" value="{{u.unidade_nome or ''}}" style="min-width:140px;" required>
-                    <input name="setor" class="form-control form-control-sm" value="{{u.setor or ''}}" style="min-width:140px;" placeholder="Setor / Observação">
-                    <select name="empresa_id" class="form-select form-select-sm" style="min-width:140px;" required title="Transferir esta unidade para outra empresa/cliente">
-                      {% for emp in empresas %}
-                      <option value="{{emp.id}}" {{'selected' if emp.id==u.empresa_id else ''}}>{{emp.nome}} ({{emp.tipo}})</option>
-                      {% endfor %}
-                    </select>
-                    <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary"
-                      onclick="document.getElementById('unidade-edit-{{u.unidade_id}}').style.display='none'; document.getElementById('unidade-row-{{u.unidade_id}}').style.display='flex';">
-                      Cancelar
-                    </button>
-                  </form>
-                </li>
-              {% endfor %}
-              </ul>
-            </div>
-            <div class="card-footer d-flex justify-content-between align-items-center" style="background:#fff;">
-              <small class="text-muted">{{unidades_emp|length}} unidade(s)</small>
+  <style>
+    .empresa-item { transition: background .15s; cursor: pointer; }
+    .empresa-item:hover { background:#f0f0f0; }
+    .empresa-item.active-empresa { background:var(--primary-light); border-left:3px solid var(--primary); }
+    .empresa-item.active-empresa .fw-semibold { color:var(--primary); }
+  </style>
+
+  <div class="row g-0 border rounded overflow-hidden">
+    <div class="col-md-4 border-end" style="background:#fafafa;">
+      <div class="p-2 border-bottom bg-white">
+        <input type="text" id="busca-empresa-lista" class="form-control form-control-sm" placeholder="Buscar empresa, cliente ou fornecedor...">
+      </div>
+      <div id="lista-empresas" style="max-height:560px; overflow-y:auto;">
+        {% for emp in empresas %}
+        <div class="empresa-item px-3 py-2 border-bottom" data-empresa-id="{{emp.id}}" data-nome="{{emp.nome|lower}}" onclick="selecionarEmpresa({{emp.id}})">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">{{emp.nome}}</span>
+            <span class="badge bg-white text-dark border">{{grupos[emp.id]|length}}</span>
+          </div>
+          <small class="text-muted text-uppercase" style="font-size:.7rem;">{{emp.tipo}}</small>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="col-md-8">
+      <div id="painel-vazio" class="d-flex align-items-center justify-content-center text-muted p-4" style="min-height:560px;">
+        <div class="text-center">
+          <i class="bi bi-building" style="font-size:2.2rem;"></i>
+          <p class="mt-2 mb-0">Clique em uma empresa na lista à esquerda<br>para ver e gerenciar suas unidades.</p>
+        </div>
+      </div>
+
+      {% for emp in empresas %}
+      <div id="painel-empresa-{{emp.id}}" class="painel-empresa p-3" style="display:none;">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3 pb-2 border-bottom">
+          <div>
+            <h5 class="fw-bold text-primary mb-0">{{emp.nome}}</h5>
+            <span class="badge bg-light text-dark border">{{emp.tipo}}</span>
+          </div>
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+              onclick="document.getElementById('empresa-edit-{{emp.id}}').style.display='block';">
+              <i class="bi bi-pencil"></i> Editar
+            </button>
+            <form method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta empresa e todas suas unidades?');">
+              <input type="hidden" name="acao" value="empresa_excluir">
+              <input type="hidden" name="empresa_id" value="{{emp.id}}">
+              <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </div>
+        </div>
+
+        <div id="empresa-edit-{{emp.id}}" class="mb-3 p-2 border rounded" style="display:none;background:#f8f9fa;">
+          <form method="POST" class="d-flex flex-wrap gap-2 align-items-center">
+            <input type="hidden" name="acao" value="empresa_editar">
+            <input type="hidden" name="empresa_id" value="{{emp.id}}">
+            <input name="nome" class="form-control form-control-sm" value="{{emp.nome}}" style="max-width:200px;" required>
+            <select name="tipo" class="form-select form-select-sm" style="max-width:140px;">
+              <option value="cliente" {{'selected' if emp.tipo=='cliente' else ''}}>Cliente</option>
+              <option value="fornecedor" {{'selected' if emp.tipo=='fornecedor' else ''}}>Fornecedor</option>
+              <option value="assistencia" {{'selected' if emp.tipo=='assistencia' else ''}}>Assistência</option>
+              <option value="rench" {{'selected' if emp.tipo=='rench' else ''}}>RENCH</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+              onclick="document.getElementById('empresa-edit-{{emp.id}}').style.display='none';">
+              Cancelar
+            </button>
+          </form>
+        </div>
+
+        <input type="text" class="form-control form-control-sm mb-3 busca-unidade-local"
+          placeholder="Buscar unidade dentro de {{emp.nome}}..." data-target="unidades-lista-{{emp.id}}">
+
+        <div id="unidades-lista-{{emp.id}}" style="max-height:420px; overflow-y:auto;">
+          {% if grupos[emp.id] %}
+            {% for u in grupos[emp.id] %}
+            <div id="unidade-row-{{u.unidade_id}}" class="unidade-row d-flex justify-content-between align-items-start border rounded p-2 mb-2" data-nome="{{(u.unidade_nome or '')|lower}}">
+              <div class="me-auto">
+                <div class="fw-bold">{{u.unidade_nome or '-'}}</div>
+                <small class="text-muted">{{u.setor or '-'}}</small>
+              </div>
               <div class="d-flex gap-1">
                 <button type="button" class="btn btn-sm btn-outline-secondary"
-                  onclick="document.getElementById('empresa-edit-{{primeiro.empresa_id}}').style.display='block';">
-                  <i class="bi bi-pencil"></i> Editar empresa
+                  onclick="document.getElementById('unidade-edit-{{u.unidade_id}}').style.display='block'; document.getElementById('unidade-row-{{u.unidade_id}}').style.display='none';">
+                  <i class="bi bi-pencil"></i>
                 </button>
-                <form method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta empresa e todas suas unidades?');">
-                  <input type="hidden" name="acao" value="empresa_excluir">
-                  <input type="hidden" name="empresa_id" value="{{primeiro.empresa_id}}">
+                <form method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta unidade?');">
+                  <input type="hidden" name="acao" value="unidade_excluir">
+                  <input type="hidden" name="unidade_id" value="{{u.unidade_id}}">
                   <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                 </form>
               </div>
             </div>
-            <div id="empresa-edit-{{primeiro.empresa_id}}" class="card-footer" style="display:none;background:#f8f9fa;">
+            <div id="unidade-edit-{{u.unidade_id}}" class="border rounded p-2 mb-2" style="display:none;background:#f8f9fa;">
               <form method="POST" class="d-flex flex-wrap gap-2 align-items-center">
-                <input type="hidden" name="acao" value="empresa_editar">
-                <input type="hidden" name="empresa_id" value="{{primeiro.empresa_id}}">
-                <input name="nome" class="form-control form-control-sm" value="{{primeiro.empresa_nome}}" style="max-width:200px;" required>
-                <select name="tipo" class="form-select form-select-sm" style="max-width:140px;">
-                  <option value="cliente" {{'selected' if primeiro.empresa_tipo=='cliente' else ''}}>Cliente</option>
-                  <option value="fornecedor" {{'selected' if primeiro.empresa_tipo=='fornecedor' else ''}}>Fornecedor</option>
-                  <option value="assistencia" {{'selected' if primeiro.empresa_tipo=='assistencia' else ''}}>Assistência</option>
-                  <option value="rench" {{'selected' if primeiro.empresa_tipo=='rench' else ''}}>RENCH</option>
+                <input type="hidden" name="acao" value="unidade_editar">
+                <input type="hidden" name="unidade_id" value="{{u.unidade_id}}">
+                <input name="unidade_nome" class="form-control form-control-sm" value="{{u.unidade_nome or ''}}" style="min-width:140px;" required>
+                <input name="setor" class="form-control form-control-sm" value="{{u.setor or ''}}" style="min-width:140px;" placeholder="Setor / Observação">
+                <select name="empresa_id" class="form-select form-select-sm" style="min-width:140px;" required title="Transferir esta unidade para outra empresa/cliente">
+                  {% for e2 in empresas %}
+                  <option value="{{e2.id}}" {{'selected' if e2.id==u.empresa_id else ''}}>{{e2.nome}} ({{e2.tipo}})</option>
+                  {% endfor %}
                 </select>
                 <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary"
-                  onclick="document.getElementById('empresa-edit-{{primeiro.empresa_id}}').style.display='none';">
+                  onclick="document.getElementById('unidade-edit-{{u.unidade_id}}').style.display='none'; document.getElementById('unidade-row-{{u.unidade_id}}').style.display='flex';">
                   Cancelar
                 </button>
               </form>
             </div>
-          </div>
+            {% endfor %}
+          {% else %}
+            <p class="text-muted small mb-0">Nenhuma unidade cadastrada ainda. Use o formulário "Nova Unidade / Filial" acima para adicionar.</p>
+          {% endif %}
         </div>
-        {% endif %}
+      </div>
       {% endfor %}
     </div>
   </div>
 </div>
+
+<script>
+function selecionarEmpresa(id) {
+  document.querySelectorAll('.painel-empresa').forEach(function(el){ el.style.display = 'none'; });
+  var vazio = document.getElementById('painel-vazio');
+  if (vazio) vazio.style.display = 'none';
+  var painel = document.getElementById('painel-empresa-' + id);
+  if (painel) painel.style.display = 'block';
+  document.querySelectorAll('.empresa-item').forEach(function(item) {
+    if (String(item.dataset.empresaId) === String(id)) {
+      item.classList.add('active-empresa');
+    } else {
+      item.classList.remove('active-empresa');
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var buscaEmpresa = document.getElementById('busca-empresa-lista');
+  if (buscaEmpresa) {
+    buscaEmpresa.addEventListener('input', function() {
+      var termo = this.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      document.querySelectorAll('.empresa-item').forEach(function(item) {
+        var nome = (item.dataset.nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        item.style.display = nome.indexOf(termo) !== -1 ? '' : 'none';
+      });
+    });
+  }
+
+  document.querySelectorAll('.busca-unidade-local').forEach(function(input) {
+    input.addEventListener('input', function() {
+      var termo = this.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      var target = document.getElementById(this.dataset.target);
+      if (!target) return;
+      target.querySelectorAll('.unidade-row').forEach(function(row) {
+        var nome = (row.dataset.nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        row.style.display = nome.indexOf(termo) !== -1 ? '' : 'none';
+      });
+    });
+  });
+});
+</script>
 {% endblock %}
