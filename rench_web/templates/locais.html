@@ -10,15 +10,154 @@
 </div>
 
 <div class="alert alert-info border-0" style="background:var(--primary-light);color:var(--primary);">
-  <strong>Como usar:</strong> primeiro cadastre a empresa/fornecedor. Depois cadastre uma ou mais unidades vinculadas a ela.
-  Exemplo: Empresa <strong>SAMIR</strong> -> Unidade <strong>HMU Guarulhos</strong>. Empresa <strong>R10</strong> -> Unidade <strong>R10 - SP</strong>.
-  Na lista abaixo, <strong>busque e clique na empresa</strong> à esquerda para ver e gerenciar suas unidades à direita.
+  <strong>Como usar:</strong> <strong>busque e clique na empresa</strong> na lista abaixo para ver e gerenciar suas unidades.
+  Para cadastrar uma empresa ou unidade nova, use os formulários mais abaixo na página.
   <br>
   <strong>Trocou uma unidade de empresa por engano?</strong> Clique no lápis da unidade e use o campo <strong>"Empresa / Fornecedor"</strong>
   para selecionar a empresa correta - a unidade e transferida na hora, sem precisar excluir e recadastrar.
 </div>
 
-<div class="row g-4 mb-5">
+<div class="card card-dashboard p-4 mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h5 class="fw-bold mb-0"><i class="bi bi-list me-2"></i>Cadastros existentes</h5>
+    <span class="text-muted small">{{empresas|length}} empresas/fornecedores cadastrados</span>
+  </div>
+
+  {% set grupos = {} %}
+  {% for emp in empresas %}
+    {% set _ = grupos.update({emp.id: []}) %}
+  {% endfor %}
+  {% for l in locais %}
+    {% if l.unidade_id and l.empresa_id in grupos %}
+      {% set _ = grupos[l.empresa_id].append(l) %}
+    {% endif %}
+  {% endfor %}
+
+  <style>
+    .empresa-item { transition: background .15s; cursor: pointer; }
+    .empresa-item:hover { background:#f0f0f0; }
+    .empresa-item.active-empresa { background:var(--primary-light); border-left:3px solid var(--primary); }
+    .empresa-item.active-empresa .fw-semibold { color:var(--primary); }
+  </style>
+
+  <div class="row g-0 border rounded overflow-hidden">
+    <div class="col-md-4 border-end" style="background:#fafafa;">
+      <div class="p-2 border-bottom bg-white">
+        <input type="text" id="busca-empresa-lista" class="form-control form-control-sm" placeholder="Buscar empresa, cliente ou fornecedor...">
+      </div>
+      <div id="lista-empresas" style="max-height:360px; overflow-y:auto;">
+        {% for emp in empresas %}
+        <div class="empresa-item px-3 py-2 border-bottom" data-empresa-id="{{emp.id}}" data-nome="{{emp.nome|lower}}" onclick="selecionarEmpresa({{emp.id}})">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">{{emp.nome}}</span>
+            <span class="badge bg-white text-dark border">{{grupos[emp.id]|length}}</span>
+          </div>
+          <small class="text-muted text-uppercase" style="font-size:.7rem;">{{emp.tipo}}</small>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="col-md-8">
+      <div id="painel-vazio" class="d-flex align-items-center justify-content-center text-muted p-4" style="min-height:360px;">
+        <div class="text-center">
+          <i class="bi bi-building" style="font-size:2rem;"></i>
+          <p class="mt-2 mb-0">Clique em uma empresa na lista à esquerda<br>para ver e gerenciar suas unidades.</p>
+        </div>
+      </div>
+
+      {% for emp in empresas %}
+      <div id="painel-empresa-{{emp.id}}" class="painel-empresa p-3" style="display:none;">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2 pb-2 border-bottom">
+          <div>
+            <h5 class="fw-bold text-primary mb-0">{{emp.nome}}</h5>
+            <span class="badge bg-light text-dark border">{{emp.tipo}}</span>
+          </div>
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+              onclick="document.getElementById('empresa-edit-{{emp.id}}').style.display='block';">
+              <i class="bi bi-pencil"></i> Editar
+            </button>
+            <form method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta empresa e todas suas unidades?');">
+              <input type="hidden" name="acao" value="empresa_excluir">
+              <input type="hidden" name="empresa_id" value="{{emp.id}}">
+              <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </div>
+        </div>
+
+        <div id="empresa-edit-{{emp.id}}" class="mb-2 p-2 border rounded" style="display:none;background:#f8f9fa;">
+          <form method="POST" class="d-flex flex-wrap gap-2 align-items-center">
+            <input type="hidden" name="acao" value="empresa_editar">
+            <input type="hidden" name="empresa_id" value="{{emp.id}}">
+            <input name="nome" class="form-control form-control-sm" value="{{emp.nome}}" style="max-width:200px;" required>
+            <select name="tipo" class="form-select form-select-sm" style="max-width:140px;">
+              <option value="cliente" {{'selected' if emp.tipo=='cliente' else ''}}>Cliente</option>
+              <option value="fornecedor" {{'selected' if emp.tipo=='fornecedor' else ''}}>Fornecedor</option>
+              <option value="assistencia" {{'selected' if emp.tipo=='assistencia' else ''}}>Assistência</option>
+              <option value="rench" {{'selected' if emp.tipo=='rench' else ''}}>RENCH</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+              onclick="document.getElementById('empresa-edit-{{emp.id}}').style.display='none';">
+              Cancelar
+            </button>
+          </form>
+        </div>
+
+        <input type="text" class="form-control form-control-sm mb-2 busca-unidade-local"
+          placeholder="Buscar unidade dentro de {{emp.nome}}..." data-target="unidades-lista-{{emp.id}}">
+
+        <div id="unidades-lista-{{emp.id}}" style="max-height:280px; overflow-y:auto;">
+          {% if grupos[emp.id] %}
+            {% for u in grupos[emp.id] %}
+            <div id="unidade-row-{{u.unidade_id}}" class="unidade-row d-flex justify-content-between align-items-start border rounded p-2 mb-2" data-nome="{{(u.unidade_nome or '')|lower}}">
+              <div class="me-auto">
+                <div class="fw-bold">{{u.unidade_nome or '-'}}</div>
+                <small class="text-muted">{{u.setor or '-'}}</small>
+              </div>
+              <div class="d-flex gap-1">
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                  onclick="document.getElementById('unidade-edit-{{u.unidade_id}}').style.display='block'; document.getElementById('unidade-row-{{u.unidade_id}}').style.display='none';">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <form method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta unidade?');">
+                  <input type="hidden" name="acao" value="unidade_excluir">
+                  <input type="hidden" name="unidade_id" value="{{u.unidade_id}}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                </form>
+              </div>
+            </div>
+            <div id="unidade-edit-{{u.unidade_id}}" class="border rounded p-2 mb-2" style="display:none;background:#f8f9fa;">
+              <form method="POST" class="d-flex flex-wrap gap-2 align-items-center">
+                <input type="hidden" name="acao" value="unidade_editar">
+                <input type="hidden" name="unidade_id" value="{{u.unidade_id}}">
+                <input name="unidade_nome" class="form-control form-control-sm" value="{{u.unidade_nome or ''}}" style="min-width:140px;" required>
+                <input name="setor" class="form-control form-control-sm" value="{{u.setor or ''}}" style="min-width:140px;" placeholder="Setor / Observação">
+                <select name="empresa_id" class="form-select form-select-sm" style="min-width:140px;" required title="Transferir esta unidade para outra empresa/cliente">
+                  {% for e2 in empresas %}
+                  <option value="{{e2.id}}" {{'selected' if e2.id==u.empresa_id else ''}}>{{e2.nome}} ({{e2.tipo}})</option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                  onclick="document.getElementById('unidade-edit-{{u.unidade_id}}').style.display='none'; document.getElementById('unidade-row-{{u.unidade_id}}').style.display='flex';">
+                  Cancelar
+                </button>
+              </form>
+            </div>
+            {% endfor %}
+          {% else %}
+            <p class="text-muted small mb-0">Nenhuma unidade cadastrada ainda. Use o formulário "Nova Unidade / Filial" abaixo para adicionar.</p>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
   <div class="col-lg-5">
     <div class="card card-dashboard p-4">
       <h5 class="fw-bold mb-3"><i class="bi bi-building me-2"></i>Nova Empresa / Fornecedor</h5>
@@ -72,7 +211,7 @@
   </div>
 </div>
 
-<div class="card card-dashboard p-4 mb-4">
+<div class="card card-dashboard p-4">
   <h5 class="fw-bold mb-3"><i class="bi bi-sign-merge-left me-2"></i>Unificar Unidades Similares</h5>
   <p class="text-muted mb-3">Use esta ferramenta quando duas unidades são a mesma, mas estão escritas de formas diferentes (ex: <strong>Humana Pompeia</strong> e <strong>Humana Magna Pompeia</strong>). Os equipamentos da unidade removida são transferidos para a unidade que será mantida.</p>
   <form method="POST" class="row g-3 align-items-end" onsubmit="return confirm('Tem certeza que deseja unificar estas unidades? Esta ação não pode ser desfeita automaticamente.');">
@@ -126,146 +265,6 @@
     filtrarSelect('busca-remover', 'select-remover');
   });
   </script>
-</div>
-
-<div class="card card-dashboard p-4">
-  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <h5 class="fw-bold mb-0"><i class="bi bi-list me-2"></i>Cadastros existentes</h5>
-    <span class="text-muted small">{{empresas|length}} empresas/fornecedores cadastrados</span>
-  </div>
-
-  {% set grupos = {} %}
-  {% for emp in empresas %}
-    {% set _ = grupos.update({emp.id: []}) %}
-  {% endfor %}
-  {% for l in locais %}
-    {% if l.unidade_id and l.empresa_id in grupos %}
-      {% set _ = grupos[l.empresa_id].append(l) %}
-    {% endif %}
-  {% endfor %}
-
-  <style>
-    .empresa-item { transition: background .15s; cursor: pointer; }
-    .empresa-item:hover { background:#f0f0f0; }
-    .empresa-item.active-empresa { background:var(--primary-light); border-left:3px solid var(--primary); }
-    .empresa-item.active-empresa .fw-semibold { color:var(--primary); }
-  </style>
-
-  <div class="row g-0 border rounded overflow-hidden">
-    <div class="col-md-4 border-end" style="background:#fafafa;">
-      <div class="p-2 border-bottom bg-white">
-        <input type="text" id="busca-empresa-lista" class="form-control form-control-sm" placeholder="Buscar empresa, cliente ou fornecedor...">
-      </div>
-      <div id="lista-empresas" style="max-height:560px; overflow-y:auto;">
-        {% for emp in empresas %}
-        <div class="empresa-item px-3 py-2 border-bottom" data-empresa-id="{{emp.id}}" data-nome="{{emp.nome|lower}}" onclick="selecionarEmpresa({{emp.id}})">
-          <div class="d-flex justify-content-between align-items-center">
-            <span class="fw-semibold">{{emp.nome}}</span>
-            <span class="badge bg-white text-dark border">{{grupos[emp.id]|length}}</span>
-          </div>
-          <small class="text-muted text-uppercase" style="font-size:.7rem;">{{emp.tipo}}</small>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-
-    <div class="col-md-8">
-      <div id="painel-vazio" class="d-flex align-items-center justify-content-center text-muted p-4" style="min-height:560px;">
-        <div class="text-center">
-          <i class="bi bi-building" style="font-size:2.2rem;"></i>
-          <p class="mt-2 mb-0">Clique em uma empresa na lista à esquerda<br>para ver e gerenciar suas unidades.</p>
-        </div>
-      </div>
-
-      {% for emp in empresas %}
-      <div id="painel-empresa-{{emp.id}}" class="painel-empresa p-3" style="display:none;">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3 pb-2 border-bottom">
-          <div>
-            <h5 class="fw-bold text-primary mb-0">{{emp.nome}}</h5>
-            <span class="badge bg-light text-dark border">{{emp.tipo}}</span>
-          </div>
-          <div class="d-flex gap-1">
-            <button type="button" class="btn btn-sm btn-outline-secondary"
-              onclick="document.getElementById('empresa-edit-{{emp.id}}').style.display='block';">
-              <i class="bi bi-pencil"></i> Editar
-            </button>
-            <form method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta empresa e todas suas unidades?');">
-              <input type="hidden" name="acao" value="empresa_excluir">
-              <input type="hidden" name="empresa_id" value="{{emp.id}}">
-              <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-            </form>
-          </div>
-        </div>
-
-        <div id="empresa-edit-{{emp.id}}" class="mb-3 p-2 border rounded" style="display:none;background:#f8f9fa;">
-          <form method="POST" class="d-flex flex-wrap gap-2 align-items-center">
-            <input type="hidden" name="acao" value="empresa_editar">
-            <input type="hidden" name="empresa_id" value="{{emp.id}}">
-            <input name="nome" class="form-control form-control-sm" value="{{emp.nome}}" style="max-width:200px;" required>
-            <select name="tipo" class="form-select form-select-sm" style="max-width:140px;">
-              <option value="cliente" {{'selected' if emp.tipo=='cliente' else ''}}>Cliente</option>
-              <option value="fornecedor" {{'selected' if emp.tipo=='fornecedor' else ''}}>Fornecedor</option>
-              <option value="assistencia" {{'selected' if emp.tipo=='assistencia' else ''}}>Assistência</option>
-              <option value="rench" {{'selected' if emp.tipo=='rench' else ''}}>RENCH</option>
-            </select>
-            <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary"
-              onclick="document.getElementById('empresa-edit-{{emp.id}}').style.display='none';">
-              Cancelar
-            </button>
-          </form>
-        </div>
-
-        <input type="text" class="form-control form-control-sm mb-3 busca-unidade-local"
-          placeholder="Buscar unidade dentro de {{emp.nome}}..." data-target="unidades-lista-{{emp.id}}">
-
-        <div id="unidades-lista-{{emp.id}}" style="max-height:420px; overflow-y:auto;">
-          {% if grupos[emp.id] %}
-            {% for u in grupos[emp.id] %}
-            <div id="unidade-row-{{u.unidade_id}}" class="unidade-row d-flex justify-content-between align-items-start border rounded p-2 mb-2" data-nome="{{(u.unidade_nome or '')|lower}}">
-              <div class="me-auto">
-                <div class="fw-bold">{{u.unidade_nome or '-'}}</div>
-                <small class="text-muted">{{u.setor or '-'}}</small>
-              </div>
-              <div class="d-flex gap-1">
-                <button type="button" class="btn btn-sm btn-outline-secondary"
-                  onclick="document.getElementById('unidade-edit-{{u.unidade_id}}').style.display='block'; document.getElementById('unidade-row-{{u.unidade_id}}').style.display='none';">
-                  <i class="bi bi-pencil"></i>
-                </button>
-                <form method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta unidade?');">
-                  <input type="hidden" name="acao" value="unidade_excluir">
-                  <input type="hidden" name="unidade_id" value="{{u.unidade_id}}">
-                  <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                </form>
-              </div>
-            </div>
-            <div id="unidade-edit-{{u.unidade_id}}" class="border rounded p-2 mb-2" style="display:none;background:#f8f9fa;">
-              <form method="POST" class="d-flex flex-wrap gap-2 align-items-center">
-                <input type="hidden" name="acao" value="unidade_editar">
-                <input type="hidden" name="unidade_id" value="{{u.unidade_id}}">
-                <input name="unidade_nome" class="form-control form-control-sm" value="{{u.unidade_nome or ''}}" style="min-width:140px;" required>
-                <input name="setor" class="form-control form-control-sm" value="{{u.setor or ''}}" style="min-width:140px;" placeholder="Setor / Observação">
-                <select name="empresa_id" class="form-select form-select-sm" style="min-width:140px;" required title="Transferir esta unidade para outra empresa/cliente">
-                  {% for e2 in empresas %}
-                  <option value="{{e2.id}}" {{'selected' if e2.id==u.empresa_id else ''}}>{{e2.nome}} ({{e2.tipo}})</option>
-                  {% endfor %}
-                </select>
-                <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary"
-                  onclick="document.getElementById('unidade-edit-{{u.unidade_id}}').style.display='none'; document.getElementById('unidade-row-{{u.unidade_id}}').style.display='flex';">
-                  Cancelar
-                </button>
-              </form>
-            </div>
-            {% endfor %}
-          {% else %}
-            <p class="text-muted small mb-0">Nenhuma unidade cadastrada ainda. Use o formulário "Nova Unidade / Filial" acima para adicionar.</p>
-          {% endif %}
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
 </div>
 
 <script>
