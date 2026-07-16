@@ -36,6 +36,33 @@
         A origem é preenchida automaticamente com o local atual do equipamento.
       </div>
     </div>
+
+    {% if equip.tipo_equipamento == 'impressora' %}
+    <div class="card card-dashboard p-4 mt-3">
+      <h5 class="fw-bold mb-3"><i class="bi bi-clock-history me-2"></i>Histórico de Contadores</h5>
+      {% if historico_contadores %}
+        <div style="max-height:340px; overflow-y:auto;">
+        {% for h in historico_contadores %}
+          <div class="border-bottom pb-2 mb-2">
+            <div class="d-flex justify-content-between">
+              <small class="text-muted">{{h.data_movimentacao}}</small>
+              <small class="text-muted">{{h.destino_local or '-'}}</small>
+            </div>
+            <div class="small">
+              <i class="bi bi-printer me-1"></i>Mono:
+              <strong>{{h.contador_mono_anterior or 0}}</strong> → <strong>{{h.contador_mono_novo or 0}}</strong>
+              <span class="mx-2">|</span>
+              Color:
+              <strong>{{h.contador_color_anterior or 0}}</strong> → <strong>{{h.contador_color_novo or 0}}</strong>
+            </div>
+          </div>
+        {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-muted small mb-0">Nenhuma movimentação registrada ainda para este equipamento.</p>
+      {% endif %}
+    </div>
+    {% endif %}
   </div>
 
   <div class="col-lg-8">

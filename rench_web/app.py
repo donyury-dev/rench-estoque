@@ -996,7 +996,17 @@ def movimentar(equip_id):
     """)
     locais = cur.fetchall()
 
-    return render_template('movimentacao_form.html', equip=equip, locais=locais)
+    cur.execute("""
+        SELECT data_movimentacao, tipo_movimento, destino_local, destino_unidade,
+               contador_mono_anterior, contador_mono_novo, contador_color_anterior, contador_color_novo
+        FROM movimentacoes
+        WHERE equipamento_id=%s
+        ORDER BY data_movimentacao DESC, id DESC
+        LIMIT 20
+    """, (equip_id,))
+    historico_contadores = cur.fetchall()
+
+    return render_template('movimentacao_form.html', equip=equip, locais=locais, historico_contadores=historico_contadores)
 
 @app.route('/locais', methods=['GET', 'POST'])
 @login_required
