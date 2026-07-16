@@ -1,18 +1,22 @@
 import os
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import hashlib
 import difflib
 import unicodedata
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, g, session
 from functools import wraps
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'rench_estoque_2026_segredo')
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE = os.path.join(BASE_DIR, 'rench_web.db')
 PLANILHA_PADRAO = os.path.join(os.path.dirname(BASE_DIR), 'data_atual.xlsx')
+
+# Usar Supabase/Postgres via variavel de ambiente DATABASE_URL
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres.yfxfmwrasjukbsjjqbzs:kaio82046697@aws-1-us-west-2.pooler.supabase.com:6543/postgres')
 
 PREFIXOS_RASTREIO = {
     "impressora": "IMP",
@@ -97,8 +101,16 @@ def buscar_sugestoes_locais(cur, busca, limite=6):
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
-        db.row_factory = sqlite3.Row
+        result = urlparse(DATABASE_URL)
+        db = g._database = psycopg2.connect(
+            host=result.hostname,
+            port=result.port or 6543,
+            user=result.username,
+            password=result.password,
+            dbname=result.path.lstrip('/'),
+            connect_timeout=10
+        )
+        db.cursor_factory = psycopg2.extras.RealDictCursor
     return db
 
 @app.teardown_appcontext
@@ -107,155 +119,161 @@ def close_connection(exception):
     if db is not None:
         db.close()
 
-def init_db():
-    db = sqlite3.connect(DATABASE)
+def _executar_migrations():
+    db = get_db()
     cur = db.cursor()
 
-    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='equipamentos'")
-    tabela_equipamentos = cur.fetchone()
-    if tabela_equipamentos:
-        cur.execute("PRAGMA table_info(equipamentos)")
-        colunas_existentes = {row[1] for row in cur.fetchall()}
-        if 'tipo_equipamento' not in colunas_existentes:
-            cur.execute("DROP TABLE IF EXISTS movimentacoes")
-            cur.execute("DROP TABLE IF EXISTS historico_defeitos")
-            cur.execute("DROP TABLE IF EXISTS defeitos")
-            cur.execute("DROP TABLE IF EXISTS equipamentos")
-            cur.execute("DROP TABLE IF EXISTS locais")
+    def coluna_existe(tabela, coluna):
+        cur.execute("""
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema='public' AND table_name=%s AND column_name=%s
+        """, (tabela, coluna))
+        return cur.fetchone() is not None
 
-    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='empresas'")
-    if not cur.fetchone():
-        # Migracao de locais -> empresas+unidades
-        cur.execute("CREATE TABLE IF NOT EXISTS locais_backup AS SELECT * FROM locais" if cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='locais'").fetchone() else "SELECT 1")
+    migracoes = []
+    for tabela, coluna, tipo in [
+        ('unidades', 'setor', 'TEXT'),
+        ('equipamentos', 'funcao', 'VARCHAR(50)'),
+        ('equipamentos', 'tipo_impressao', 'VARCHAR(50)'),
+        ('equipamentos', 'tamanho_papel', 'VARCHAR(50)'),
+        ('equipamentos', 'funcionalidades', 'TEXT'),
+        ('equipamentos', 'processador_modelo', 'VARCHAR(100)'),
+        ('equipamentos', 'processador_geracao', 'VARCHAR(50)'),
+        ('equipamentos', 'processador_velocidade', 'VARCHAR(50)'),
+        ('equipamentos', 'memoria_capacidade', 'VARCHAR(50)'),
+        ('equipamentos', 'memoria_tipo', 'VARCHAR(50)'),
+        ('equipamentos', 'memoria_barramento', 'VARCHAR(50)'),
+        ('equipamentos', 'memoria_velocidade', 'VARCHAR(50)'),
+        ('equipamentos', 'armazenamento_1_capacidade', 'VARCHAR(50)'),
+        ('equipamentos', 'armazenamento_1_tipo', 'VARCHAR(50)'),
+        ('equipamentos', 'armazenamento_2_capacidade', 'VARCHAR(50)'),
+        ('equipamentos', 'armazenamento_2_tipo', 'VARCHAR(50)'),
+        ('equipamentos', 'armazenamento_3_capacidade', 'VARCHAR(50)'),
+        ('equipamentos', 'armazenamento_3_tipo', 'VARCHAR(50)'),
+        ('equipamentos', 'local_atual_id', 'INTEGER'),
+        ('historico_defeitos', 'status', 'VARCHAR(50)'),
+    ]:
+        if not coluna_existe(tabela, coluna):
+            migracoes.append(f"ALTER TABLE {tabela} ADD COLUMN {coluna} {tipo}")
 
-    # TABELA: empresas/fornecedores (matriz)
-    cur.execute('''
+    for sql in migracoes:
+        try:
+            cur.execute(sql)
+        except Exception as e:
+            print(f"Migration warning: {e}")
+    db.commit()
+    cur.close()
+
+def init_db():
+    db = get_db()
+    cur = db.cursor()
+
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS empresas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            tipo TEXT DEFAULT 'cliente',
+            id SERIAL PRIMARY KEY,
+            nome VARCHAR(255) NOT NULL,
+            tipo VARCHAR(50) NOT NULL DEFAULT 'cliente',
             ativo INTEGER DEFAULT 1
         )
-    ''')
+    """)
 
-    # TABELA: unidades (filial)
-    cur.execute('''
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS unidades (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            empresa_id INTEGER NOT NULL,
-            nome TEXT NOT NULL,
+            id SERIAL PRIMARY KEY,
+            empresa_id INTEGER NOT NULL REFERENCES empresas(id),
+            nome VARCHAR(255) NOT NULL,
             setor TEXT,
-            ativo INTEGER DEFAULT 1,
-            FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+            ativo INTEGER DEFAULT 1
         )
-    ''')
+    """)
 
-    # TABELA: equipamentos (atualizada com todos os campos dos desenhos)
-    cur.execute('''
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS equipamentos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            codigo TEXT,
-            tipo_equipamento TEXT NOT NULL CHECK(tipo_equipamento IN ('impressora','desktop','notebook','servidor','monitor','periferico')),
-            fabricante TEXT,
-            modelo TEXT NOT NULL,
-            numero_serie TEXT,
-            patrimonio TEXT,
-            
-            -- Campos especificos IMPRESSORA
-            funcao TEXT CHECK(funcao IN ('impressora','multifuncional')),
-            tipo_impressao TEXT CHECK(tipo_impressao IN ('laser','jato_de_tinta','etiqueta','termica')),
-            tamanho_papel TEXT CHECK(tamanho_papel IN ('A3','A4','etiqueta','cupom')),
-            funcionalidades TEXT,
+            id SERIAL PRIMARY KEY,
+            codigo VARCHAR(100),
+            tipo_equipamento VARCHAR(100),
+            fabricante VARCHAR(255),
+            modelo VARCHAR(255),
+            numero_serie VARCHAR(255),
+            patrimonio VARCHAR(255),
+            status VARCHAR(100) DEFAULT 'ativo',
+            unidade_id INTEGER REFERENCES unidades(id),
+            local_atual_nome VARCHAR(255),
+            cliente_atual VARCHAR(255),
+            observacoes TEXT,
             contador_mono INTEGER DEFAULT 0,
             contador_color INTEGER DEFAULT 0,
-            
-            -- Campos especificos COMPUTADOR/SERVIDOR
-            processador_modelo TEXT,
-            processador_geracao TEXT,
-            processador_velocidade TEXT,
-            memoria_capacidade TEXT,
-            memoria_tipo TEXT,
-            memoria_barramento TEXT,
-            memoria_velocidade TEXT,
-            armazenamento_1_capacidade TEXT,
-            armazenamento_1_tipo TEXT,
-            armazenamento_2_capacidade TEXT,
-            armazenamento_2_tipo TEXT,
-            armazenamento_3_capacidade TEXT,
-            armazenamento_3_tipo TEXT,
-            
-            -- Campos comuns
-            status TEXT DEFAULT 'ativo' CHECK(status IN ('ativo','inativo')),
-            local_atual_id INTEGER,
-            unidade_id INTEGER,
-            local_atual_nome TEXT,
-            cliente_atual TEXT,
-            observacoes TEXT,
-            data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            ativo INTEGER DEFAULT 1,
-            FOREIGN KEY (unidade_id) REFERENCES unidades(id)
+            data_cadastro VARCHAR(50),
+            ativo INTEGER DEFAULT 1
         )
-    ''')
+    """)
 
-    # TABELA: movimentacoes
-    cur.execute('''
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS movimentacoes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            equipamento_id INTEGER NOT NULL,
-            data_movimentacao DATE NOT NULL,
-            origem_local TEXT,
-            origem_unidade TEXT,
-            destino_local TEXT NOT NULL,
-            destino_unidade TEXT,
-            tipo_movimento TEXT NOT NULL CHECK(tipo_movimento IN (
-                'entrada_estoque','saida_cliente','retorno_cliente',
-                'envio_manutencao','retorno_manutencao','transferencia'
-            )),
-            responsavel TEXT,
+            id SERIAL PRIMARY KEY,
+            equipamento_id INTEGER NOT NULL REFERENCES equipamentos(id),
+            data_movimentacao VARCHAR(50) NOT NULL,
+            origem_local VARCHAR(255),
+            origem_unidade VARCHAR(255),
+            destino_local VARCHAR(255) NOT NULL,
+            destino_unidade VARCHAR(255),
+            tipo_movimento VARCHAR(100) NOT NULL,
+            responsavel VARCHAR(255),
             observacoes TEXT,
             contador_mono_anterior INTEGER,
             contador_mono_novo INTEGER,
             contador_color_anterior INTEGER,
-            contador_color_novo INTEGER,
-            FOREIGN KEY (equipamento_id) REFERENCES equipamentos(id)
+            contador_color_novo INTEGER
         )
-    ''')
+    """)
 
-    # TABELA: historico_defeitos
-    cur.execute('''
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS historico_defeitos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            equipamento_id INTEGER NOT NULL,
-            data_ocorrencia DATE DEFAULT CURRENT_DATE,
-            descricao TEXT NOT NULL,
-            status TEXT DEFAULT 'pendente' CHECK(status IN ('pendente','resolvido')),
-            FOREIGN KEY (equipamento_id) REFERENCES equipamentos(id)
+            id SERIAL PRIMARY KEY,
+            equipamento_id INTEGER NOT NULL REFERENCES equipamentos(id),
+            descricao TEXT,
+            data_ocorrencia VARCHAR(50)
         )
-    ''')
+    """)
 
-    # TABELA: usuarios
-    cur.execute('''
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            usuario TEXT UNIQUE NOT NULL,
-            senha_hash TEXT NOT NULL,
-            nivel TEXT DEFAULT 'tecnico' CHECK(nivel IN ('admin','gerente','tecnico')),
+            id SERIAL PRIMARY KEY,
+            nome VARCHAR(255) NOT NULL,
+            usuario VARCHAR(255) UNIQUE NOT NULL,
+            senha_hash VARCHAR(255) NOT NULL,
+            nivel VARCHAR(50) DEFAULT 'tecnico',
             ativo INTEGER DEFAULT 1
         )
-    ''')
+    """)
 
-    # Usuario admin padrao
-    senha_hash = hashlib.sha256('admin123'.encode()).hexdigest()
-    cur.execute('''
-        INSERT OR IGNORE INTO usuarios (nome, usuario, senha_hash, nivel)
-        VALUES ('Administrador', 'admin', ?, 'admin')
-    ''', (senha_hash,))
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS acesso_remoto (
+            id SERIAL PRIMARY KEY,
+            local VARCHAR(255) NOT NULL,
+            anydesk VARCHAR(255),
+            senha VARCHAR(255),
+            observacoes TEXT,
+            ativo INTEGER DEFAULT 1
+        )
+    """)
 
-    # EMPRESAS / UNIDADES PADRAO
-    # Proteger nova tabela locais caso já tenha dados
-    cur.execute("SELECT COUNT(*) FROM empresas")
-    if cur.fetchone()[0] == 0:
+    db.commit()
+    cur.close()
+
+    _executar_migrations()
+
+    db = get_db()
+    cur = db.cursor()
+    senha_hash = hashlib.sha256('ipascnma'.encode()).hexdigest()
+    cur.execute("""
+        INSERT INTO usuarios (nome, usuario, senha_hash, nivel)
+        VALUES ('Administrador', 'admin', %s, 'admin')
+        ON CONFLICT (usuario) DO NOTHING
+    """, (senha_hash,))
+
+    cur.execute("SELECT COUNT(*) as count FROM empresas")
+    if cur.fetchone()['count'] == 0:
         padrao_empresas = [
             ('RENCH', 'rench'),
             ('SAMIR', 'cliente'),
@@ -265,30 +283,17 @@ def init_db():
             ('R10', 'assistencia'),
         ]
         for nome, tipo in padrao_empresas:
-            cur.execute("INSERT INTO empresas (nome, tipo) VALUES (?, ?)", (nome, tipo))
-        # Associar unidades padrão de RENCH
+            cur.execute("INSERT INTO empresas (nome, tipo) VALUES (%s, %s)", (nome, tipo))
         cur.execute("SELECT id FROM empresas WHERE nome='RENCH'")
-        rench_id = cur.fetchone()[0]
-        cur.execute("INSERT INTO unidades (empresa_id, nome, setor) VALUES (?, ?, ?)", (rench_id, 'RENCH - Estoque', 'Estoque principal'))
-        cur.execute("INSERT INTO unidades (empresa_id, nome, setor) VALUES (?, ?, ?)", (rench_id, 'RENCH - Depósito', 'Depósito secundário'))
-        # R10 unidade padrão
+        rench_id = cur.fetchone()['id']
+        cur.execute("INSERT INTO unidades (empresa_id, nome, setor) VALUES (%s, %s, %s)", (rench_id, 'RENCH - Estoque', 'Estoque principal'))
+        cur.execute("INSERT INTO unidades (empresa_id, nome, setor) VALUES (%s, %s, %s)", (rench_id, 'RENCH - Depósito', 'Depósito secundário'))
         cur.execute("SELECT id FROM empresas WHERE nome='R10'")
-        r10_id = cur.fetchone()[0]
-        cur.execute("INSERT INTO unidades (empresa_id, nome, setor) VALUES (?, ?, ?)", (r10_id, 'R10 - Matriz SP', 'Assistência técnica'))
-
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS acesso_remoto (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            local TEXT NOT NULL,
-            anydesk TEXT,
-            senha TEXT,
-            observacoes TEXT,
-            ativo INTEGER DEFAULT 1
-        )
-    ''')
+        r10_id = cur.fetchone()['id']
+        cur.execute("INSERT INTO unidades (empresa_id, nome, setor) VALUES (%s, %s, %s)", (r10_id, 'R10 - Matriz SP', 'Assistência técnica'))
 
     db.commit()
-    db.close()
+    cur.close()
     print("Banco de dados inicializado!")
 
 def _normalizar_texto(valor):
@@ -341,20 +346,20 @@ def _descobrir_fabricante(modelo):
 def gerar_codigo_rastreio(cur, tipo_equipamento):
     prefixo = PREFIXOS_RASTREIO.get(tipo_equipamento, "EQP")
     cur.execute(
-        "SELECT codigo FROM equipamentos WHERE tipo_equipamento=? AND codigo LIKE ?",
+        "SELECT codigo FROM equipamentos WHERE tipo_equipamento=%s AND codigo LIKE %s",
         (tipo_equipamento, f"RCH-{prefixo}-%")
     )
     numeros = []
     for row in cur.fetchall():
         try:
-            numeros.append(int(row[0].split("-")[-1]))
-        except (TypeError, ValueError, IndexError):
+            numeros.append(int(row['codigo'].split("-")[-1]))
+        except (TypeError, ValueError, IndexError, AttributeError):
             pass
     proximo_numero = (max(numeros) if numeros else 0) + 1
     codigo = f"RCH-{prefixo}-{proximo_numero:06d}"
 
     while True:
-        cur.execute("SELECT id FROM equipamentos WHERE codigo=?", (codigo,))
+        cur.execute("SELECT id FROM equipamentos WHERE codigo=%s", (codigo,))
         if not cur.fetchone():
             return codigo
         proximo_numero += 1
@@ -366,8 +371,7 @@ def importar_planilha_para_banco(caminho=PLANILHA_PADRAO, limpar=True):
     if not os.path.exists(caminho):
         raise FileNotFoundError(f"Planilha não encontrada: {caminho}")
 
-    db = sqlite3.connect(DATABASE)
-    db.row_factory = sqlite3.Row
+    db = get_db()
     cur = db.cursor()
 
     if limpar:
@@ -392,15 +396,15 @@ def importar_planilha_para_banco(caminho=PLANILHA_PADRAO, limpar=True):
             local_coleta = _normalizar_texto(local_coleta)
             contador = int(contador) if isinstance(contador, (int, float)) else 0
 
-            cur.execute("SELECT id FROM equipamentos WHERE numero_serie=?", (serie,))
+            cur.execute("SELECT id FROM equipamentos WHERE numero_serie=%s", (serie,))
             existente = cur.fetchone() if serie else None
             if existente:
-                equipamento_id = existente["id"]
+                equipamento_id = existente['id']
                 cur.execute("""
                     UPDATE equipamentos
-                    SET modelo=?, fabricante=COALESCE(fabricante, ?), local_atual_nome=?,
-                        contador_mono=?, tipo_equipamento='impressora'
-                    WHERE id=?
+                    SET modelo=%s, fabricante=COALESCE(fabricante, %s), local_atual_nome=%s,
+                        contador_mono=%s, tipo_equipamento='impressora'
+                    WHERE id=%s
                 """, (modelo, _descobrir_fabricante(modelo), local_atual, contador, equipamento_id))
             else:
                 cur.execute("""
@@ -408,9 +412,10 @@ def importar_planilha_para_banco(caminho=PLANILHA_PADRAO, limpar=True):
                         codigo, tipo_equipamento, fabricante, modelo, numero_serie,
                         funcao, tipo_impressao, contador_mono, local_atual_nome,
                         status, observacoes
-                    ) VALUES (?, 'impressora', ?, ?, ?, 'impressora', 'laser', ?, ?, 'ativo', ?)
+                    ) VALUES (%s, 'impressora', %s, %s, %s, 'impressora', 'laser', %s, %s, 'ativo', %s)
+                    RETURNING id
                 """, (gerar_codigo_rastreio(cur, "impressora"), _descobrir_fabricante(modelo), modelo, serie, contador, local_atual, _normalizar_texto(motivo)))
-                equipamento_id = cur.lastrowid
+                equipamento_id = cur.fetchone()['id']
                 importados["impressoras"] += 1
 
             if data or movimento or local_coleta or local_atual:
@@ -418,7 +423,7 @@ def importar_planilha_para_banco(caminho=PLANILHA_PADRAO, limpar=True):
                     INSERT INTO movimentacoes (
                         equipamento_id, data_movimentacao, origem_local, destino_local,
                         tipo_movimento, observacoes
-                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    ) VALUES (%s, %s, %s, %s, %s, %s)
                 """, (
                     equipamento_id,
                     _normalizar_data(data) or datetime.now().strftime("%Y-%m-%d"),
@@ -443,24 +448,25 @@ def importar_planilha_para_banco(caminho=PLANILHA_PADRAO, limpar=True):
             local_atual = _normalizar_texto(local_atual) or "RENCH - Estoque"
             local_coleta = _normalizar_texto(local_coleta)
 
-            cur.execute("SELECT id FROM equipamentos WHERE numero_serie=?", (serie,))
+            cur.execute("SELECT id FROM equipamentos WHERE numero_serie=%s", (serie,))
             existente = cur.fetchone() if serie else None
             if existente:
-                equipamento_id = existente["id"]
+                equipamento_id = existente['id']
                 cur.execute("""
                     UPDATE equipamentos
-                    SET modelo=?, fabricante=COALESCE(fabricante, ?), local_atual_nome=?,
-                        tipo_equipamento=?
-                    WHERE id=?
+                    SET modelo=%s, fabricante=COALESCE(fabricante, %s), local_atual_nome=%s,
+                        tipo_equipamento=%s
+                    WHERE id=%s
                 """, (modelo, _descobrir_fabricante(modelo), local_atual, tipo_equipamento, equipamento_id))
             else:
                 cur.execute("""
                     INSERT INTO equipamentos (
                         codigo, tipo_equipamento, fabricante, modelo, numero_serie,
                         local_atual_nome, status, observacoes
-                    ) VALUES (?, ?, ?, ?, ?, ?, 'ativo', ?)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, 'ativo', %s)
+                    RETURNING id
                 """, (gerar_codigo_rastreio(cur, tipo_equipamento), tipo_equipamento, _descobrir_fabricante(modelo), modelo, serie, local_atual, _normalizar_texto(config) or _normalizar_texto(motivo)))
-                equipamento_id = cur.lastrowid
+                equipamento_id = cur.fetchone()['id']
                 importados["computadores"] += 1
 
             if data or movimento or local_coleta or local_atual:
@@ -468,7 +474,7 @@ def importar_planilha_para_banco(caminho=PLANILHA_PADRAO, limpar=True):
                     INSERT INTO movimentacoes (
                         equipamento_id, data_movimentacao, origem_local, destino_local,
                         tipo_movimento, observacoes
-                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    ) VALUES (%s, %s, %s, %s, %s, %s)
                 """, (
                     equipamento_id,
                     _normalizar_data(data) or datetime.now().strftime("%Y-%m-%d"),
@@ -486,17 +492,17 @@ def importar_planilha_para_banco(caminho=PLANILHA_PADRAO, limpar=True):
             defeito = _normalizar_texto(row[1] if len(row) > 1 else None)
             if not serie or not defeito:
                 continue
-            cur.execute("SELECT id FROM equipamentos WHERE numero_serie=?", (serie,))
+            cur.execute("SELECT id FROM equipamentos WHERE numero_serie=%s", (serie,))
             equip = cur.fetchone()
             if equip:
                 cur.execute("""
                     INSERT INTO historico_defeitos (equipamento_id, descricao)
-                    VALUES (?, ?)
-                """, (equip["id"], defeito))
+                    VALUES (%s, %s)
+                """, (equip['id'], defeito))
                 importados["defeitos"] += 1
 
     db.commit()
-    db.close()
+    cur.close()
     return importados
 
 # ============================================================
@@ -538,15 +544,12 @@ def index():
     db = get_db()
     cur = db.cursor()
 
-    # Contagens por tipo
     cur.execute("SELECT tipo_equipamento, COUNT(*) as qtd FROM equipamentos WHERE ativo=1 GROUP BY tipo_equipamento")
     por_tipo = {r['tipo_equipamento']: r['qtd'] for r in cur.fetchall()}
 
-    # Contagens por local
     cur.execute("SELECT local_atual_nome, COUNT(*) as qtd FROM equipamentos WHERE ativo=1 AND local_atual_nome IS NOT NULL GROUP BY local_atual_nome")
     por_local = cur.fetchall()
 
-    # Ultimas movimentacoes (somente datas validas)
     cur.execute("""
         SELECT m.data_movimentacao, e.tipo_equipamento, e.modelo, e.numero_serie, m.tipo_movimento, m.destino_local, m.responsavel
         FROM movimentacoes m
@@ -605,10 +608,10 @@ def lista_equipamentos():
     params = []
 
     if tipo:
-        sql += " AND e.tipo_equipamento = ?"
+        sql += " AND e.tipo_equipamento = %s"
         params.append(tipo)
     if unidade_id:
-        sql += " AND e.unidade_id = ?"
+        sql += " AND e.unidade_id = %s"
         params.append(unidade_id)
     sql += " ORDER BY e.tipo_equipamento, e.modelo"
 
@@ -638,7 +641,6 @@ def lista_equipamentos():
         equipamentos = [item[1] for item in filtrados]
         sugestoes = buscar_sugestoes_locais(cur, busca)
 
-    # Lista de unidades para o filtro
     cur.execute("""
         SELECT u.id, u.nome, e.nome as empresa_nome
         FROM unidades u
@@ -659,16 +661,16 @@ def detalhe_equipamento(equip_id):
     db = get_db()
     cur = db.cursor()
 
-    cur.execute("SELECT * FROM equipamentos WHERE id=? AND ativo=1", (equip_id,))
+    cur.execute("SELECT * FROM equipamentos WHERE id=%s AND ativo=1", (equip_id,))
     equip = cur.fetchone()
     if not equip:
         flash("Equipamento nao encontrado!", "danger")
         return redirect(url_for('lista_equipamentos'))
 
-    cur.execute("SELECT * FROM movimentacoes WHERE equipamento_id=? ORDER BY data_movimentacao DESC, id DESC", (equip_id,))
+    cur.execute("SELECT * FROM movimentacoes WHERE equipamento_id=%s ORDER BY data_movimentacao DESC, id DESC", (equip_id,))
     movimentacoes = cur.fetchall()
 
-    cur.execute("SELECT * FROM historico_defeitos WHERE equipamento_id=? ORDER BY data_ocorrencia DESC", (equip_id,))
+    cur.execute("SELECT * FROM historico_defeitos WHERE equipamento_id=%s ORDER BY data_ocorrencia DESC", (equip_id,))
     defeitos = cur.fetchall()
 
     return render_template('equipamento_detalhe.html',
@@ -683,11 +685,10 @@ def novo_equipamento():
 
     if request.method == 'POST':
         tipo = request.form['tipo_equipamento']
-        # Resolve empresa -> unidade
         unidade_id = request.form.get('unidade_id') or None
         local_atual_nome = request.form.get('local_atual_nome')
         if unidade_id:
-            cur.execute("SELECT u.nome, e.nome FROM unidades u JOIN empresas e ON e.id=u.empresa_id WHERE u.id=?", (unidade_id,))
+            cur.execute("SELECT u.nome, e.nome FROM unidades u JOIN empresas e ON e.id=u.empresa_id WHERE u.id=%s", (unidade_id,))
             unidade = cur.fetchone()
             if unidade:
                 local_atual_nome = unidade[0]
@@ -696,7 +697,7 @@ def novo_equipamento():
                 cliente_atual = None
         else:
             cliente_atual = None
-        # Campos comuns
+
         campos = {
             'codigo': gerar_codigo_rastreio(cur, tipo),
             'tipo_equipamento': tipo,
@@ -711,7 +712,6 @@ def novo_equipamento():
             'observacoes': request.form.get('observacoes'),
         }
 
-        # Campos especificos por tipo
         if tipo == 'impressora':
             campos.update({
                 'funcao': request.form.get('funcao'),
@@ -737,10 +737,9 @@ def novo_equipamento():
                 'armazenamento_3_tipo': request.form.get('armazenamento_3_tipo'),
             })
 
-        # Montar SQL dinamico
         colunas = [k for k, v in campos.items() if v is not None]
         valores = [campos[k] for k in colunas]
-        placeholders = ','.join(['?' for _ in colunas])
+        placeholders = ','.join(['%s' for _ in colunas])
 
         sql = f"INSERT INTO equipamentos ({','.join(colunas)}) VALUES ({placeholders})"
         cur.execute(sql, valores)
@@ -749,7 +748,6 @@ def novo_equipamento():
         flash("Equipamento cadastrado com sucesso!", "success")
         return redirect(url_for('lista_equipamentos'))
 
-    # GET - carregar empresas e unidades para o formulario
     cur.execute("""
         SELECT e.id as empresa_id, e.nome as empresa_nome, e.tipo as empresa_tipo,
                u.id as unidade_id, u.nome as unidade_nome, u.setor
@@ -768,7 +766,7 @@ def editar_equipamento(equip_id):
     db = get_db()
     cur = db.cursor()
 
-    cur.execute("SELECT * FROM equipamentos WHERE id=? AND ativo=1", (equip_id,))
+    cur.execute("SELECT * FROM equipamentos WHERE id=%s AND ativo=1", (equip_id,))
     equip = cur.fetchone()
     if not equip:
         flash("Equipamento nao encontrado!", "danger")
@@ -784,7 +782,7 @@ def editar_equipamento(equip_id):
                 SELECT u.nome as unidade_nome, e.nome as empresa_nome
                 FROM unidades u
                 JOIN empresas e ON e.id = u.empresa_id
-                WHERE u.id=?
+                WHERE u.id=%s
             """, (unidade_id,))
             unidade = cur.fetchone()
             if unidade:
@@ -821,9 +819,9 @@ def editar_equipamento(equip_id):
             'armazenamento_3_tipo': request.form.get('armazenamento_3_tipo'),
         }
 
-        set_sql = ', '.join([f"{campo}=?" for campo in campos])
+        set_sql = ', '.join([f"{campo}=%s" for campo in campos])
         valores = list(campos.values()) + [equip_id]
-        cur.execute(f"UPDATE equipamentos SET {set_sql} WHERE id=?", valores)
+        cur.execute(f"UPDATE equipamentos SET {set_sql} WHERE id=%s", valores)
         db.commit()
 
         flash("Equipamento atualizado com sucesso!", "success")
@@ -861,13 +859,13 @@ def equipamentos_por_unidade():
     if empresa_id:
         cur.execute("""
             SELECT id, nome, setor FROM unidades
-            WHERE empresa_id=? AND ativo=1
+            WHERE empresa_id=%s AND ativo=1
             ORDER BY nome
         """, (empresa_id,))
         unidades = cur.fetchall()
 
     if unidade_id:
-        cur.execute("SELECT u.*, e.nome as empresa_nome FROM unidades u LEFT JOIN empresas e ON e.id=u.empresa_id WHERE u.id=?", (unidade_id,))
+        cur.execute("SELECT u.*, e.nome as empresa_nome FROM unidades u LEFT JOIN empresas e ON e.id=u.empresa_id WHERE u.id=%s", (unidade_id,))
         unidade_selecionada = cur.fetchone()
 
         sql = """
@@ -876,11 +874,11 @@ def equipamentos_por_unidade():
             FROM equipamentos e
             LEFT JOIN unidades u ON e.unidade_id = u.id
             LEFT JOIN empresas emp ON emp.id = u.empresa_id
-            WHERE e.ativo=1 AND (e.unidade_id = ? OR e.local_atual_nome = (SELECT nome FROM unidades WHERE id=?))
+            WHERE e.ativo=1 AND (e.unidade_id = %s OR e.local_atual_nome = (SELECT nome FROM unidades WHERE id=%s))
         """
         params = [unidade_id, unidade_id]
         if tipo:
-            sql += " AND e.tipo_equipamento = ?"
+            sql += " AND e.tipo_equipamento = %s"
             params.append(tipo)
         sql += " ORDER BY e.tipo_equipamento, e.modelo"
         cur.execute(sql, params)
@@ -898,9 +896,9 @@ def equipamentos_por_unidade():
 def excluir_equipamento(equip_id):
     db = get_db()
     cur = db.cursor()
-    cur.execute("UPDATE equipamentos SET ativo=0 WHERE id=?", (equip_id,))
+    cur.execute("UPDATE equipamentos SET ativo=0 WHERE id=%s", (equip_id,))
     db.commit()
-    flash('Equipamento exclu?do com sucesso.', 'success')
+    flash('Equipamento excluido com sucesso.', 'success')
     return redirect(url_for('lista_equipamentos'))
 
 @app.route('/movimentar/<int:equip_id>', methods=['GET', 'POST'])
@@ -909,7 +907,7 @@ def movimentar(equip_id):
     db = get_db()
     cur = db.cursor()
 
-    cur.execute("SELECT e.*, u.nome as unidade_nome, emp.nome as empresa_nome FROM equipamentos e LEFT JOIN unidades u ON u.id=e.unidade_id LEFT JOIN empresas emp ON emp.id=u.empresa_id WHERE e.id=?", (equip_id,))
+    cur.execute("SELECT e.*, u.nome as unidade_nome, emp.nome as empresa_nome FROM equipamentos e LEFT JOIN unidades u ON u.id=e.unidade_id LEFT JOIN empresas emp ON emp.id=u.empresa_id WHERE e.id=%s", (equip_id,))
     equip = cur.fetchone()
     if not equip:
         flash("Equipamento nao encontrado!", "danger")
@@ -924,26 +922,23 @@ def movimentar(equip_id):
         contador_mono_novo = request.form.get('contador_mono_novo', '').strip()
         contador_color_novo = request.form.get('contador_color_novo', '').strip()
 
-        # Converte para inteiros
         contador_mono_anterior = int(equip['contador_mono'] or 0)
         contador_color_anterior = int(equip['contador_color'] or 0)
         contador_mono_novo_int = int(contador_mono_novo) if contador_mono_novo else contador_mono_anterior
         contador_color_novo_int = int(contador_color_novo) if contador_color_novo else contador_color_anterior
 
-        # Nome da unidade de destino
         destino_unidade_nome = None
         if destino_unidade_id:
-            cur.execute("SELECT nome, empresa_id FROM unidades WHERE id=?", (destino_unidade_id,))
+            cur.execute("SELECT nome, empresa_id FROM unidades WHERE id=%s", (destino_unidade_id,))
             unidade_dest = cur.fetchone()
             if unidade_dest:
                 destino_unidade_nome = unidade_dest['nome']
 
-        # Inserir movimentacao
         cur.execute("""
             INSERT INTO movimentacoes (equipamento_id, data_movimentacao, tipo_movimento,
                 origem_local, origem_unidade, destino_local, destino_unidade, responsavel, observacoes,
                 contador_mono_anterior, contador_mono_novo, contador_color_anterior, contador_color_novo)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """, (equip_id, data_mov, tipo_mov,
               equip['local_atual_nome'], equip['unidade_nome'] or equip['local_atual_nome'],
               destino_unidade_nome or "Sem unidade", destino_unidade_nome,
@@ -951,10 +946,9 @@ def movimentar(equip_id):
               contador_mono_anterior, contador_mono_novo_int,
               contador_color_anterior, contador_color_novo_int))
 
-        # Atualizar equipamento
         cur.execute("""
-            UPDATE equipamentos SET unidade_id=?, local_atual_nome=?, cliente_atual=?,
-                contador_mono=?, contador_color=? WHERE id=?
+            UPDATE equipamentos SET unidade_id=%s, local_atual_nome=%s, cliente_atual=%s,
+                contador_mono=%s, contador_color=%s WHERE id=%s
         """, (destino_unidade_id, destino_unidade_nome, None,
               contador_mono_novo_int, contador_color_novo_int, equip_id))
 
@@ -981,79 +975,73 @@ def lista_locais():
     cur = db.cursor()
 
     if request.method == 'POST':
-        # Cadastrar nova empresa
         if request.form.get('acao') == 'empresa':
             nome = request.form.get('nome')
             tipo = request.form.get('tipo', 'cliente')
             if nome:
-                cur.execute("INSERT INTO empresas (nome, tipo) VALUES (?, ?)", (nome, tipo))
+                cur.execute("INSERT INTO empresas (nome, tipo) VALUES (%s, %s)", (nome, tipo))
                 db.commit()
                 flash("Empresa cadastrada com sucesso!", "success")
             return redirect(url_for('lista_locais'))
 
-        # Editar empresa
         if request.form.get('acao') == 'empresa_editar':
             empresa_id = request.form.get('empresa_id')
             nome = request.form.get('nome')
             tipo = request.form.get('tipo', 'cliente')
             if empresa_id and nome:
-                cur.execute("UPDATE empresas SET nome=?, tipo=? WHERE id=?", (nome, tipo, empresa_id))
+                cur.execute("UPDATE empresas SET nome=%s, tipo=%s WHERE id=%s", (nome, tipo, empresa_id))
                 db.commit()
                 flash("Empresa atualizada com sucesso!", "success")
             return redirect(url_for('lista_locais'))
 
-        # Excluir empresa
         if request.form.get('acao') == 'empresa_excluir':
             empresa_id = request.form.get('empresa_id')
             if empresa_id:
-                cur.execute("UPDATE empresas SET ativo=0 WHERE id=?", (empresa_id,))
-                cur.execute("UPDATE unidades SET ativo=0 WHERE empresa_id=?", (empresa_id,))
+                cur.execute("UPDATE empresas SET ativo=0 WHERE id=%s", (empresa_id,))
+                cur.execute("UPDATE unidades SET ativo=0 WHERE empresa_id=%s", (empresa_id,))
                 db.commit()
                 flash("Empresa excluida com sucesso.", "success")
             return redirect(url_for('lista_locais'))
 
-        # Cadastrar nova unidade
         if request.form.get('acao') == 'unidade':
             empresa_id = request.form.get('empresa_id')
             nome = request.form.get('unidade_nome')
             setor = request.form.get('setor')
             if empresa_id and nome:
-                cur.execute("INSERT INTO unidades (empresa_id, nome, setor) VALUES (?, ?, ?)", (empresa_id, nome, setor))
+                cur.execute("INSERT INTO unidades (empresa_id, nome, setor) VALUES (%s, %s, %s)", (empresa_id, nome, setor))
                 db.commit()
                 flash("Unidade cadastrada com sucesso!", "success")
             return redirect(url_for('lista_locais'))
 
-        # Editar unidade
         if request.form.get('acao') == 'unidade_editar':
             unidade_id = request.form.get('unidade_id')
             nome = request.form.get('unidade_nome')
             setor = request.form.get('setor')
             empresa_id = request.form.get('empresa_id')
             if unidade_id and nome and empresa_id:
-                cur.execute("UPDATE unidades SET nome=?, setor=?, empresa_id=? WHERE id=?", (nome, setor, empresa_id, unidade_id))
+                cur.execute("UPDATE unidades SET nome=%s, setor=%s, empresa_id=%s WHERE id=%s", (nome, setor, empresa_id, unidade_id))
                 db.commit()
                 flash("Unidade atualizada com sucesso!", "success")
             return redirect(url_for('lista_locais'))
 
-        # Excluir unidade
         if request.form.get('acao') == 'unidade_excluir':
             unidade_id = request.form.get('unidade_id')
             if unidade_id:
-                cur.execute("UPDATE unidades SET ativo=0 WHERE id=?", (unidade_id,))
+                cur.execute("UPDATE unidades SET ativo=0 WHERE id=%s", (unidade_id,))
                 db.commit()
                 flash("Unidade excluida com sucesso.", "success")
             return redirect(url_for('lista_locais'))
 
-        # Unificar unidades duplicadas
         if request.form.get('acao') == 'unidade_unificar':
             manter_id = request.form.get('manter_id')
             remover_id = request.form.get('remover_id')
             if manter_id and remover_id and manter_id != remover_id:
-                # Atualiza equipamentos apontando para a unidade a manter
-                cur.execute("UPDATE equipamentos SET unidade_id=? WHERE unidade_id=?", (manter_id, remover_id))
-                cur.execute("UPDATE equipamentos SET local_atual_nome=(SELECT nome FROM unidades WHERE id=?) WHERE unidade_id=? AND local_atual_nome=(SELECT nome FROM unidades WHERE id=?)", (manter_id, manter_id, remover_id))
-                # Desativa a unidade duplicada
-                cur.execute("UPDATE unidades SET ativo=0 WHERE id=?", (remover_id,))
+                cur.execute("UPDATE equipamentos SET unidade_id=%s WHERE unidade_id=%s", (manter_id, remover_id))
+                cur.execute("""
+                    UPDATE equipamentos SET local_atual_nome=(SELECT nome FROM unidades WHERE id=%s)
+                    WHERE unidade_id=%s AND local_atual_nome=(SELECT nome FROM unidades WHERE id=%s)
+                """, (manter_id, manter_id, remover_id))
+                cur.execute("UPDATE unidades SET ativo=0 WHERE id=%s", (remover_id,))
                 db.commit()
                 flash("Unidades unificadas com sucesso!", "success")
             return redirect(url_for('lista_locais'))
@@ -1093,7 +1081,7 @@ def acesso_remoto():
         if acao == 'novo':
             cur.execute("""
                 INSERT INTO acesso_remoto (local, anydesk, senha, observacoes)
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s)
             """, (
                 request.form.get('local'),
                 request.form.get('anydesk'),
@@ -1105,8 +1093,8 @@ def acesso_remoto():
         elif acao == 'editar':
             cur.execute("""
                 UPDATE acesso_remoto
-                SET local=?, anydesk=?, senha=?, observacoes=?
-                WHERE id=?
+                SET local=%s, anydesk=%s, senha=%s, observacoes=%s
+                WHERE id=%s
             """, (
                 request.form.get('local'),
                 request.form.get('anydesk'),
@@ -1117,7 +1105,7 @@ def acesso_remoto():
             db.commit()
             flash('Acesso remoto atualizado com sucesso!', 'success')
         elif acao == 'excluir':
-            cur.execute("UPDATE acesso_remoto SET ativo=0 WHERE id=?", (request.form.get('id'),))
+            cur.execute("UPDATE acesso_remoto SET ativo=0 WHERE id=%s", (request.form.get('id'),))
             db.commit()
             flash('Acesso remoto excluido.', 'success')
         return redirect(url_for('acesso_remoto', q=busca))
@@ -1125,7 +1113,7 @@ def acesso_remoto():
     sql = "SELECT * FROM acesso_remoto WHERE ativo=1"
     params = []
     if busca:
-        sql += " AND (local LIKE ? OR anydesk LIKE ? OR senha LIKE ? OR observacoes LIKE ?)"
+        sql += " AND (local ILIKE %s OR anydesk ILIKE %s OR senha ILIKE %s OR observacoes ILIKE %s)"
         like = f'%{busca}%'
         params = [like, like, like, like]
     sql += " ORDER BY local"
@@ -1138,23 +1126,23 @@ def acesso_remoto():
 def historico():
     db = get_db()
     cur = db.cursor()
-    
+
     equip_id = request.args.get('equipamento_id')
     serie = request.args.get('serie')
-    
+
     equip = None
     movimentacoes = []
     sugestoes = []
-    
+
     if equip_id:
-        cur.execute("SELECT * FROM equipamentos WHERE id=?", (equip_id,))
+        cur.execute("SELECT * FROM equipamentos WHERE id=%s", (equip_id,))
         equip = cur.fetchone()
         if equip:
             cur.execute("""
                 SELECT m.*, e.modelo, e.numero_serie
                 FROM movimentacoes m
                 JOIN equipamentos e ON m.equipamento_id = e.id
-                WHERE m.equipamento_id = ?
+                WHERE m.equipamento_id = %s
                 ORDER BY m.data_movimentacao DESC
             """, (equip_id,))
             movimentacoes = cur.fetchall()
@@ -1179,7 +1167,6 @@ def historico():
                 encontrados.append((pontuacao, candidato))
 
         encontrados.sort(key=lambda item: item[0], reverse=True)
-        # Só aceita resultado se a pontuacao for alta (evita devolver qualquer coisa parecida)
         if encontrados and encontrados[0][0] >= 50:
             equip = encontrados[0][1]
             sugestoes = [item[1] for item in encontrados[1:6]]
@@ -1187,7 +1174,7 @@ def historico():
                 SELECT m.*, e.modelo, e.numero_serie
                 FROM movimentacoes m
                 JOIN equipamentos e ON m.equipamento_id = e.id
-                WHERE m.equipamento_id = ?
+                WHERE m.equipamento_id = %s
                 ORDER BY m.data_movimentacao DESC
             """, (equip['id'],))
             movimentacoes = cur.fetchall()
@@ -1208,7 +1195,6 @@ def tela_movimentar():
     equipamento = None
 
     if request.method == 'POST':
-        # Delayed redirect after selection – handled by JS or GET form, but support direct POST too
         equip_id = request.form.get('equipamento_id')
         if equip_id:
             return redirect(url_for('movimentar', equip_id=equip_id))
@@ -1231,7 +1217,7 @@ def tela_movimentar():
     params = []
 
     if tipo:
-        sql += " AND e.tipo_equipamento = ?"
+        sql += " AND e.tipo_equipamento = %s"
         params.append(tipo)
     sql += " ORDER BY e.tipo_equipamento, e.modelo"
 
@@ -1261,11 +1247,10 @@ def tela_movimentar():
 # Inicializa o banco automaticamente se estiver vazio
 with app.app_context():
     init_db()
-    # Se não houver equipamentos, importa da planilha
     db = get_db()
     cur = db.cursor()
-    cur.execute("SELECT COUNT(*) FROM equipamentos")
-    if cur.fetchone()[0] == 0:
+    cur.execute("SELECT COUNT(*) as count FROM equipamentos")
+    if cur.fetchone()['count'] == 0:
         try:
             importar_planilha_para_banco()
         except Exception as e:

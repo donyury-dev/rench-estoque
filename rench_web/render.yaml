@@ -9,3 +9,5 @@ envVars:
     generateValue: true
   - key: RENDER
     value: "1"
+  - key: DATABASE_URL
+    sync: false
