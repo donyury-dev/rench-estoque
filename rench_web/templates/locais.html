@@ -144,7 +144,8 @@
     {% endfor %}
 
     <div class="row">
-      {% for empresa_id, unidades_emp in grupos.items()|sort(attribute='1.0.empresa_tipo', reverse=True) %}
+      {% for empresa_id, unidades_emp in grupos.items() %}
+        {% if unidades_emp %}
         {% set primeiro = unidades_emp[0] %}
         <div class="col-md-6 col-lg-4 mb-3">
           <div class="card h-100 border">
@@ -227,6 +228,7 @@
             </div>
           </div>
         </div>
+        {% endif %}
       {% endfor %}
     </div>
   </div>
