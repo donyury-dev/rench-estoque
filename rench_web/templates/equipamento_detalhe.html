@@ -29,6 +29,7 @@
         <tr><td class="text-muted">Patrimônio/TAG</td><td>{{equip.patrimonio or '-'}}</td></tr>
         <tr><td class="text-muted">Status</td><td><span class="status-badge {{'s-estoque' if equip.status=='ativo' else 's-descartado'}}">{{equip.status}}</span></td></tr>
         <tr><td class="text-muted">Local atual</td><td><strong>{{equip.local_atual_nome or '-'}}</strong></td></tr>
+        <tr><td class="text-muted">Setor</td><td>{{equip.setor_equipamento or '-'}}</td></tr>
         <tr><td class="text-muted">Cliente atual</td><td>{{equip.cliente_atual or '-'}}</td></tr>
       </table>
     </div>

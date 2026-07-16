@@ -87,6 +87,7 @@
         </td>
         <td>
           <strong>{{e.local_atual_nome or e.local_nome or '-'}}</strong><br>
+          {% if e.setor_equipamento %}<small class="text-primary">{{e.setor_equipamento}}</small><br>{% endif %}
           <small class="text-muted">{{e.cliente_atual or e.empresa_nome or '-'}}</small>
         </td>
         <td>

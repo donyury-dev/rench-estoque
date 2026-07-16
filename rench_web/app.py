@@ -151,6 +151,7 @@ def _executar_migrations():
         ('equipamentos', 'armazenamento_3_capacidade', 'VARCHAR(50)'),
         ('equipamentos', 'armazenamento_3_tipo', 'VARCHAR(50)'),
         ('equipamentos', 'local_atual_id', 'INTEGER'),
+        ('equipamentos', 'setor_equipamento', 'VARCHAR(255)'),
         ('historico_defeitos', 'status', 'VARCHAR(50)'),
     ]:
         if not coluna_existe(tabela, coluna):
@@ -633,6 +634,7 @@ def lista_equipamentos():
                 equipamento["local_nome"],
                 equipamento["empresa_nome"],
                 equipamento["unidade_setor"],
+                equipamento.get("setor_equipamento"),
             )
             if pontuacao >= 50:
                 filtrados.append((pontuacao, equipamento))
@@ -705,6 +707,7 @@ def novo_equipamento():
             'modelo': request.form.get('modelo'),
             'numero_serie': request.form.get('numero_serie'),
             'patrimonio': request.form.get('patrimonio'),
+            'setor_equipamento': request.form.get('setor_equipamento'),
             'status': request.form.get('status', 'ativo'),
             'unidade_id': unidade_id,
             'local_atual_nome': local_atual_nome,
@@ -794,6 +797,7 @@ def editar_equipamento(equip_id):
             'modelo': request.form.get('modelo'),
             'numero_serie': request.form.get('numero_serie'),
             'patrimonio': request.form.get('patrimonio'),
+            'setor_equipamento': request.form.get('setor_equipamento'),
             'status': request.form.get('status', 'ativo'),
             'unidade_id': unidade_id,
             'local_atual_nome': local_atual_nome,
@@ -919,6 +923,7 @@ def movimentar(equip_id):
         destino_unidade_id = request.form.get('destino_unidade_id')
         responsavel = request.form.get('responsavel')
         obs = request.form.get('observacoes')
+        setor_destino = request.form.get('setor_equipamento', '').strip() or None
         contador_mono_novo = request.form.get('contador_mono_novo', '').strip()
         contador_color_novo = request.form.get('contador_color_novo', '').strip()
 
@@ -948,9 +953,9 @@ def movimentar(equip_id):
 
         cur.execute("""
             UPDATE equipamentos SET unidade_id=%s, local_atual_nome=%s, cliente_atual=%s,
-                contador_mono=%s, contador_color=%s WHERE id=%s
+                contador_mono=%s, contador_color=%s, setor_equipamento=%s WHERE id=%s
         """, (destino_unidade_id, destino_unidade_nome, None,
-              contador_mono_novo_int, contador_color_novo_int, equip_id))
+              contador_mono_novo_int, contador_color_novo_int, setor_destino, equip_id))
 
         db.commit()
         flash("Movimentacao registrada com sucesso!", "success")
