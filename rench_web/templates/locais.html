@@ -105,11 +105,15 @@
           {% if grupos[emp.id] %}
             {% for u in grupos[emp.id] %}
             <div id="unidade-row-{{u.unidade_id}}" class="unidade-row d-flex justify-content-between align-items-start border rounded p-2 mb-2" data-nome="{{(u.unidade_nome or '')|lower}}">
-              <div class="me-auto">
+              <a href="{{url_for('equipamentos_por_unidade', empresa_id=u.empresa_id, unidade_id=u.unidade_id)}}" class="me-auto text-decoration-none text-dark" title="Ver equipamentos desta unidade">
                 <div class="fw-bold">{{u.unidade_nome or '-'}}</div>
                 <small class="text-muted">{{u.setor or '-'}}</small>
-              </div>
-              <div class="d-flex gap-1">
+              </a>
+              <div class="d-flex gap-1 align-items-center">
+                <a href="{{url_for('equipamentos_por_unidade', empresa_id=u.empresa_id, unidade_id=u.unidade_id)}}"
+                   class="badge {{'bg-primary' if u.qtd_equipamentos else 'bg-light text-dark border'}}" style="{{'background:var(--primary);' if u.qtd_equipamentos else ''}}" title="Ver equipamentos desta unidade">
+                  <i class="bi bi-box-seam me-1"></i>{{u.qtd_equipamentos}} equip.
+                </a>
                 <button type="button" class="btn btn-sm btn-outline-secondary"
                   onclick="document.getElementById('unidade-edit-{{u.unidade_id}}').style.display='block'; document.getElementById('unidade-row-{{u.unidade_id}}').style.display='none';">
                   <i class="bi bi-pencil"></i>

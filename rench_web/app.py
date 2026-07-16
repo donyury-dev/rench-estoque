@@ -1088,9 +1088,13 @@ def lista_locais():
 
     cur.execute("""
         SELECT e.id as empresa_id, e.nome as empresa_nome, e.tipo as empresa_tipo,
-               u.id as unidade_id, u.nome as unidade_nome, u.setor
+               u.id as unidade_id, u.nome as unidade_nome, u.setor,
+               COALESCE(eq.qtd, 0) as qtd_equipamentos
         FROM empresas e
         LEFT JOIN unidades u ON u.empresa_id = e.id AND u.ativo=1
+        LEFT JOIN (
+            SELECT unidade_id, COUNT(*) as qtd FROM equipamentos WHERE ativo=1 AND unidade_id IS NOT NULL GROUP BY unidade_id
+        ) eq ON eq.unidade_id = u.id
         WHERE e.ativo=1
         ORDER BY e.tipo DESC, e.nome, u.nome
     """)
