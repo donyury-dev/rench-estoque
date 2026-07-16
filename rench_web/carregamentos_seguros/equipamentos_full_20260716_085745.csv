@@ -1,0 +1,511 @@
+﻿id,codigo,tipo_equipamento,fabricante,modelo,numero_serie,patrimonio,status,unidade_id,local_atual_nome,cliente_atual,observacoes,contador_mono,contador_color,data_cadastro,ativo
+512,RCH-IMP-000001,periferico,,MODELO,NUM SERIE,,ativo,,LOCAL ATUAL,,MOTIVO,0,0,2026-06-17 11:50:04,1
+513,RCH-IMP-000002,impressora,Oki,OKI ES5112,ak5c034556,,ativo,199,RENCH - Estoque,,,41245,0,2026-06-17 11:50:04,1
+514,RCH-IMP-000003,impressora,Oki,OKI ES5112,bw02001075,,ativo,,Ama Capão,,,94654,0,2026-06-17 11:50:04,1
+515,RCH-IMP-000004,impressora,Oki,OKI ES4172,ak97011014,,ativo,,Araguaya,,,118249,0,2026-06-17 11:50:04,1
+516,RCH-IMP-000005,impressora,Epson,EPSON L3150,x5ev975364,,ativo,,Saquarema - Samir - (B),,,15455,0,2026-06-17 11:50:04,1
+517,RCH-IMP-000006,impressora,Hp,HP M432,brbsp9d0xt,,ativo,,R10 - SP,,,81504,0,2026-06-17 11:50:04,1
+518,RCH-IMP-000007,impressora,Oki,OKI ES4172,ak76023968,,ativo,,Complexo de Saúde Dr. Antonio João Abdalla ( Cajamar),,,120922,0,2026-06-17 11:50:04,1
+519,RCH-IMP-000008,impressora,Oki,OKI ES4172,ak74007350,,ativo,,Hosp Irmã Dulce 4Id (Praia Grande ),,,239066,0,2026-06-17 11:50:04,1
+520,RCH-IMP-000009,impressora,Oki,OKI ES4172,ak82030734,,ativo,,Humana Verbo Divino,,,221782,0,2026-06-17 11:50:04,1
+521,RCH-IMP-000010,impressora,Hp,HPE55040,jpbcncs247,,ativo,,R10 - SP,,,11905,0,2026-06-17 11:50:04,1
+522,RCH-IMP-000011,impressora,Oki,OKI ES4172,ak76023969,,ativo,,Amparo,,,48732,0,2026-06-17 11:50:04,1
+523,RCH-IMP-000012,impressora,Hp,HP M479,cncrnbj43y,,ativo,,Porsche Matriz,,,13317,19543,2026-06-17 11:50:04,1
+524,RCH-IMP-000013,impressora,Oki,OKI C711,ak96000211d0,,ativo,,R10,,,0,20268,2026-06-17 11:50:04,1
+525,RCH-IMP-000014,impressora,Oki,OKI C711,ak77045151d0,,ativo,,Mercadão-Pirajussara,,,92426,36,2026-06-17 11:50:04,1
+526,RCH-IMP-000015,impressora,Epson,EPSON L1250,xbfr003261,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+527,RCH-IMP-000016,impressora,Epson,EPSON L1250,xbfr003623,,ativo,,R10 - SP,,,27622,0,2026-06-17 11:50:04,1
+528,RCH-IMP-000017,impressora,,Samsung M2835,07bubqag700004nt,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+529,RCH-IMP-000018,impressora,Hp,HP M4103,brbsr1h0mm,,ativo,,Porsche - Florianopolis,,,0,0,2026-06-17 11:50:04,1
+530,RCH-IMP-000019,impressora,Hp,HP M4103,brbsq9n0m0,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+531,RCH-IMP-000020,impressora,Hp,HP M4103,brbsq98084,,ativo,,Porsche - Florianopolis,,,0,0,2026-06-17 11:50:04,1
+532,RCH-IMP-000021,impressora,Epson,EPSON L1250,xbfr011789,,ativo,,Hosp Paulo de Frontin (P),,,12004,0,2026-06-17 11:50:04,1
+533,RCH-IMP-000022,impressora,Epson,EPSON L1250,xbfr008014,,ativo,,"AES São Caetano  (Rua Rafael Corrêa Sampaio,361)",,,30318,0,2026-06-17 11:50:04,1
+534,RCH-IMP-000023,impressora,Oki,OKI ES6405,ak51003860b0,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+535,RCH-IMP-000024,impressora,Oki,OKI C711,ak61009507,,ativo,,Upa Americana,,,55923,11071,2026-06-17 11:50:04,1
+536,RCH-IMP-000025,impressora,Oki,OKI C711,ak87010142d0,,ativo,,"Mercadão - R. Professor Teresinha rodruigues kaliz, Peruibe 881 - loja - 4",,,31074,51,2026-06-17 11:50:04,1
+537,RCH-IMP-000026,impressora,Oki,OKI C711,akb2002039d0,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+538,RCH-IMP-000027,impressora,Oki,OKI C711,ak17037959,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+539,RCH-IMP-000028,impressora,Oki,OKI C711,ak77045132d0,,ativo,,Mercadão - Cotia - Loja 2,,,56780,25,2026-06-17 11:50:04,1
+540,RCH-IMP-000029,impressora,Oki,OKI ES4172,ak97011015c0,,ativo,,Humana Verbo Divino,,,5364,0,2026-06-17 11:50:04,1
+541,RCH-IMP-000030,impressora,Oki,OKI C711,ak57027641d0,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+542,RCH-IMP-000031,impressora,Oki,OKI C711,ak72034259d0,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+543,RCH-IMP-000032,impressora,Oki,OKI C711,ak82002033d0,,ativo,,Mercadão -  Av. Santos drumont  - Loja 3,,,33563,17437,2026-06-17 11:50:04,1
+544,RCH-IMP-000033,impressora,Oki,OKI C711,ak7c001818d0,,ativo,,Mercadão - Rod. Arivaldo de Almeida - Loja 1,,,61684,24,2026-06-17 11:50:04,1
+545,RCH-IMP-000034,impressora,Epson,EPSON L805,w7uk045787,,ativo,,O.S Manutenção,,,14425,0,2026-06-17 11:50:04,1
+546,RCH-IMP-000035,impressora,Oki,OKI C711,ak76042717d0,,ativo,,Amparo - US,,,25160,13261,2026-06-17 11:50:04,1
+547,RCH-IMP-000036,impressora,Oki,OKI ES4172,ak74007338,,ativo,,HD MboiMirim Vera Cruz,,,150813,0,2026-06-17 11:50:04,1
+548,RCH-IMP-000037,impressora,Oki,OKI ES4172,a74007347b0,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+549,RCH-IMP-000038,impressora,Oki,OKI ES4172,bw02002795,,ativo,,R10 - SP,,,83563,0,2026-06-17 11:50:04,1
+550,RCH-IMP-000039,impressora,Oki,OKI ES4172,ak74007341b0,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+551,RCH-IMP-000040,impressora,Oki,OKI ES4172,ak74007342,,ativo,,Humana Ibirapuera,,,159700,0,2026-06-17 11:50:04,1
+552,RCH-IMP-000041,impressora,Oki,OKI ES4172,ak91006437c0,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+553,RCH-IMP-000042,impressora,Oki,OKI C711,ak98003357d0,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+554,RCH-IMP-000043,impressora,Oki,OKI ES4172,ak94022105,,ativo,,R10 - SP,,,115563,0,2026-06-17 11:50:04,1
+555,RCH-IMP-000044,impressora,,CANON G3160,kmxm72219,,ativo,,"AES São Caetano  (Rua Rafael Corrêa Sampaio,361)",,,1521,0,2026-06-17 11:50:04,1
+556,RCH-IMP-000045,impressora,Epson,EPSON L3210,xaaa071978,,ativo,,Miracatu,,,20872,0,2026-06-17 11:50:04,1
+557,RCH-IMP-000046,impressora,Epson,EPSON WF3720,x2tf271566,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+558,RCH-IMP-000047,impressora,Epson,EPSON Stylus Tx125,mdgz035545,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+559,RCH-IMP-000048,impressora,Epson,EPSON L3210,xaaa102808,,ativo,,R10 - SP,,,3633,0,2026-06-17 11:50:04,1
+560,RCH-IMP-000049,impressora,Hp,HP M408,brbsp8m000,,ativo,,Upa Vila das Belezas,,,1596,0,2026-06-17 11:50:04,1
+561,RCH-IMP-000050,impressora,Hp,HP M408,brbs01slcw,,ativo,,Micnet,,,0,0,2026-06-17 11:50:04,1
+562,RCH-IMP-000051,impressora,,CANON G3160,kmxm72916,,ativo,,R10 - SP,,,654,0,2026-06-17 11:50:04,1
+563,RCH-IMP-000052,impressora,,CANON G3160,kmxm72197,,ativo,,R10 - SP,,,743,0,2026-06-17 11:50:04,1
+564,RCH-IMP-000053,impressora,,CANON G3100,klwy49058,,inativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+565,RCH-IMP-000054,impressora,Epson,EPSON L3210,xaaa045703,,ativo,,Aes Brasilandia,,,34839,0,2026-06-17 11:50:04,1
+566,RCH-IMP-000055,impressora,Epson,EPSON L3150,x5eve09521,,ativo,,cs24hrs,,,9596,0,2026-06-17 11:50:04,1
+567,RCH-IMP-000056,impressora,Oki,OKI ES4172,ak85035765,,ativo,,R10 - SP,,,60220,0,2026-06-17 11:50:04,1
+568,RCH-IMP-000057,impressora,,CANON G3160,kmxm48261,,ativo,,Hospital Do Ipiranga,,,1936,0,2026-06-17 11:50:04,1
+569,RCH-IMP-000058,impressora,Epson,EPSON L3250,xaab385589,,ativo,,O.S Manutenção,,,0,0,2026-06-17 11:50:04,1
+570,RCH-IMP-000059,impressora,,BROTHER Dcp-T420W,u6652c148366875,,inativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+571,RCH-IMP-000060,impressora,Oki,OKI C711,ak84014188d0,,ativo,,R10,,,1066,3398,2026-06-17 11:50:04,1
+572,RCH-IMP-000061,impressora,Oki,OKI ES4172,ak94022107c0,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+573,RCH-IMP-000062,impressora,Oki,OKI ES4172,ak7b027835,,ativo,,R10 - SP,,,120063,0,2026-06-17 11:50:04,1
+574,RCH-IMP-000063,impressora,Hp,HP M4103,brbsq9n0mf,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+575,RCH-IMP-000064,impressora,Oki,OKI C911,al9a011868,,ativo,,HM Cubatão,,,0,0,2026-06-17 11:50:04,1
+576,RCH-IMP-000065,impressora,,Samsung M407,zd0pbqaha0011gw,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+577,RCH-IMP-000066,impressora,Epson,EPSON L3150,x5ev742859,,ativo,,Juquitiba,,Impressão Ruim,9802,0,2026-06-17 11:50:04,1
+578,RCH-IMP-000067,impressora,Oki,OKI ES5112,ak5c037009,,ativo,,Upa São Dimas ( Amparo),,Entra no modo de hibernação e não imprime mais,88656,0,2026-06-17 11:50:04,1
+579,RCH-IMP-000068,impressora,Oki,OKI C711,ak9a006523,,ativo,,Upa Itu,,,31674,0,2026-06-17 11:50:04,1
+580,RCH-IMP-000069,impressora,Oki,OKI C711,ak77045153,,ativo,,R10 - SP,,Atolando Papel,52332,1603,2026-06-17 11:50:04,1
+581,RCH-IMP-000070,impressora,Epson,EPSON L3110,x5eu014353,,ativo,,Ama Prates,,,10159,0,2026-06-17 11:50:04,1
+582,RCH-IMP-000071,impressora,Hp,HP M4103,brbsr1h0kf,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:04,1
+583,RCH-IMP-000072,impressora,Epson,EPSON L3110,x5eu273144,,ativo,,R10 - SP,,,13529,0,2026-06-17 11:50:04,1
+584,RCH-IMP-000073,impressora,Epson,EPSON L3150,x5ev000772,,ativo,,Ama Joamar 4ID,,As vezes papel não puxa,24002,0,2026-06-17 11:50:04,1
+585,RCH-IMP-000074,impressora,Epson,EPSON L3110,x5eu342274,,ativo,,P.A Alvorada,,,10455,0,2026-06-17 11:50:04,1
+586,RCH-IMP-000075,impressora,Epson,EPSON L3110,x5eu273141,,ativo,,CSI 24hrs,,,28570,0,2026-06-17 11:50:04,1
+587,RCH-IMP-000076,impressora,Epson,EPSON L805,w7uk043473,,ativo,,R10 - SP,,,27783,0,2026-06-17 11:50:04,1
+588,RCH-IMP-000077,impressora,Epson,EPSON L3250,xaab398495,,ativo,,Complexo de Saúde Dr. Antonio João Abdalla ( Cajamar),,,28382,0,2026-06-17 11:50:04,1
+589,RCH-IMP-000078,impressora,Oki,OKI ES5112,bw02001069,,ativo,,P.A Macedônia,,Quando esquenta apresenta mensagem de (erro 173 Fusor),51091,0,2026-06-17 11:50:04,1
+590,RCH-IMP-000079,impressora,Epson,EPSON L1250,xbfr003582,,ativo,,R10 - SP,,Imagens riscando e impressora vazando,2305,0,2026-06-17 11:50:04,1
+591,RCH-IMP-000080,impressora,Oki,OKI ES5112,bw02014813,,ativo,,Hosp Justino Luz (Piaui) BK,,,49299,0,2026-06-17 11:50:04,1
+592,RCH-IMP-000081,impressora,Epson,EPSON L3110,x5eu271691,,ativo,,Samir - Rondonia,,Um tempo depois da limpeza volta a sair ruim as imagens,8557,0,2026-06-17 11:50:04,1
+593,RCH-IMP-000082,impressora,Epson,EPSON L1250,xbfr005590,,ativo,,"AES São Caetano  (Rua Rafael Corrêa Sampaio,361)",,Um tempo depois da limpeza volta a sair ruim as imagens,4020,0,2026-06-17 11:50:04,1
+594,RCH-IMP-000083,impressora,Epson,EPSON L3150,x5ev09518,,ativo,,Ubs Jundiapeba,,,11486,0,2026-06-17 11:50:04,1
+595,RCH-IMP-000084,impressora,Epson,EPSON L1250,xbfr011742,,ativo,,Upa Jordanésia (Cajamar),,Impressões saindo avermelhada,21554,0,2026-06-17 11:50:04,1
+596,RCH-IMP-000085,impressora,Oki,OKI ES8473,al57029622,,ativo,,Hosp Irmã Dulce  Praia Grande 4ID,,,4202,678,2026-06-17 11:50:04,1
+597,RCH-IMP-000086,impressora,Epson,EPSON WF3720,x2tf269705,,ativo,,R10 - SP,,Impressão Ruim,0,0,2026-06-17 11:50:04,1
+598,RCH-IMP-000087,impressora,Epson,EPSON L3150,x5ev213081,,ativo,,Saquarema - Samir - (P),,Impressora apresentando barulho e impressão ruim,28457,0,2026-06-17 11:50:04,1
+599,RCH-IMP-000088,impressora,Epson,EPSON L3110,x5eu298088,,ativo,,Centro de Exames da Mulher (Capela do Socorro) D.O,,Impressão Ruim,11137,0,2026-06-17 11:50:04,1
+600,RCH-IMP-000089,impressora,Epson,EPSON L3250,xaab283428,,ativo,,R10 - SP,,Impressão ruim e atolandi papel,32014,0,2026-06-17 11:50:04,1
+601,RCH-IMP-000090,impressora,Oki,OKI ES5112,ak6a040330,,ativo,,PQ Novo Sto Amaro,,N estava em uso - Imprimindo só pela MP - bandeja 1 não reconhece,114615,0,2026-06-17 11:50:04,1
+602,RCH-IMP-000091,impressora,Oki,OKI ES4172,ak74007487,,ativo,,R10 - SP,,Atolando Papel,34164,0,2026-06-17 11:50:04,1
+603,RCH-IMP-000092,impressora,Oki,OKI ES5112,ak69040329a0,,ativo,,R10 - SP,,Atolando Papel e sem imagem,0,0,2026-06-17 11:50:04,1
+604,RCH-IMP-000093,impressora,Epson,EPSON L3210,xaaa071936,,ativo,,Hisa,,Saindo impressão em branco,7504,0,2026-06-17 11:50:04,1
+605,RCH-IMP-000094,impressora,Oki,OKI C711,ak98003360,,ativo,,Mercadão - M'Boi Mirim,,,25415,7334,2026-06-17 11:50:04,1
+606,RCH-IMP-000095,impressora,Oki,OKI ES5112,ak6a0403290,,ativo,,R10,,não sai imagem,0,0,2026-06-17 11:50:04,1
+607,RCH-IMP-000096,impressora,Oki,OKI C711,ak82002039,,ativo,,Mercadão Bertioga,,,41658,13996,2026-06-17 11:50:04,1
+608,RCH-IMP-000097,impressora,Oki,OKI C711,ak85026314,,ativo,,R10,,,44200,20108,2026-06-17 11:50:04,1
+609,RCH-IMP-000098,impressora,Oki,OKI C711,ak9a006523d0,,ativo,,R10 - SP,,Não reconhece drum B,0,0,2026-06-17 11:50:04,1
+610,RCH-IMP-000099,impressora,Oki,OKI C711,ak31047994d0,,ativo,,R10,,,51840,263438,2026-06-17 11:50:04,1
+611,RCH-IMP-000100,impressora,Oki,OKI ES5112,ak5c034554,,ativo,,Ama Capela,,Atoalndo papel as vezes,131182,0,2026-06-17 11:50:04,1
+612,RCH-IMP-000101,impressora,Oki,OKIC831,al4c037939,,ativo,,HMU-Samir-Gru,,,6668,9924,2026-06-17 11:50:04,1
+613,RCH-IMP-000102,impressora,Oki,OKI C911,al9a009722,,ativo,,R10 - SP,,,9194,9471,2026-06-17 11:50:04,1
+614,RCH-IMP-000103,impressora,Oki,OKI ES5112,ak92018120,,ativo,,Posto de Atendimento Imediato José Zanedin (Sta Cruz das Palmeiras) P,,Band 1 não funciona,186725,0,2026-06-17 11:50:04,1
+615,RCH-IMP-000104,impressora,Oki,OKI ES5112,ak5c036741,,ativo,,HM Brasilandia - Samir,,,605,0,2026-06-17 11:50:04,1
+616,RCH-IMP-000105,impressora,Oki,OKI ES5112,ak73003781,,ativo,,Hosp Justino Luz (Piaui) L,,,169697,0,2026-06-17 11:50:04,1
+617,RCH-IMP-000106,impressora,Oki,OKI C711,ak74032473,,ativo,,Hosp Geral de Arraial do Cabo (P),,,1827,10885,2026-06-17 11:50:04,1
+618,RCH-IMP-000107,impressora,Oki,OKI C711,ak81024008,,ativo,,Mercadão Pereque,,,14438,97831,2026-06-17 11:50:04,1
+619,RCH-IMP-000108,impressora,Epson,EPSON L3150,x5eve09518,,ativo,,R10 - SP,,Impressora em estado de erro,17728,0,2026-06-17 11:50:04,1
+620,RCH-IMP-000109,impressora,Epson,EPSON L3210,xaaa083696,,ativo,,Upa Sta Helena,,,6505,0,2026-06-17 11:50:04,1
+621,RCH-IMP-000110,impressora,Oki,OKI C711,ak9a006520d0,,ativo,,R10,,não reconhece drum M,0,0,2026-06-17 11:50:04,1
+622,RCH-IMP-000111,impressora,Epson,EPSON L1250,xbfr008013,,ativo,,Samir - Rondonia,,mangueira preta entupida,2871,0,2026-06-17 11:50:04,1
+623,RCH-IMP-000112,impressora,Oki,OKI C711,ak67025073d0,,ativo,,R10 - SP,,Drum B - N reconhece,0,0,2026-06-17 11:50:04,1
+624,RCH-IMP-000113,impressora,Oki,OKI C711,ak77045129,,ativo,,R10,,,78369,6829,2026-06-17 11:50:04,1
+625,RCH-IMP-000114,impressora,Oki,OKIC831,al87031706,,ativo,,Hosp de Francsico Morato,,,22642,12,2026-06-17 11:50:04,1
+626,RCH-IMP-000115,impressora,Epson,EPSON L1250,xbfr034401,,ativo,,AES São Bernado,,,9379,0,2026-06-17 11:50:04,1
+627,RCH-IMP-000116,impressora,Oki,OKI C711,ak9b000031,,ativo,,Samir - Guarulhos - HMU,,,16348,26882,2026-06-17 11:50:04,1
+628,RCH-IMP-000117,impressora,Oki,OKI C711,al6a010574,,ativo,,Americana,,,24,42849,2026-06-17 11:50:04,1
+629,RCH-IMP-000118,impressora,Oki,OKI ES5112,ak53010451,,ativo,,RJ - São Gonçalo,,,116601,0,2026-06-17 11:50:04,1
+630,RCH-IMP-000119,impressora,Oki,OKI ES5112,ak57014732,,ativo,,RJ - São Gonçalo,,,45073,0,2026-06-17 11:50:04,1
+631,RCH-IMP-000120,impressora,Epson,EPSON L1250,xbfr034393,,ativo,,Centro de Exames da Mulher (Capela do Socorro) US,,,6218,0,2026-06-17 11:50:04,1
+632,RCH-IMP-000121,impressora,Epson,EPSON L3110,x5eu273091,,ativo,,R10 - SP,,,18626,0,2026-06-17 11:50:04,1
+633,RCH-IMP-000122,impressora,Oki,OKI ES5112,ak5c0345557,,ativo,,R10 - SP,,bandeja qubrada,135723,0,2026-06-17 11:50:04,1
+634,RCH-IMP-000123,impressora,Oki,OKIC831,,,ativo,,R10,,,0,0,2026-06-17 11:50:04,1
+635,RCH-IMP-000124,impressora,Oki,OKI C711,ak9c014370,,ativo,,Mercadão - Itanhem,,,23821,43043,2026-06-17 11:50:04,1
+636,RCH-IMP-000125,impressora,Oki,OKIC831,al92029026,,ativo,,Vilhena (P),,,69902,19228,2026-06-17 11:50:04,1
+637,RCH-IMP-000126,impressora,Oki,OKI ES4172,ak74007339b0,,ativo,,R10 - SP,,Peça quebrou,0,0,2026-06-17 11:50:04,1
+638,RCH-IMP-000127,impressora,Hp,HP M479,cncrq1f0tl,,ativo,,R10,,,17125,49287,2026-06-17 11:50:04,1
+639,RCH-IMP-000128,impressora,Epson,EPSON L3210,xaaa064208,,ativo,,Hisa,,,7389,0,2026-06-17 11:50:04,1
+640,RCH-IMP-000129,impressora,Epson,EPSON L3110,x5eu271719,,ativo,,HC Campo Limpo,,,9605,0,2026-06-17 11:50:04,1
+641,RCH-IMP-000130,impressora,Epson,EPSON L1250,xbfr042648,,ativo,,Biritiba Mirim,,,0,0,2026-06-17 11:50:04,1
+642,RCH-IMP-000131,impressora,Epson,EPSON L1250,xbfr036375,,ativo,,Aes Brasilandia,,,12057,0,2026-06-17 11:50:04,1
+643,RCH-IMP-000132,impressora,Oki,OKI ES5112,ak95000549,,ativo,,R10 - SP,,,110119,0,2026-06-17 11:50:04,1
+644,RCH-IMP-000133,impressora,Oki,OKI ES5112,ak7b032343,,ativo,,Humana Ibirapuera,,,63067,0,2026-06-17 11:50:04,1
+645,RCH-IMP-000134,impressora,Epson,EPSON L3250,xaabd53969,,ativo,,AES São Bernado,,,0,0,2026-06-17 11:50:04,1
+646,RCH-IMP-000135,impressora,Oki,OKI C711,ak06019110,,ativo,,R10 - SP,,,29481,96675,2026-06-17 11:50:04,1
+647,RCH-IMP-000136,impressora,Oki,OKI C711,ak96000214,,ativo,,R10 - SP,,Fazendo barulho na drum M,71958,7904,2026-06-17 11:50:04,1
+648,RCH-IMP-000137,impressora,Hp,HP M479,cnbmm8xbvb,,ativo,,R10,,,70360,0,2026-06-17 11:50:04,1
+649,RCH-IMP-000138,impressora,Epson,EPSON L3250,Xaab369114,,ativo,,O.S Manutenção,,Imagem ruim,65806,0,2026-06-17 11:50:04,1
+650,RCH-IMP-000139,impressora,Epson,EPSON L3210,Xaaa038105,,ativo,,O.S Manutenção,,Não reconhece papel,3382,0,2026-06-17 11:50:04,1
+651,RCH-IMP-000140,impressora,Epson,EPSON L3150,X5ev000772,,ativo,,R10 - SP,,Não puxa papel,24002,0,2026-06-17 11:50:04,1
+652,RCH-IMP-000141,impressora,Epson,EPSON L3210,xaaa126449,,ativo,,Samir - Espirito Santo  (BK),,,0,0,2026-06-17 11:50:04,1
+653,RCH-IMP-000142,impressora,Epson,EPSON L1250,xbfr036340,,ativo,,Samir - Espirito Santo,,,0,0,2026-06-17 11:50:04,1
+654,RCH-IMP-000143,impressora,Epson,EPSON L3150,x5ev160260,,ativo,,R10 - SP,,,839,0,2026-06-17 11:50:04,1
+655,RCH-IMP-000144,impressora,Epson,EPSON L805,W7uk045435,,ativo,,R10 - SP,,Imagens ruins,21208,0,2026-06-17 11:50:04,1
+656,RCH-IMP-000145,impressora,Hp,HP M4103,brbsr810bb,,ativo,,Porsche - Florianopolis,,,0,0,2026-06-17 11:50:04,1
+657,RCH-IMP-000146,impressora,Oki,OKI C711,al29020155,,ativo,,R10 - SP,,,231,89669,2026-06-17 11:50:04,1
+658,RCH-IMP-000147,impressora,Oki,OKI C711,AK77045151,,ativo,,Mercadão-Pirajussara,,,9338,3927,2026-06-17 11:50:04,1
+659,RCH-IMP-000148,impressora,Oki,OKI C711,ak2002039,,ativo,,R10 - SP,,,41280,3416,2026-06-17 11:50:04,1
+660,RCH-IMP-000149,impressora,Epson,EPSON L3250,xaab369114,,ativo,,AES Matriz,,,65806,0,2026-06-17 11:50:04,1
+661,RCH-IMP-000150,impressora,Oki,OKI ES5112,,,ativo,,R10,,Queimou,0,0,2026-06-17 11:50:04,1
+662,RCH-IMP-000151,impressora,Epson,EPSON L1250,xbfr043401,,ativo,,Upa Sta Helena,,,0,0,2026-06-17 11:50:04,1
+663,RCH-IMP-000152,impressora,Epson,EPSON L1250,xbfr039748,,ativo,,Upa Samarino,,,0,0,2026-06-17 11:50:04,1
+664,RCH-IMP-000153,impressora,Epson,EPSON L3210,xaaa038105,,ativo,,Upa Samarino,,,3382,0,2026-06-17 11:50:04,1
+665,RCH-IMP-000154,impressora,Epson,EPSON L3150,x5eve08390,,ativo,,O.S Manutenção,,,2492,0,2026-06-17 11:50:04,1
+666,RCH-IMP-000155,impressora,Epson,EPSON L3210,xaaa153030,,ativo,,R10 - SP,,,11565,0,2026-06-17 11:50:04,1
+667,RCH-IMP-000156,impressora,Epson,EPSON L3210,xaaa147748,,ativo,,R10 - SP,,,4734,0,2026-06-17 11:50:04,1
+668,RCH-IMP-000157,impressora,Hp,HP M4103,brbsrcs03y,,ativo,,Araguaya,,,0,0,2026-06-17 11:50:04,1
+669,RCH-IMP-000158,impressora,Hp,HP M479,cncrq1f0vn,,ativo,,Porsche Matriz,,,0,0,2026-06-17 11:50:04,1
+670,RCH-IMP-000159,impressora,Hp,HP M432,brbsp9d05h,,ativo,,Porsche Matriz,,,77772,0,2026-06-17 11:50:04,1
+671,RCH-IMP-000160,impressora,Hp,HP M4103,brbsq9p07,,ativo,,R10 - SP,,bandeja qubrada,0,0,2026-06-17 11:50:04,1
+672,RCH-IMP-000161,impressora,Hp,HP M408,brbsn9ffsr,,ativo,,Porsche Campinas,,,17689,0,2026-06-17 11:50:04,1
+673,RCH-IMP-000162,impressora,Oki,OKI ES5112,bw02001071,,ativo,,Hosp de Cachoeira de macacu (P),,,69103,0,2026-06-17 11:50:04,1
+674,RCH-IMP-000163,impressora,Oki,OKI ES5112,ak5c37009,,ativo,,Campo Limpo Paulista,,,64270,0,2026-06-17 11:50:04,1
+675,RCH-IMP-000164,impressora,Oki,OKI ES5112,bw02001064,,ativo,,Chavantes Samir,,Bandeja não abre,40884,0,2026-06-17 11:50:04,1
+676,RCH-IMP-000165,impressora,Oki,OKI C711,ak87010140d0,,ativo,,R10,,,0,0,2026-06-17 11:50:04,1
+677,RCH-IMP-000166,impressora,Oki,OKI C911,AL97036823,,ativo,,Hospital Saquarema de Nazaré,,Riscando,210016,2672,2026-06-17 11:50:04,1
+678,RCH-IMP-000167,impressora,Epson,EPSON L1250,xbfr057063,,ativo,,Hosp Nelson Sales US - RJ laudo,,,0,0,2026-06-17 11:50:04,1
+679,RCH-IMP-000168,impressora,Epson,EPSON L1250,xbfr043095,,ativo,,Hosp Nelson Sales US - RJ Imagem,,,0,0,2026-06-17 11:50:04,1
+680,RCH-IMP-000169,impressora,Oki,OKI ES5112,bw02001065,,ativo,,RX de Amparo,,,21426,0,2026-06-17 11:50:04,1
+681,RCH-IMP-000170,impressora,Oki,OKI ES5112,ak7b032341,,ativo,,Hosp Justino Luz (Piaui) P,,,9406,0,2026-06-17 11:50:04,1
+682,RCH-IMP-000171,impressora,Epson,EPSON L1250,xbfr043425,,ativo,,Hosp Materno Infantil - ES (P),,,0,0,2026-06-17 11:50:04,1
+683,RCH-IMP-000172,impressora,Epson,EPSON L1250,xbfr053377,,ativo,,Hosp Materno Infantil - ES (B),,,0,0,2026-06-17 11:50:04,1
+684,RCH-IMP-000173,impressora,Oki,OKI ES5112,,,ativo,,r10,,Queimou,0,0,2026-06-17 11:50:04,1
+685,RCH-IMP-000174,impressora,Oki,OKI C711,AL29020155,,ativo,,Mercadão Registro,,,231,89669,2026-06-17 11:50:04,1
+686,RCH-IMP-000175,impressora,Oki,OKI ES5112,AK7B032341,,ativo,,Ama Capão,,,9406,0,2026-06-17 11:50:04,1
+687,RCH-IMP-000176,impressora,Oki,OKI ES5112,ak965000559,,ativo,,R10 - SP,,Queimou,0,0,2026-06-17 11:50:04,1
+688,RCH-IMP-000177,impressora,Epson,EPSON L1250,xbfr034570,,ativo,,Chavantes Samir,,,5771,0,2026-06-17 11:50:04,1
+689,RCH-IMP-000178,impressora,Oki,OKI C711,SN,,ativo,,Hosp Geral de Arraial do Cabo (B),,,155,34233,2026-06-17 11:50:04,1
+690,RCH-IMP-000179,impressora,Oki,OKI ES4172,ak97011016,,ativo,,Amparo,,atolando papel,188471,0,2026-06-17 11:50:04,1
+691,RCH-IMP-000180,impressora,Epson,EPSON L1250,xbfr059187,,ativo,,Policlinica de Saquarema,,,0,0,2026-06-17 11:50:04,1
+692,RCH-IMP-000181,impressora,Epson,EPSON L1250,xbfr058736,,ativo,,Miracatu,,,3033,0,2026-06-17 11:50:04,1
+693,RCH-IMP-000182,impressora,Oki,OKI C711,ak77045153d0,,ativo,,R10,,,0,0,2026-06-17 11:50:04,1
+694,RCH-IMP-000183,impressora,Oki,OKI ES5112,,,ativo,,R10 - SP,,queimou,0,0,2026-06-17 11:50:04,1
+695,RCH-IMP-000184,impressora,Hp,HP M479,cncrq1f0s9,,ativo,,Humana Verbo Divino,,,0,0,2026-06-17 11:50:04,1
+696,RCH-IMP-000185,impressora,Oki,OKI ES4172,,,ativo,,R10 - SP,,problemas na rede,0,0,2026-06-17 11:50:04,1
+697,RCH-IMP-000186,impressora,Oki,OKIC831,al23002608,,ativo,,Samir Piaui (Campo Maior),,,3496,21876,2026-06-17 11:50:04,1
+698,RCH-IMP-000187,impressora,Oki,OKIC831,,,ativo,,R10 - SP,,erro:128 ventilador do fusor,0,0,2026-06-17 11:50:04,1
+699,RCH-IMP-000188,impressora,Epson,EPSON L3210,xaaa155670,,ativo,,Hosp Geral de Arraial do Cabo - Rec Raiox,,,544,0,2026-06-17 11:50:04,1
+700,RCH-IMP-000189,impressora,Oki,OKIC831,,,ativo,,R10,,,0,0,2026-06-17 11:50:04,1
+701,RCH-IMP-000190,impressora,Epson,EPSON L3210,xaaa087547,,ativo,,URSI Santana/Jaçanã Samir Teste Ergometrico,,,9038,0,2026-06-17 11:50:04,1
+702,RCH-IMP-000191,impressora,Zebra,Zebra-GT800,,,ativo,,Humana Ibirapuera,,,0,0,2026-06-17 11:50:04,1
+703,RCH-IMP-000192,impressora,Epson,EPSON L3150,x5ev734787,,ativo,,Policlinica Saquarema,,Papel atolado,29560,0,2026-06-17 11:50:04,1
+704,RCH-IMP-000193,impressora,Epson,EPSON L1250,xbfr073869,,ativo,,Amparo - US,,,0,0,2026-06-17 11:50:04,1
+705,RCH-IMP-000194,impressora,Oki,OKI ES5112,ak5c034557,,ativo,,Hospital Israelita Albert Sabin,,,154717,0,2026-06-17 11:50:04,1
+706,RCH-IMP-000195,impressora,Epson,EPSON L1250,xbfr053455,,ativo,,Hospital Geral de Arraial - Teste Ergometrico,,,11902,0,2026-06-17 11:50:04,1
+707,RCH-IMP-000196,impressora,Epson,EPSON L3250,xaab910528,,ativo,,AES São Bernado,,,4603,0,2026-06-17 11:50:04,1
+708,RCH-IMP-000197,impressora,Epson,EPSON L1250,xbfr002830,,ativo,,R10 - SP,,clip intalado na impressora,0,0,2026-06-17 11:50:04,1
+709,RCH-IMP-000198,impressora,Epson,EPSON L1250,xbfr073345,,ativo,,RX P.S Figuera  - Arraial do Cabo,,,0,0,2026-06-17 11:50:04,1
+710,RCH-IMP-000199,impressora,Epson,EPSON L1250,xbfr073356,,ativo,,Hosp Geral de Arraial do Cabo USG,,,0,0,2026-06-17 11:50:04,1
+711,RCH-IMP-000200,impressora,Epson,EPSON L3110,x5eu272223,,ativo,,Juquitiba,,,65682,0,2026-06-17 11:50:04,1
+712,RCH-IMP-000201,impressora,Oki,OKI C711,AK85026314,,ativo,,Mercadão Guaruja,,,44200,20108,2026-06-17 11:50:04,1
+713,RCH-IMP-000202,impressora,Oki,OKI ES5112,,,ativo,,R10 - SP,,erro :173 fusor,0,0,2026-06-17 11:50:04,1
+714,RCH-IMP-000203,impressora,Oki,OKI C711,ak8a009591,,ativo,,Amparo,,,12311,108703,2026-06-17 11:50:04,1
+715,RCH-IMP-000204,impressora,Epson,EPSON L1250,Xbfr002830,,ativo,,O.S Manutenção,,clip intalado na impressora,0,0,2026-06-17 11:50:04,1
+716,RCH-IMP-000205,impressora,Epson,EPSON L3110,Xeu272223,,ativo,,O.S Manutenção,,não sai tinta preta,0,0,2026-06-17 11:50:04,1
+717,RCH-IMP-000206,impressora,Epson,EPSON L3150,X5ev742859,,ativo,,O.S Manutenção,,Atolando e manchando papel,9802,0,2026-06-17 11:50:04,1
+718,RCH-IMP-000207,impressora,Epson,EPSON L805,w7uk040979,,ativo,,O.S Manutenção,,Impressora não liga,0,0,2026-06-17 11:50:04,1
+719,RCH-IMP-000208,impressora,Epson,EPSON L805,w7uk043479,,ativo,,R10 - SP,,,27516,0,2026-06-17 11:50:04,1
+720,RCH-IMP-000209,impressora,Oki,OKI C711,AK96000214,,ativo,,Hosp De Americana,,,71958,7904,2026-06-17 11:50:04,1
+721,RCH-IMP-000210,impressora,Oki,OKI C711,,,ativo,,R10 - SP,,não inicializa,0,0,2026-06-17 11:50:04,1
+722,RCH-IMP-000211,impressora,Oki,OKI ES4172,ak81005394b0,,ativo,,R10,,erro :173 fusor,24883,0,2026-06-17 11:50:04,1
+723,RCH-IMP-000212,impressora,Hp,HP M4103,Brbsrcs02n,,ativo,,Porsche Porto Alegre,,,0,0,2026-06-17 11:50:04,1
+724,RCH-IMP-000213,impressora,Hp,HP M4103,brbsrd60x6,,ativo,,Porsche Porto Alegre,,,0,0,2026-06-17 11:50:04,1
+725,RCH-IMP-000214,impressora,Hp,HP M479,Cncrq1f0wl,,ativo,,Porsche Matriz,,,0,0,2026-06-17 11:50:04,1
+726,RCH-IMP-000215,impressora,Oki,OKI ES4172,ak75042862,,ativo,,R10 - SP,,,73473,0,2026-06-17 11:50:04,1
+727,RCH-IMP-000216,impressora,Oki,OKI ES8473,al88006251,,ativo,,Complexo de Saúde Dr. Antonio João Abdalla ( Cajamar),,,14228,88214,2026-06-17 11:50:04,1
+728,RCH-IMP-000217,impressora,Oki,OKI C711,AK9B000031,,ativo,,Mercadão Enseada,,,16348,26882,2026-06-17 11:50:04,1
+729,RCH-IMP-000218,impressora,Oki,OKI C711,ak77045129d0,,ativo,,R10,,Queimou,0,0,2026-06-17 11:50:04,1
+730,RCH-IMP-000219,impressora,Oki,OKI ES4172,,,ativo,,R10 - SP,,Bandeja Adf Atolando papel,0,0,2026-06-17 11:50:04,1
+731,RCH-IMP-000220,impressora,Oki,OKI ES5112,ak5c049270,,ativo,,Vera Cruz,,,67843,0,2026-06-17 11:50:04,1
+732,RCH-IMP-000221,impressora,Epson,EPSON L805,w7uk045435,,ativo,,R10 - SP,,,21208,0,2026-06-17 11:50:04,1
+733,RCH-IMP-000222,impressora,Hp,HP M408,7uq75a,,ativo,,Porsche Matriz,,,2723,0,2026-06-17 11:50:04,1
+734,RCH-IMP-000223,impressora,Hp,HP M408,,,ativo,,R10 - SP,,Queimou,0,0,2026-06-17 11:50:04,1
+735,RCH-IMP-000224,impressora,Oki,OKIC831,AL28028136,,ativo,,Samir São Roque,,,90958,63134,2026-06-17 11:50:04,1
+736,RCH-IMP-000225,impressora,Epson,EPSON L3210,Xaaa162812,,ativo,,Piaui,,,0,0,2026-06-17 11:50:04,1
+737,RCH-IMP-000226,impressora,Epson,EPSON L3210,Xaaa162954,,ativo,,Piaui,,,0,0,2026-06-17 11:50:04,1
+738,RCH-IMP-000227,impressora,Epson,EPSON L3210,Xaaa186844,,ativo,,Piaui,,,0,0,2026-06-17 11:50:04,1
+739,RCH-IMP-000228,impressora,Epson,EPSON L1250,Xbfr073316,,ativo,,Piaui,,,0,0,2026-06-17 11:50:05,1
+740,RCH-IMP-000229,impressora,Epson,EPSON L1250,Xbfr082272,,ativo,,Piaui,,,0,0,2026-06-17 11:50:05,1
+741,RCH-IMP-000230,impressora,Epson,EPSON L1250,Xbfr072210,,ativo,,Piaui,,,0,0,2026-06-17 11:50:05,1
+742,RCH-IMP-000231,impressora,Epson,EPSON L1250,Xbfr082273,,ativo,,Piaui,,,0,0,2026-06-17 11:50:05,1
+743,RCH-IMP-000232,impressora,Epson,EPSON L1250,Xbfr082255,,ativo,,Piaui,,,0,0,2026-06-17 11:50:05,1
+744,RCH-IMP-000233,impressora,Oki,OKI C711,AK77045129,,ativo,,Hosp De Cubatão,,,78369,6829,2026-06-17 11:50:05,1
+745,RCH-IMP-000234,impressora,Oki,OKI C711,,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:05,1
+746,RCH-IMP-000235,impressora,Epson,EPSON L3250,xaaab398495,,ativo,,Hosp De Cubatão,,,28176,0,2026-06-17 11:50:05,1
+747,RCH-IMP-000236,impressora,Epson,EPSON L3210,xaaa087610,,ativo,,O.S Manutenção,,Impressão Ruim,4424,0,2026-06-17 11:50:05,1
+748,RCH-IMP-000237,impressora,Epson,EPSON L1250,xbfr074815,,ativo,,Policlinica de Saquarema (P),,,0,0,2026-06-17 11:50:05,1
+749,RCH-IMP-000238,impressora,Epson,EPSON L1250,xbfr076345,,ativo,,Policlinica de Saquarema (B),,,0,0,2026-06-17 11:50:05,1
+750,RCH-IMP-000239,impressora,Epson,EPSON L3210,xaaa083694,,ativo,,Hosp Paulo de Frontin,,,9337,0,2026-06-17 11:50:05,1
+751,RCH-IMP-000240,impressora,Epson,EPSON L1250,xbfr073355,,ativo,,PS Figueira,,,0,0,2026-06-17 11:50:05,1
+752,RCH-IMP-000241,impressora,Hp,HP M432,brbsp9d041,,ativo,,R10 - SP,,Apresentando msg de troca de cilindro de REC mas imprimindo normal,93027,0,2026-06-17 11:50:05,1
+753,RCH-IMP-000242,impressora,Hp,HP M4103,brbsrd40n9,,ativo,,Porsche Matriz,,,0,0,2026-06-17 11:50:05,1
+754,RCH-IMP-000243,impressora,Oki,OKI ES5112,ak92018119c0,,ativo,,R10 - SP,,Bandeja Travada,155534,0,2026-06-17 11:50:05,1
+755,RCH-IMP-000244,impressora,Epson,EPSON L805,w7uk047637,,ativo,,URSI ZN,,Impressora abastecida incorretamente,16513,0,2026-06-17 11:50:05,1
+756,RCH-IMP-000245,impressora,Oki,OKI ES5112,ak88055366,,ativo,,Posto de Atendimento Imediato José Zanedin (Sta Cruz das Palmeiras) BK,,Bandeja Travada,360848,0,2026-06-17 11:50:05,1
+757,RCH-IMP-000246,impressora,Oki,OKI ES4172,ak82030737,,ativo,,PQ Novo Sto Amaro,,,50253,0,2026-06-17 11:50:05,1
+758,RCH-IMP-000247,impressora,Oki,OKI ES4172,,,ativo,,R10 - SP,,Peça quebrou apresentando msg de atolamento,0,0,2026-06-17 11:50:05,1
+759,RCH-IMP-000248,impressora,Oki,OKI C711,al27009577,,ativo,,r10,,,279,16942,2026-06-17 11:50:05,1
+760,RCH-IMP-000249,impressora,Hp,HP M408,brbsn8c9wd,,ativo,,Hospital Municipal de Quissamã RJ,,Queimou,57000,0,2026-06-17 11:50:05,1
+761,RCH-IMP-000250,impressora,Hp,HP 4303,brbsr8z03x,,ativo,,Humana Ibirapuera,,,0,0,2026-06-17 11:50:05,1
+762,RCH-IMP-000251,impressora,Zebra,Zebra-zt230,52j182806064,,ativo,,Humana Pompeia,,,0,0,2026-06-17 11:50:05,1
+763,RCH-IMP-000252,impressora,Zebra,Zebra-zd230,d5n211203627,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:05,1
+764,RCH-IMP-000253,impressora,Hp,HP 4303,brbsr9301y,,ativo,,Humana Pompeia,,,0,0,2026-06-17 11:50:05,1
+765,RCH-IMP-000254,impressora,Oki,OKI ES4172,Ak76023968b0,,ativo,,R10 - SP,,erro 173,0,0,2026-06-17 11:50:05,1
+766,RCH-IMP-000255,impressora,Oki,OKI ES4172,,,ativo,,Humana Verbo Divino,,,0,0,2026-06-17 11:50:05,1
+767,RCH-IMP-000256,impressora,Oki,OKI ES4172,ak87035803,,ativo,,Atix,,,25958,0,2026-06-17 11:50:05,1
+768,RCH-IMP-000257,impressora,Oki,OKI ES4172,,,ativo,,R10 - SP,,entrada de rede ruim e duplex ruim,0,0,2026-06-17 11:50:05,1
+769,RCH-IMP-000258,impressora,Epson,EPSON M2170,x67y011429,,ativo,,Samir Piaui (Campo Maior),,,0,0,2026-06-17 11:50:05,1
+770,RCH-IMP-000259,impressora,Epson,EPSON M1120,x5j2027008,,ativo,,Samir Piaui (Campo Maior),,,0,0,2026-06-17 11:50:05,1
+771,RCH-IMP-000260,impressora,Epson,EPSON M1120,x5j2027718,,ativo,,Samir Piaui (Campo Maior),,,0,0,2026-06-17 11:50:05,1
+772,RCH-IMP-000261,impressora,Epson,EPSON L3210,xaaa189267,,ativo,,Samir Piaui (Campo Maior),,,0,0,2026-06-17 11:50:05,1
+773,RCH-IMP-000262,impressora,Epson,EPSON L3210,xaaa189230,,ativo,,Samir Piaui (Campo Maior),,,0,0,2026-06-17 11:50:05,1
+774,RCH-IMP-000263,impressora,Oki,OKI ES8473,al7b009939,,ativo,,Nova Odessa,,,154,17,2026-06-17 11:50:05,1
+775,RCH-IMP-000264,impressora,Oki,OKI ES5112,ak95000559,,ativo,,P.S Pindamonhagaba,,,120716,0,2026-06-17 11:50:05,1
+776,RCH-IMP-000265,impressora,Oki,OKI ES5112,ak6a040330a0,,ativo,,R10 - SP,,Queimou,0,0,2026-06-17 11:50:05,1
+777,RCH-IMP-000266,impressora,Hp,HP 4303,brbsr9301s,,ativo,,Humana Magda Pompeia,,,0,0,2026-06-17 11:50:05,1
+778,RCH-IMP-000267,impressora,Hp,HP M4103,brbss730qd,,ativo,,Porsche Itaim,,,4785,0,2026-06-17 11:50:05,1
+779,RCH-IMP-000268,impressora,Hp,HP M4103,brbss730q4,,ativo,,Porsche Campinas,,,0,0,2026-06-17 11:50:05,1
+780,RCH-IMP-000269,impressora,Hp,HP M408,brbsr1113w,,ativo,,Porsche Ribeirão Preto,,,0,0,2026-06-17 11:50:05,1
+781,RCH-IMP-000270,impressora,Oki,OKI ES5112,ak7b026236,,ativo,,Chavantes Samir,,,102098,0,2026-06-17 11:50:05,1
+782,RCH-IMP-000271,impressora,Hp,HP M408,brbsn8c9w6,,ativo,,Chavantes Samir,,,55687,0,2026-06-17 11:50:05,1
+783,RCH-IMP-000272,impressora,Hp,HP M408,brbsncljc5,,ativo,,Chavantes Samir,,,34645,0,2026-06-17 11:50:05,1
+784,RCH-IMP-000273,impressora,Hp,HP M408,brbsn9fdzk,,ativo,,R10 - SP,,,25971,0,2026-06-17 11:50:05,1
+785,RCH-IMP-000274,impressora,Oki,OKI ES8473,al57045791,,ativo,,Chavantes Samir,,,12666,36232,2026-06-17 11:50:05,1
+786,RCH-IMP-000275,impressora,Epson,EPSON L1250,xbfr092189,,ativo,,Chavantes Samir,,,0,0,2026-06-17 11:50:05,1
+787,RCH-IMP-000276,impressora,Epson,EPSON M1120,x67y011344,,ativo,,R10 - SP,,,3734,0,2026-06-17 11:50:05,1
+788,RCH-IMP-000277,impressora,Epson,EPSON L1250,xbfr005458,,ativo,,Hosp Dia São Matheus AES,,,8914,0,2026-06-17 11:50:05,1
+789,RCH-IMP-000278,impressora,Epson,EPSON L1250,xbfr096890,,ativo,,Amparo,,,0,0,2026-06-17 11:50:05,1
+790,RCH-IMP-000279,impressora,Oki,OKI C711,AL27043258,,ativo,,R10 - SP,,,19334,50776,2026-06-17 11:50:05,1
+791,RCH-IMP-000280,impressora,Oki,OKI ES8473,al5a033808,,ativo,,Hospital Municipal de Quissamã RJ,,,90687,162736,2026-06-17 11:50:05,1
+792,RCH-IMP-000281,impressora,Hp,HP M432,BRBSP9D05H,,ativo,,R10 - SP,,Atolando Papel,77772,0,2026-06-17 11:50:05,1
+793,RCH-IMP-000282,impressora,Hp,HP M432,brbsp9d053,,ativo,,Porsche Matriz,,,0,0,2026-06-17 11:50:05,1
+794,RCH-IMP-000283,impressora,Oki,OKI ES4172,ak74007485,,ativo,,R10 - SP,,,28778,0,2026-06-17 11:50:05,1
+795,RCH-IMP-000284,impressora,Oki,OKI C711,,,ativo,,R10 - SP,,erro 132,0,0,2026-06-17 11:50:05,1
+796,RCH-IMP-000285,impressora,Oki,OKI C711,AK81024008,,ativo,,R10 - SP,,,14438,97831,2026-06-17 11:50:05,1
+797,RCH-IMP-000286,impressora,Oki,OKI C711,ak98000031,,ativo,,R10,,bandj 1 não reconhece papel parte frontal solta,0,0,2026-06-17 11:50:05,1
+798,RCH-IMP-000287,impressora,Oki,OKI ES5112,bw02001075c0,,ativo,,R10,,bandj1 Atolada,0,0,2026-06-17 11:50:05,1
+799,RCH-IMP-000288,impressora,Oki,OKI ES5112,bw02014812,,ativo,,R10,,bandej1 Ruim,32011,0,2026-06-17 11:50:05,1
+800,RCH-IMP-000289,impressora,Epson,EPSON M1120,X5j2027915,,ativo,,Upa Alto da Ponte São José do Campos,,,0,0,2026-06-17 11:50:05,1
+801,RCH-IMP-000290,impressora,,gx420t,522,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:05,1
+802,RCH-IMP-000291,impressora,Epson,EPSON L3150,x5evc46601,,ativo,,Hora Certa Cidade Ademar,,Não sai tinta preta,8023,0,2026-06-17 11:50:05,1
+803,RCH-IMP-000292,impressora,Epson,EPSON L3150,x5ev689410,,ativo,,R10 - SP,,Impressão ruim,0,0,2026-06-17 11:50:05,1
+804,RCH-IMP-000293,impressora,Hp,HP M4103,brbss730pb,,ativo,,Araguaya,,,0,0,2026-06-17 11:50:05,1
+805,RCH-IMP-000294,impressora,Oki,OKI ES4172,ak74007384b0,,ativo,,Upa Vila das Belezas,,Queimou,4768,0,2026-06-17 11:50:05,1
+806,RCH-IMP-000295,impressora,Epson,EPSON L1250,xbfr073706,,ativo,,Hospital Geral de Arraial - Raio x,,,10104,0,2026-06-17 11:50:05,1
+807,RCH-IMP-000296,impressora,Oki,OKI C711,Ak82002033d0,,ativo,,Mercadão de Santos,,Bandeja 1 quebrada,33563,17437,2026-06-17 11:50:05,1
+808,RCH-IMP-000297,impressora,Oki,OKI ES5112,ak7a03656,,ativo,,R10,,Adf Atolando e rasgando folha,96743,0,2026-06-17 11:50:05,1
+809,RCH-IMP-000298,impressora,Epson,EPSON L3150,x5ev669904,,ativo,,R10 - SP,,,28736,0,2026-06-17 11:50:05,1
+810,RCH-IMP-000299,impressora,Oki,OKI ES5112,bw02014812c0,,ativo,,Humana Ibirapuera,,,0,0,2026-06-17 11:50:05,1
+811,RCH-IMP-000300,impressora,Oki,OKI ES5112,ak94014742,,ativo,,Humana Verbo Divino,,saindo pó na mão,91861,0,2026-06-17 11:50:05,1
+812,RCH-IMP-000301,impressora,Oki,OKI ES8473,al7b047330,,ativo,,Hospital de Cajamar,,,19828,42694,2026-06-17 11:50:05,1
+813,RCH-IMP-000302,impressora,Epson,EPSON M1120,X5j2024630,,ativo,,IRMANDADE DO HOSP. DE CARIDADE ANITA COSTA,,,0,0,2026-06-17 11:50:05,1
+814,RCH-IMP-000303,impressora,Oki,OKI C711,ak23015961,,ativo,,Hosp De Cubatão,,,741,789755,2026-06-17 11:50:05,1
+815,RCH-IMP-000304,impressora,Oki,OKI ES4172,AK87035803,,ativo,,R10 - SP,,Não puxa papel,25958,0,2026-06-17 11:50:05,1
+816,RCH-IMP-000305,impressora,Epson,EPSON L1250,xbfr093840,,ativo,,Upa Vila das Belezas,,,0,0,2026-06-17 11:50:05,1
+817,RCH-IMP-000306,impressora,Oki,OKI ES8473,AK57029688,,ativo,,Hosp de Cajamar,,,45306,165036,2026-06-17 11:50:05,1
+818,RCH-IMP-000307,impressora,Epson,EPSON L1250,xbfr05590,,ativo,,O.S Manutenção,,Não sai tinta M e Y,0,0,2026-06-17 11:50:05,1
+819,RCH-IMP-000308,impressora,Epson,EPSON L3250,xaab488511,,ativo,,O.S Manutenção,,,0,0,2026-06-17 11:50:05,1
+820,RCH-IMP-000309,impressora,Oki,OKI ES8473,bx06011134,,ativo,,Guará,,,73006,120178,2026-06-17 11:50:05,1
+821,RCH-IMP-000310,impressora,Oki,OKI C711,AK23015961,,ativo,,Francisco Morato,,,741,789755,2026-06-17 11:50:05,1
+822,RCH-IMP-000311,impressora,Epson,EPSON L3250,Xaab709544,,ativo,,R10 - SP,,Impressora não puxa papel,7392,0,2026-06-17 11:50:05,1
+823,RCH-IMP-000312,impressora,,CANON G3160,,,ativo,,R10 - SP,,Não puxa papel,0,0,2026-06-17 11:50:05,1
+824,RCH-IMP-000313,impressora,Epson,EPSON L1250,xbfr121436,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:05,1
+825,RCH-IMP-000314,impressora,Epson,EPSON M2170,X67y011344,,ativo,,Iotec,,,3734,0,2026-06-17 11:50:05,1
+826,RCH-IMP-000315,impressora,Oki,OKI ES8473,,,ativo,,Hospital de Americana,,,0,0,2026-06-17 11:50:05,1
+827,RCH-IMP-000316,impressora,Oki,OKI C911,al56014567,,ativo,,HM Itu,,Problema nos sensores,1210,38040,2026-06-17 11:50:05,1
+828,RCH-IMP-000317,impressora,Oki,OKIC831,AL23002611,,ativo,,Vilhena (B),,,15626,14000,2026-06-17 11:50:05,1
+829,RCH-IMP-000318,impressora,Oki,OKI C711,AK49014019,,ativo,,R10 - SP,,,8545,192700,2026-06-17 11:50:05,1
+830,RCH-IMP-000319,impressora,Oki,OKI C711,,,ativo,,Mercadão de Itanhaem,,,0,0,2026-06-17 11:50:05,1
+831,RCH-IMP-000320,impressora,Oki,OKI C711,,,ativo,,R10,,,0,0,2026-06-17 11:50:05,1
+832,RCH-IMP-000321,impressora,Oki,OKIC831,al23002611,,ativo,,Francisco Morato,,,15626,14000,2026-06-17 11:50:05,1
+833,RCH-IMP-000322,impressora,Oki,OKIC831,,,ativo,,R10,,,0,0,2026-06-17 11:50:05,1
+834,RCH-IMP-000323,impressora,Epson,EPSON L1250,,,ativo,,R10 - SP,,Saindo Avermelhado,0,0,2026-06-17 11:50:05,1
+835,RCH-IMP-000324,impressora,Hp,HP M408,brbsncljdl,,ativo,,Porsche Matriz,,,80862,0,2026-06-17 11:50:05,1
+836,RCH-IMP-000325,impressora,Hp,HP M408,,,ativo,,R10 - SP,,Atolando papel,0,0,2026-06-17 11:50:05,1
+837,RCH-IMP-000326,impressora,Hp,HP 4303,brbssct09z,,ativo,,Humana Pompeia,,,1349,6950,2026-06-17 11:50:05,1
+838,RCH-IMP-000327,impressora,Oki,OKI ES8473,AL57029622,,ativo,,Samir São Roque,,,4202,678,2026-06-17 11:50:05,1
+839,RCH-IMP-000328,impressora,Oki,OKI ES8473,,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:05,1
+840,RCH-IMP-000329,impressora,Hp,HP M4103,brbsq9p07y,,ativo,,Porsche Campinas,,,52622,0,2026-06-17 11:50:05,1
+841,RCH-IMP-000330,impressora,Epson,EPSON L3210,XAAA153048,,ativo,,Samir Embu,,,6069,0,2026-06-17 11:50:05,1
+842,RCH-IMP-000331,impressora,Hp,HP M4103,Brbssd50rb,,ativo,,Porsche Maringa,,,0,0,2026-06-17 11:50:05,1
+843,RCH-IMP-000332,impressora,Hp,HP M4103,Brbssd50ms,,ativo,,Porsche Maringa,,,0,0,2026-06-17 11:50:05,1
+844,RCH-IMP-000333,impressora,Oki,OKI C711,al23096590,,ativo,,Hospital da Brasilandia,,,397,9110,2026-06-17 11:50:05,1
+845,RCH-IMP-000334,impressora,Zebra,Zebra GC420t,54j182800222,,ativo,,Humana Pompeia,,,0,0,2026-06-17 11:50:05,1
+846,RCH-IMP-000335,impressora,Oki,OKI ES4172,ak74007482,,ativo,,Araguaya,,,80498,0,2026-06-17 11:50:05,1
+847,RCH-IMP-000336,impressora,Oki,OKI ES8473,al5a045633,,ativo,,HM ITU,,,34972,35340,2026-06-17 11:50:05,1
+848,RCH-IMP-000337,impressora,Hp,HP M4103,brbssd50sr,,ativo,,Porsche Maringa,,,0,0,2026-06-17 11:50:05,1
+849,RCH-IMP-000338,impressora,Epson,EPSON L3210,xaaa102638,,ativo,,Upa Dona Rosa (Americana),,,20894,0,2026-06-17 11:50:05,1
+850,RCH-IMP-000339,impressora,Oki,OKIC831,,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:05,1
+851,RCH-IMP-000340,impressora,Oki,OKI C711,ak49014019,,ativo,,Hospital Geral de Arraial,,,8545,192700,2026-06-17 11:50:05,1
+852,RCH-IMP-000341,impressora,Oki,OKI ES4172,ak74007488,,ativo,,Atix,,,154727,0,2026-06-17 11:50:05,1
+853,RCH-IMP-000342,impressora,Oki,OKI ES4172,,,ativo,,R10 - SP,,Queimou,0,0,2026-06-17 11:50:05,1
+854,RCH-IMP-000343,impressora,Oki,OKI ES5112,bw02001070,,ativo,,Upa de Americana,,Atolando papel,174648,0,2026-06-17 11:50:05,1
+855,RCH-IMP-000344,impressora,Oki,OKI ES4172,ak74007347,,ativo,,Amparo,,,131200,0,2026-06-17 11:50:05,1
+856,RCH-IMP-000345,impressora,Hp,HP 4303,brbss9t128,,ativo,,Humana Ibirapuera,,,7405,0,2026-06-17 11:50:05,1
+857,RCH-IMP-000346,impressora,Oki,OKI ES4172,ak7a039656,,ativo,,R10 - SP,,,96817,0,2026-06-17 11:50:05,1
+858,RCH-IMP-000347,impressora,Oki,OKI ES4172,ak82030737b0,,ativo,,R10,,Queimou,0,0,2026-06-17 11:50:05,1
+859,RCH-IMP-000348,impressora,Oki,OKI C711,ak7c001818,,ativo,,Mercadão Praia Grande,,erro 980 fusor,68935,24418,2026-06-17 11:50:05,1
+860,RCH-IMP-000349,impressora,Oki,OKI ES4172,ak74007343,,ativo,,R10 - SP,,,46532,0,2026-06-17 11:50:05,1
+861,RCH-IMP-000350,impressora,Oki,OKIC831,al28028136,,ativo,,Hosp Justino Luz (Piaui),,,90958,63134,2026-06-17 11:50:05,1
+862,RCH-IMP-000351,impressora,Epson,EPSON L1250,Xbfr132520,,ativo,,Hosp Justino Luz (Piaui),,,0,0,2026-06-17 11:50:05,1
+863,RCH-IMP-000352,impressora,Epson,EPSON L1250,Xbfr132563,,ativo,,Hosp Justino Luz (Piaui),,,0,0,2026-06-17 11:50:05,1
+864,RCH-IMP-000353,impressora,Epson,EPSON L1250,Xbfr132882,,ativo,,Hosp Justino Luz (Piaui),,,0,0,2026-06-17 11:50:05,1
+865,RCH-IMP-000354,impressora,Epson,EPSON L1250,Xbfr130845,,ativo,,Hosp Justino Luz (Piaui),,,0,0,2026-06-17 11:50:05,1
+866,RCH-IMP-000355,impressora,Oki,OKI C711,al62005069,,ativo,,São Luis,,,6269,15142,2026-06-17 11:50:05,1
+867,RCH-IMP-000356,impressora,Epson,EPSON L3110,x5eu273123,,ativo,,Hosp Ipiranga 4id,,,12676,0,2026-06-17 11:50:05,1
+868,RCH-IMP-000357,impressora,Oki,OKI C711,ak15030612,,ativo,,Ame Carapicuiba,,,108992,79832,2026-06-17 11:50:05,1
+869,RCH-IMP-000358,impressora,Oki,OKI ES5112,AK5C034556,,ativo,,R10,,,41245,0,2026-06-17 11:50:05,1
+870,RCH-IMP-000359,impressora,Oki,OKI ES4172,AK74007341,,ativo,,R10 - SP,,Não Reconhece Papel,126090,0,2026-06-17 11:50:05,1
+871,RCH-IMP-000360,impressora,Oki,OKI ES4172,ak81005394,,ativo,,Pq Fernanda,,,11734,0,2026-06-17 11:50:05,1
+872,RCH-IMP-000361,impressora,Epson,EPSON L3250,xaab696809,,ativo,,R10 - SP,,,10490,0,2026-06-17 11:50:05,1
+873,RCH-IMP-000362,impressora,Oki,OKI ES4172,ak87035803b0,,ativo,,R10,,Atolando papel,0,0,2026-06-17 11:50:05,1
+874,RCH-IMP-000363,impressora,Oki,OKI ES5112,ak9201b119c0,,ativo,,R10,,Fusor ruim,0,0,2026-06-17 11:50:05,1
+875,RCH-IMP-000364,impressora,Oki,OKI ES4172,ak94022105c0,,ativo,,Nova Odessa,,atolando na bandeja adf,115615,0,2026-06-17 11:50:05,1
+876,RCH-IMP-000365,impressora,Oki,OKI ES4172,ak7a039660b0,,ativo,,R10,,Não reconhece papel,0,0,2026-06-17 11:50:05,1
+877,RCH-IMP-000366,impressora,Oki,OKI ES4172,ak97011014c0,,ativo,,R10,,Não puxa papel,0,0,2026-06-17 11:50:06,1
+878,RCH-IMP-000367,impressora,Oki,OKI C711,ak4a015617,,ativo,,Mercadão Morumbi,,,47480,122000,2026-06-17 11:50:06,1
+879,RCH-IMP-000368,impressora,Oki,OKI ES5112,ak95011676,,ativo,,USF Cidade Nova,,Impressora Nova,22629,0,2026-06-17 11:50:06,1
+880,RCH-IMP-000369,impressora,Oki,OKI ES4172,ak6b057578,,ativo,,R10 - SP,,,303337,0,2026-06-17 11:50:06,1
+881,RCH-IMP-000370,impressora,Epson,EPSON L3150,x5evb72348,,ativo,,R10 - SP,,,17747,0,2026-06-17 11:50:06,1
+882,RCH-IMP-000371,impressora,Oki,OKI ES5112,ak95020421,,ativo,,JD Angela,,,70062,0,2026-06-17 11:50:06,1
+883,RCH-IMP-000372,impressora,Epson,EPSONS L1250,xdnz003224,,ativo,,Hosp do Homem RJ,,,0,0,2026-06-17 11:50:06,1
+884,RCH-IMP-000373,impressora,Epson,EPSON L3250,xaabb76975,,ativo,,AES São Matheus,,,8291,0,2026-06-17 11:50:06,1
+885,RCH-IMP-000374,impressora,Oki,OKIC831,al25029820,,ativo,,Hospital Israelita Albert Sabin,,,61,180,2026-06-17 11:50:06,1
+886,RCH-IMP-000375,impressora,Oki,OKI C911,,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+887,RCH-IMP-000376,impressora,Epson,EPSON L3150,x5ev975388,,ativo,,"AES São Caetano  (Rua Rafael Corrêa Sampaio,361)",,,8866,0,2026-06-17 11:50:06,1
+888,RCH-IMP-000377,impressora,Epson,EPSON L3210,xaaa153048,,ativo,,CDI - Suzano 4ID,,,6069,0,2026-06-17 11:50:06,1
+889,RCH-IMP-000378,impressora,Epson,EPSON L3250,xaab709544,,ativo,,"AES São Caetano  (Rua Rafael Corrêa Sampaio,361)",,,7392,0,2026-06-17 11:50:06,1
+890,RCH-IMP-000379,impressora,Epson,EPSON L3110,x5eve08398,,ativo,,R10 - SP,,,69166,0,2026-06-17 11:50:06,1
+891,RCH-IMP-000380,impressora,Hp,HP M432,brbs02lg5b,,ativo,,Porsche Matriz,,,92622,0,2026-06-17 11:50:06,1
+892,RCH-IMP-000381,impressora,Hp,HP M432,brbsp9d0z3,,ativo,,Porsche Matriz,,,39501,0,2026-06-17 11:50:06,1
+893,RCH-IMP-000382,impressora,Epson,EPSON L1250,w5ev975388,,ativo,,R10 - SP,,,8853,0,2026-06-17 11:50:06,1
+894,RCH-IMP-000383,impressora,Oki,OKI ES5112,akc5037009,,ativo,,R10 - SP,,Bandeija Travada,88641,0,2026-06-17 11:50:06,1
+895,RCH-IMP-000384,impressora,Zebra,Zebra GC420t,54j185200998,,ativo,,Humana Pompeia,,,0,0,2026-06-17 11:50:06,1
+896,RCH-IMP-000385,impressora,Zebra,Zebra-GT800,11j184702459,,ativo,,Humana Ibirapuera,,,0,0,2026-06-17 11:50:06,1
+897,RCH-IMP-000386,impressora,Oki,OKI ES5112,bw02014814,,ativo,,Humana Ibirapuera,,,36237,0,2026-06-17 11:50:06,1
+898,RCH-IMP-000387,impressora,Hp,HP M428,brdspd00kg,,ativo,,Porsche Matriz,,,3230,0,2026-06-17 11:50:06,1
+899,RCH-IMP-000388,impressora,Epson,EPSON L3250,xaaba43477,,ativo,,Hosp Bertioga 4ID,,Pecinha de rolagem soltou,84974,0,2026-06-17 11:50:06,1
+900,RCH-IMP-000389,impressora,Epson,EPSON L1250,xbfr008018,,ativo,,R10 - SP,,Atolando papel,0,0,2026-06-17 11:50:06,1
+901,RCH-IMP-000390,impressora,Epson,EPSON M1120,x5j2027972,,ativo,,R10 - SP,,Não liga,0,0,2026-06-17 11:50:06,1
+902,RCH-IMP-000391,impressora,Oki,OKI C711,sn,,ativo,,R10 - SP,,Apr msg de erro,155,34233,2026-06-17 11:50:06,1
+903,RCH-IMP-000392,impressora,Oki,OKI ES5112,bw02001066,,ativo,,R10 - SP,,,35726,0,2026-06-17 11:50:06,1
+904,RCH-IMP-000393,impressora,Hp,HP M428,brdsq2h0gl,,ativo,199,RENCH - Estoque,,,12385,0,2026-06-17 11:50:06,1
+905,RCH-IMP-000394,impressora,Oki,OKI C711,ak72034260,,ativo,,Figeuira Grande,,,175904,205,2026-06-17 11:50:06,1
+906,RCH-IMP-000395,impressora,Oki,OKI C711,ak87039644,,ativo,,HM Itu,,,113,35095,2026-06-17 11:50:06,1
+907,RCH-IMP-000396,impressora,Oki,OKI ES5112,bw0a006027,,ativo,,Hospital Geral de Arraial do Cabo,,,145479,0,2026-06-17 11:50:06,1
+908,RCH-IMP-000397,impressora,Oki,OKI ES5112,ak5c049394,,ativo,,Hosp de Cachoeira de macacu (B),,,105356,0,2026-06-17 11:50:06,1
+909,RCH-IMP-000398,impressora,Oki,OKI ES5112,bw0a006041,,ativo,,Hosp Regional Teodoro Sampaio (Comp de apoio),,,111773,0,2026-06-17 11:50:06,1
+910,RCH-IMP-000399,impressora,Oki,OKI ES5112,bw0a003581,,ativo,,Hosp Regional Teodoro Sampaio (Servidor ),,,71922,0,2026-06-17 11:50:06,1
+911,RCH-IMP-000400,impressora,Oki,OKI ES5112,bw0a003579,,ativo,,Hosp Regional Teodoro Sampaio (Backup),,,103966,0,2026-06-17 11:50:06,1
+912,RCH-IMP-000401,impressora,Oki,OKI ES5112,ak95029425,,ativo,,Samir - Espirito Santo,,,65856,0,2026-06-17 11:50:06,1
+913,RCH-IMP-000402,impressora,Oki,OKI ES5112,bw09028536,,ativo,,Samir - Espirito Santo,,,25966,0,2026-06-17 11:50:06,1
+914,RCH-IMP-000403,impressora,Oki,OKI ES5112,ak95020375,,ativo,,Samir - Espirito Santo,,,295042,0,2026-06-17 11:50:06,1
+915,RCH-IMP-000404,impressora,Oki,OKI ES5112,ak92011867,,ativo,,Samir - Espirito Santo,,,95588,0,2026-06-17 11:50:06,1
+916,RCH-IMP-000405,impressora,Epson,EPSON L1250,xdnz003148,,ativo,,Ursi,,,0,0,2026-06-17 11:50:06,1
+917,RCH-IMP-000406,impressora,Oki,OKI ES4172,ak97011016c0,,ativo,,Pronto Socorro Central de Praia Grande,,Peça que puxa papel quebrou,208892,0,2026-06-17 11:50:06,1
+918,RCH-IMP-000407,impressora,Oki,OKI C911,,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+919,RCH-IMP-000408,impressora,Epson,EPSON L1250,xdnz003124,,ativo,,Juquitiba,,,4591,0,2026-06-17 11:50:06,1
+920,RCH-IMP-000409,impressora,Oki,OKI ES8473,al5a033690,,ativo,,R10,,,0,0,2026-06-17 11:50:06,1
+921,RCH-IMP-000410,impressora,Oki,OKI ES4172,,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+922,RCH-IMP-000411,impressora,Hp,HP M408,brbs01sl9k,,ativo,,R10 - SP,,,3188,0,2026-06-17 11:50:06,1
+923,RCH-IMP-000412,impressora,Oki,OKI C911,,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+924,RCH-IMP-000413,impressora,Oki,OKI C711,,,ativo,,Centro de Exames da Mulher,,,0,0,2026-06-17 11:50:06,1
+925,RCH-IMP-000414,impressora,Oki,OKI C711,ak4b020781,,ativo,,Mercadão de Mongagua,,,4991,26506,2026-06-17 11:50:06,1
+926,RCH-IMP-000415,impressora,Oki,OKI C711,ak79039559,,ativo,,Centro de Exames da Mulher,,,558,42277,2026-06-17 11:50:06,1
+927,RCH-IMP-000416,impressora,Hp,HP M428,,,ativo,,R10,,,0,0,2026-06-17 11:50:06,1
+928,RCH-IMP-000417,impressora,Oki,OKI ES8473,al6c058672,,ativo,,Pronto Socorro Central de Praia Grande,,,12671,49173,2026-06-17 11:50:06,1
+929,RCH-IMP-000418,impressora,Oki,OKI C711,ak97007734,,ativo,,Centro de Exames da Mulher,,,1693,68324,2026-06-17 11:50:06,1
+930,RCH-IMP-000419,impressora,Oki,OKI ES5112,ak5c034628,,ativo,,Ama E Capão,,,191318,0,2026-06-17 11:50:06,1
+931,RCH-IMP-000420,impressora,Oki,OKI ES8473,al59010708,,ativo,,Santa Casa de São Roque,,,41532,217380,2026-06-17 11:50:06,1
+932,RCH-IMP-000421,impressora,Epson,EPSON L3110,x5eu298085,,ativo,,Hospital do Homem,,,0,0,2026-06-17 11:50:06,1
+933,RCH-IMP-000422,impressora,Epson,EPSON L3150,x5evb86337,,ativo,,R10 - SP,,,36874,0,2026-06-17 11:50:06,1
+934,RCH-IMP-000423,impressora,Oki,OKI C711,al27043258,,ativo,,Mercadão Enseada,,,19334,50776,2026-06-17 11:50:06,1
+935,RCH-IMP-000424,impressora,Hp,HP M428,brdspd00j0,,ativo,,R10 - SP,,,218507,0,2026-06-17 11:50:06,1
+936,RCH-IMP-000425,impressora,Oki,OKI ES8473,,,ativo,,Francisco Morato,,,0,0,2026-06-17 11:50:06,1
+937,RCH-IMP-000426,impressora,Oki,OKI ES8473,AL59010698,,ativo,,Deposito,,,4822,364792,2026-06-17 11:50:06,1
+938,RCH-IMP-000427,impressora,Hp,HP M4103,brbstbf055,,ativo,,AES São Bernado,,,0,0,2026-06-17 11:50:06,1
+939,RCH-IMP-000428,impressora,Hp,HP M4103,brbstbg018,,ativo,,Porsche Naçoes Unidas,,,0,0,2026-06-17 11:50:06,1
+940,RCH-IMP-000429,impressora,Hp,HP M4103,,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+941,RCH-IMP-000430,impressora,Oki,OKI ES5112,,,ativo,,R10 - SP,,Queimou,0,0,2026-06-17 11:50:06,1
+942,RCH-IMP-000431,impressora,Oki,OKI C711,ak5c019349,,ativo,,Mercadão de Santos,,,5109,40133,2026-06-17 11:50:06,1
+943,RCH-IMP-000432,impressora,Oki,OKI C711,,,ativo,,R10 - SP,,Apresentando erro,0,0,2026-06-17 11:50:06,1
+944,RCH-IMP-000433,impressora,,MC573,ak97019059,,ativo,,Humana Ibirapuera,,,8856,31253,2026-06-17 11:50:06,1
+945,RCH-IMP-000434,impressora,Hp,HP 4303,,,ativo,,R10,,,0,0,2026-06-17 11:50:06,1
+946,RCH-IMP-000435,impressora,Oki,OKI ES4172,ak75042874,,ativo,,Humana Ibirapuera,,,135752,0,2026-06-17 11:50:06,1
+947,RCH-IMP-000436,impressora,Oki,OKI C711,,,ativo,,Hospital de Arraial,,,0,0,2026-06-17 11:50:06,1
+948,RCH-IMP-000437,impressora,Oki,OKI C711,ak4b033786,,ativo,,Hospital Geral de Arraial do Cabo,,,1878,99264,2026-06-17 11:50:06,1
+949,RCH-IMP-000438,impressora,Oki,OKI ES5112,ak95000553,,ativo,,Samir - Cachoeira Paulista,,Bandeja atolada,27197,0,2026-06-17 11:50:06,1
+950,RCH-IMP-000439,impressora,Epson,EPSON L3250,xaabt51657,,ativo,,AES São Bernado,,,0,0,2026-06-17 11:50:06,1
+951,RCH-IMP-000440,impressora,Oki,OKI ES8473,AL6A044685,,ativo,,Hospital Nazaré Saquarema,,,318,49726,2026-06-17 11:50:06,1
+952,RCH-IMP-000441,impressora,Hp,HP M479,,,ativo,,R10 - SP,,Impressora apresentando barulho,0,0,2026-06-17 11:50:06,1
+953,RCH-IMP-000442,impressora,Hp,HP M479,cncrq1fotl,,ativo,,Humana Verbo Divino,,,17266,49325,2026-06-17 11:50:06,1
+954,RCH-IMP-000443,impressora,Oki,OKI C711,ak98003357,,ativo,199,RENCH - Estoque,,,8659,30782,2026-06-17 11:50:06,1
+955,RCH-IMP-000444,impressora,Oki,OKI ES5112,ak95020424,,ativo,,Samir - Itapevi,,,73313,0,2026-06-17 11:50:06,1
+956,RCH-IMP-000445,impressora,Oki,OKI ES8473,al59010698,,ativo,,Samir - Itapevi,,,4822,364792,2026-06-17 11:50:06,1
+957,RCH-IMP-000446,impressora,Oki,OKI C711,ak76043073,,ativo,,Samir - Itapevi,,,1293,2980,2026-06-17 11:50:06,1
+958,RCH-IMP-000447,impressora,Oki,OKI C711,ak91009765,,ativo,,Mercadão Praia Grande,,,330,21500,2026-06-17 11:50:06,1
+959,RCH-IMP-000448,impressora,Oki,OKI C711,,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+960,RCH-IMP-000449,impressora,Epson,EPSON L3250,xaabg09973,,ativo,,R10 - SP,,Não Puxa Papel,0,0,2026-06-17 11:50:06,1
+961,RCH-IMP-000450,impressora,Oki,OKI ES5112,ak95004672,,ativo,,Samir - Cachoeira Paulista  RX,,,64257,0,2026-06-17 11:50:06,1
+962,RCH-IMP-000451,impressora,Oki,OKI ES5112,ak78012602,,ativo,,Samir - Cachoeira Paulista  Laudo,,,177730,0,2026-06-17 11:50:06,1
+963,RCH-IMP-000452,impressora,Oki,OKI ES5112,ak7b032342,,ativo,,Samir - Cachoeira Paulista  Backup,,,71043,0,2026-06-17 11:50:06,1
+964,RCH-IMP-000453,impressora,Oki,OKI C711,ak94014019d0,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+965,RCH-IMP-000454,impressora,Hp,HP M4103,brbstdb0g5,,ativo,,Porsche Naçoes Unidas,,,0,0,2026-06-17 11:50:06,1
+966,RCH-IMP-000455,impressora,Oki,OKI ES5112,bw02001068,,ativo,,R10 - SP,,Problema no fusor,9076,0,2026-06-17 11:50:06,1
+967,RCH-IMP-000456,impressora,Oki,OKI C711,ak9b000031d0,,ativo,,R10 - SP,,Problema no led,0,0,2026-06-17 11:50:06,1
+968,RCH-CPU-000001,desktop,Dell,Dell Optilplex 3050,db6r9r2,,ativo,,Hosp Dia São Matheus AES,,,0,0,2026-06-17 11:50:06,1
+969,RCH-CPU-000002,desktop,Hp,HP ProDesk 400,brj708cyvf,,ativo,,Hisa,,,0,0,2026-06-17 11:50:06,1
+970,RCH-CPU-000003,desktop,Dell,Dell Optilplex 3020,d45d342,,ativo,,Saquarema - Samir,,,0,0,2026-06-17 11:50:06,1
+971,RCH-CPU-000004,desktop,Dell,Dell Optilplex 3010,c09v2v1,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+972,RCH-SRV-000001,servidor,Supermicro,Super Micro,cse-512 abc-03,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+973,RCH-NOT-000001,notebook,Dell,Dell E5440,8dzr442,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+974,RCH-NOT-000002,notebook,Lenovo,Lenovo Tp -T430,,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+975,RCH-NOT-000003,notebook,Lenovo,Lenovo Bs145,pe0773pm,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+976,RCH-CPU-000005,desktop,Hp,HP Compaq 8100,brg118fn49,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+977,RCH-CPU-000006,desktop,Hp,HP Compaq 8100,brg203f8z5,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+978,RCH-CPU-000007,desktop,Hp,HP Compaq 8100,brg246f5qc,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+979,RCH-CPU-000008,desktop,Hp,HP Compaq 8100,brg118f8mg,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+980,RCH-CPU-000009,desktop,Hp,HP Compaq 8100,brg120fqtn,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+981,RCH-CPU-000010,desktop,Hp,HP ProDesk 400,brj708cypp,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+982,RCH-CPU-000011,desktop,Lenovo,LENOVO Gc7,11c1vz0,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+983,RCH-SRV-000002,servidor,Hp,HPE ProLiant,brc7038k92,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+984,RCH-CPU-000012,desktop,Hp,HP Compaq 8100,brg246f3hd,,ativo,,Ama Prates - Pacs,,,0,0,2026-06-17 11:50:06,1
+985,RCH-NOT-000004,notebook,Dell,Dell Latitude E74,6x6lz1,,ativo,,R10 - SP,,Apresentando Barulho estranho,0,0,2026-06-17 11:50:06,1
+986,RCH-SRV-000003,servidor,,PX 300 P11,gm03nbrn0010b0x,,ativo,,P.A Macedonia,,,0,0,2026-06-17 11:50:06,1
+987,RCH-CPU-000013,desktop,Hp,HP Compaq 8100,brg118fnfr,,ativo,,Ama Prates - consultorio 1,,,0,0,2026-06-17 11:50:06,1
+988,RCH-CPU-000014,desktop,Dell,Dell Optilplex 790,200,,ativo,,R10 - SP,,Queimou,0,0,2026-06-17 11:50:06,1
+989,RCH-CPU-000015,desktop,Dell,Dell Optilplex 3020,jlc3542,,ativo,,RD - Hosp da Criança e ado. GRU,,Falta de espaço interno para expansão de HD,0,0,2026-06-17 11:50:06,1
+990,RCH-MON-000001,monitor,Dell,Monitor Dell Dp port,BR03VWMX,,ativo,,Vera Cruz - Sala nova de Rx,,,0,0,2026-06-17 11:50:06,1
+991,RCH-CPU-000016,desktop,Lenovo,Lenovo ThinkCentre M82,mj84p1t,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+992,RCH-SRV-000004,servidor,,Forttreck,,,ativo,,Pq Novo Sto Amaro,,,0,0,2026-06-17 11:50:06,1
+993,RCH-CPU-000017,desktop,Hp,HP Compaq 8100,brg047gb34,,ativo,,Ama Prates - consultorio 2,,,0,0,2026-06-17 11:50:06,1
+994,RCH-CPU-000018,desktop,Hp,HP Compaq 8100,brg023frjq,,ativo,,P.S Barra Funda,,,0,0,2026-06-17 11:50:06,1
+995,RCH-CPU-000019,desktop,Hp,HP Compaq 8100,brg143f635,,ativo,,P.S Barra Funda,,,0,0,2026-06-17 11:50:06,1
+996,RCH-CPU-000020,desktop,Hp,HP Compaq 8100,brg027flcl,,ativo,,P.S Barra Funda,,,0,0,2026-06-17 11:50:06,1
+997,RCH-CPU-000021,desktop,Hp,HP Compaq 8100,brg118fnn4,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:06,1
+998,RCH-SRV-000005,servidor,,Forttreck,,,ativo,,Pq Fernanda,,240ssd - 4tb HD,0,0,2026-06-17 11:50:06,1
+999,RCH-CPU-000022,desktop,Dell,Dell Optilplex 3050,2rsmvn2,,ativo,,Amparo,,240 ssd,0,0,2026-06-17 11:50:06,1
+1000,RCH-CPU-000023,desktop,Dell,Dell Optiplex 3040,79b5md2,,ativo,,R10 - SP,,Maquina lenta,0,0,2026-06-17 11:50:06,1
+1001,RCH-SRV-000006,servidor,,Forttreck,230316846901735,,ativo,,Samir - Guarulhos - HMU,,240ssd - 4tb hd,0,0,2026-06-17 11:50:06,1
+1002,RCH-CPU-000024,desktop,,Modelo não informado,0df8n1,,ativo,,RD,,240 ssd,0,0,2026-06-17 11:50:06,1
+1003,RCH-SRV-000007,servidor,,Forttreck,230316846901060,,ativo,,Ama Capão,,240ssd - 2tb HD,0,0,2026-06-17 11:50:07,1
+1004,RCH-CPU-000025,desktop,Hp,HP Compaq 8100,brg118fn9n,,ativo,,Vila Dirce,,,0,0,2026-06-17 11:50:07,1
+1005,RCH-SRV-000008,servidor,,Forttreck,230316846901730,,ativo,,JD Angela,,240ssd - 2 tb HD,0,0,2026-06-17 11:50:07,1
+1006,RCH-CPU-000026,desktop,Hp,HP Compaq 8100,brg118fnfq,,ativo,,RD - Hosp da Criança e ado. GRU,,,0,0,2026-06-17 11:50:07,1
+1007,RCH-NOT-000005,notebook,,Notebook - Vostro 14,4nhrl73,,ativo,,R10 - SP,,Maquina lenta,0,0,2026-06-17 11:50:07,1
+1008,RCH-NOT-000006,notebook,Lenovo,Notebook - Lenovo 82HB,PE0773PM,,ativo,,Chacara Santana,,,0,0,2026-06-17 11:50:07,1
+1009,RCH-CPU-000027,desktop,Hp,HP Compaq 8100,brg1185l58,,ativo,,Americana,,,0,0,2026-06-17 11:50:07,1
+1010,RCH-NOT-000007,notebook,Dell,Dell-Latitude E6440,5tgd342,,ativo,,R10 - SP,,240 ssd - 8gb ram - I5,0,0,2026-06-17 11:50:07,1
+1011,RCH-CPU-000028,desktop,Dell,Dell Optilplex 3010,1rsd8s1,,ativo,,Hosp Nelson Sales US - RJ,,240 ssd - 8gb ram - I5,0,0,2026-06-17 11:50:07,1
+1012,RCH-NOT-000008,notebook,Dell,Dell-Latitude E7440,djlj342,,ativo,,R10 - SP,,120 ssd - 8gb ram - i5,0,0,2026-06-17 11:50:07,1
+1013,RCH-NOT-000009,notebook,Dell,Dell-Latitude E7440,4jk0nz1,,ativo,,R10 - SP,,240 ssd - 8gb ram - I5,0,0,2026-06-17 11:50:07,1
+1014,RCH-SRV-000009,servidor,,Forttreck,230316846900220,,ativo,,Samir - Espirito Santo,,240 ssd - 16gb ram - I5,0,0,2026-06-17 11:50:07,1
+1015,RCH-SRV-000010,servidor,Dell,Dell-EMC,94fhsy2,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:07,1
+1016,RCH-CPU-000029,desktop,Hp,HP ProDesk 400,brj432plt,,ativo,,R10 - SP,,,0,0,2026-06-17 11:50:07,1
+1017,RCH-CPU-000030,desktop,Dell,Dell Optplex 7010,jrjb6w1,,ativo,,URSI Santana/Jaçanã Samir,,,0,0,2026-06-17 11:50:07,1
+1018,RCH-CPU-000031,desktop,Lenovo,Lenovo Bs145,71y3516,,ativo,,URSI Santana/Jaçanã Samir,,120 ssd - 8gb ram - i5,0,0,2026-06-17 11:50:07,1
+1019,RCH-NOT-000010,notebook,Dell,Dell - Latitude 3410,5qxz0d3,,ativo,,Hora Certa Campo Limpo,,,0,0,2026-06-17 11:50:07,1
+1020,RCH-NOT-000011,notebook,Dell,Dell E5440,27144415369,,ativo,,Aes São Bernado Clinica RR,,240 ssd 8gb ram i5,0,0,2026-06-17 11:50:07,1
+1021,RCH-IMP-000457,impressora,OKI,C711,al5a022601,,ativo,176,Mercadão Itanhaem,,,1124,14378,2026-06-19 13:21:39,1

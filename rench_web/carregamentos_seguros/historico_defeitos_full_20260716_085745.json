@@ -1,0 +1,26 @@
+[
+  {
+    "id": 5,
+    "equipamento_id": 566,
+    "descricao": "Atolando Papel",
+    "data_ocorrencia": "2026-06-17"
+  },
+  {
+    "id": 6,
+    "equipamento_id": 577,
+    "descricao": "impressão ruim",
+    "data_ocorrencia": "2026-06-17"
+  },
+  {
+    "id": 7,
+    "equipamento_id": 565,
+    "descricao": "Impressão ruim",
+    "data_ocorrencia": "2026-06-17"
+  },
+  {
+    "id": 8,
+    "equipamento_id": 569,
+    "descricao": "Peça quebrou",
+    "data_ocorrencia": "2026-06-17"
+  }
+]
