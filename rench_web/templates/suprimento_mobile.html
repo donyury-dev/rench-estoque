@@ -50,6 +50,12 @@
     .extra-field{display:none;margin-top:8px;}
     .extra-field.show{display:block;}
     .item-box{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:10px;position:relative;}
+    .saldo-info{padding:8px 10px;border-radius:8px;font-size:13px;font-weight:600;}
+    .saldo-ok{background:#D6F0E0;color:#176B43;}
+    .saldo-baixo{background:#FFF3CD;color:#B76E00;}
+    .saldo-zerado{background:#F8D7DA;color:#850001;}
+    .saldo-loading{opacity:0.6;}
+
     .item-box .remove{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:none;background:#fff;color:#850001;box-shadow:0 1px 3px rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;}
     .btn-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:#fff;border:2px dashed #850001;color:#850001;border-radius:10px;padding:11px;font-weight:700;font-size:14px;margin-top:6px;cursor:pointer;}
     .footer{flex:0 0 auto;background:#fff;border-top:1px solid #ddd;padding:10px 12px;}
@@ -167,14 +173,18 @@
       </div>
 
       <div class="row mb-2">
-        <div>
+        <div style="flex:1;">
           <label>Modelo</label>
-          <input type="text" name="modelo_impressora[]" placeholder="Ex: C711">
+          <input type="text" name="modelo_impressora[]" class="modelo-input" placeholder="Ex: C711" oninput="this.value = this.value.toUpperCase(); atualizarSaldo(this.closest('.item-box'))">
         </div>
         <div style="max-width:80px;">
           <label>Qtd</label>
-          <input type="number" name="quantidade[]" value="1" min="1" required>
+          <input type="number" name="quantidade[]" value="1" min="1" required class="qtd-input" onchange="atualizarSaldo(this.closest('.item-box'))">
         </div>
+      </div>
+
+      <div class="saldo-info mb-2" style="display:none;">
+        <div class="saldo-badge"></div>
       </div>
 
       <div class="mb-0">
@@ -204,6 +214,49 @@
       const tipo = card.querySelector('.tipo-btn.active')?.dataset.val || '';
       const cor = card.querySelector('.cor-btn.active')?.dataset.cor || '';
       card.querySelector('.tipo-input').value = cor ? tipo + ' ' + cor : tipo;
+      atualizarSaldo(card);
+    }
+
+    async function atualizarSaldo(card){
+      const tipoInput = card.querySelector('.tipo-input');
+      const modeloInput = card.querySelector('.modelo-input');
+      const qtdInput = card.querySelector('.qtd-input');
+      const saldoInfo = card.querySelector('.saldo-info');
+      const saldoBadge = card.querySelector('.saldo-badge');
+
+      const tipo = tipoInput?.value || '';
+      const modelo = (modeloInput?.value || '').trim();
+      const qtd = parseInt(qtdInput?.value || 1);
+
+      if(!tipo){
+        saldoInfo.style.display = 'none';
+        return;
+      }
+
+      saldoInfo.style.display = 'block';
+      saldoBadge.className = 'saldo-badge saldo-loading';
+      saldoBadge.textContent = 'Consultando estoque...';
+
+      try{
+        const resp = await fetch(`/api/estoque/saldo?tipo=${encodeURIComponent(tipo)}&modelo=${encodeURIComponent(modelo)}`);
+        const data = await resp.json();
+        const saldo = data.saldo || 0;
+
+        saldoBadge.classList.remove('saldo-loading');
+        if(saldo === 0){
+          saldoBadge.className = 'saldo-badge saldo-zerado';
+          saldoBadge.textContent = `Estoque zerado (${saldo})`;
+        } else if(saldo < qtd){
+          saldoBadge.className = 'saldo-badge saldo-baixo';
+          saldoBadge.textContent = `Saldo insuficiente: ${saldo} em estoque`;
+        } else {
+          saldoBadge.className = 'saldo-badge saldo-ok';
+          saldoBadge.textContent = `Em estoque: ${saldo}`;
+        }
+      } catch(e){
+        saldoBadge.className = 'saldo-badge';
+        saldoBadge.textContent = 'Não foi possível consultar o estoque';
+      }
     }
 
     function configurarItem(card){
@@ -248,6 +301,7 @@
       const card = clone.querySelector('.item-box');
       configurarItem(card);
       container.appendChild(card);
+      atualizarSaldo(card);
     }
 
     function removerItem(btn){

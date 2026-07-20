@@ -155,6 +155,7 @@ def _executar_migrations():
         ('historico_defeitos', 'status', 'VARCHAR(50)'),
         ('suprimentos_itens', 'motivo_padrao', 'VARCHAR(50)'),
         ('suprimentos_itens', 'defeito', 'TEXT'),
+        ('suprimentos_itens', 'estorno_estoque', 'INTEGER DEFAULT 0'),
     ]:
         if not coluna_existe(tabela, coluna):
             migracoes.append(f"ALTER TABLE {tabela} ADD COLUMN {coluna} {tipo}")
@@ -285,6 +286,37 @@ def init_db():
         )
     """)
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS estoque (
+            id SERIAL PRIMARY KEY,
+            tipo_suprimento VARCHAR(100) NOT NULL,
+            modelo_impressora VARCHAR(255) NOT NULL DEFAULT '',
+            quantidade INTEGER NOT NULL DEFAULT 0 CHECK (quantidade >= 0),
+            estoque_minimo INTEGER NOT NULL DEFAULT 1,
+            data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_estoque_tipo_modelo
+        ON estoque (tipo_suprimento, modelo_impressora)
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS estoque_movimentacoes (
+            id SERIAL PRIMARY KEY,
+            estoque_id INTEGER NOT NULL REFERENCES estoque(id) ON DELETE CASCADE,
+            tipo_movimento VARCHAR(50) NOT NULL,
+            quantidade INTEGER NOT NULL,
+            saldo_antes INTEGER NOT NULL,
+            saldo_depois INTEGER NOT NULL,
+            motivo TEXT,
+            responsavel VARCHAR(255),
+            entrega_id INTEGER,
+            data_movimento TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     db.commit()
     cur.close()
 
@@ -391,6 +423,97 @@ def gerar_codigo_rastreio(cur, tipo_equipamento):
             return codigo
         proximo_numero += 1
         codigo = f"RCH-{prefixo}-{proximo_numero:06d}"
+
+
+def _chave_estoque(tipo_suprimento, modelo_impressora):
+    tipo = (tipo_suprimento or '').strip()
+    modelo = (modelo_impressora or '').strip().upper()
+    return tipo, modelo
+
+
+def buscar_ou_criar_estoque(cur, tipo_suprimento, modelo_impressora):
+    tipo, modelo = _chave_estoque(tipo_suprimento, modelo_impressora)
+    cur.execute(
+        "SELECT id, quantidade FROM estoque WHERE tipo_suprimento=%s AND modelo_impressora=%s",
+        (tipo, modelo)
+    )
+    row = cur.fetchone()
+    if row:
+        return row['id'], row['quantidade']
+    cur.execute(
+        "INSERT INTO estoque (tipo_suprimento, modelo_impressora, quantidade) VALUES (%s, %s, 0) RETURNING id",
+        (tipo, modelo)
+    )
+    return cur.fetchone()['id'], 0
+
+
+def movimentar_estoque(cur, estoque_id, tipo_movimento, quantidade, saldo_antes, motivo=None, responsavel=None, entrega_id=None):
+    saldo_depois = saldo_antes + quantidade
+    cur.execute("""
+        INSERT INTO estoque_movimentacoes
+        (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, entrega_id)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    """, (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, entrega_id))
+    cur.execute(
+        "UPDATE estoque SET quantidade=%s, data_atualizacao=CURRENT_TIMESTAMP WHERE id=%s",
+        (saldo_depois, estoque_id)
+    )
+
+
+def verificar_saldo(cur, tipo_suprimento, modelo_impressora, quantidade):
+    tipo, modelo = _chave_estoque(tipo_suprimento, modelo_impressora)
+    cur.execute(
+        "SELECT quantidade FROM estoque WHERE tipo_suprimento=%s AND modelo_impressora=%s",
+        (tipo, modelo)
+    )
+    row = cur.fetchone()
+    saldo = row['quantidade'] if row else 0
+    return saldo >= quantidade, saldo
+
+
+def debitar_estoque_entrega(cur, entrega_id, itens, responsavel=None):
+    """Recebe lista de dicts: {tipo_suprimento, modelo_impressora, quantidade}."""
+    faltantes = []
+    for item in itens:
+        tipo, modelo = _chave_estoque(item.get('tipo_suprimento'), item.get('modelo_impressora'))
+        qtd = int(item.get('quantidade') or 1)
+        ok, saldo = verificar_saldo(cur, tipo, modelo, qtd)
+        if not ok:
+            faltantes.append({'tipo': tipo, 'modelo': modelo, 'saldo': saldo, 'solicitado': qtd})
+    if faltantes:
+        return faltantes
+
+    for item in itens:
+        tipo, modelo = _chave_estoque(item.get('tipo_suprimento'), item.get('modelo_impressora'))
+        qtd = int(item.get('quantidade') or 1)
+        estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo, modelo)
+        movimentar_estoque(
+            cur, estoque_id, 'saida', -qtd, saldo,
+            motivo=f'Entrega para unidade (entrega_id={entrega_id})',
+            responsavel=responsavel,
+            entrega_id=entrega_id
+        )
+    return []
+
+
+def estornar_estoque_entrega(cur, entrega_id, responsavel=None):
+    cur.execute(
+        "SELECT tipo_suprimento, modelo_impressora, quantidade FROM suprimentos_itens WHERE entrega_id=%s",
+        (entrega_id,)
+    )
+    itens = cur.fetchall()
+    for item in itens:
+        tipo, modelo = _chave_estoque(item['tipo_suprimento'], item['modelo_impressora'])
+        qtd = int(item['quantidade'] or 1)
+        estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo, modelo)
+        movimentar_estoque(
+            cur, estoque_id, 'entrada', qtd, saldo,
+            motivo=f'Estorno por exclusao de entrega (entrega_id={entrega_id})',
+            responsavel=responsavel,
+            entrega_id=entrega_id
+        )
+        cur.execute("UPDATE suprimentos_itens SET estorno_estoque=1 WHERE entrega_id=%s", (entrega_id,))
+
 
 def importar_planilha_para_banco(caminho=PLANILHA_PADRAO, limpar=True):
     import openpyxl
@@ -1442,18 +1565,51 @@ def suprimento_mobile():
         defeitos = request.form.getlist('defeito[]')
         motivos_outros = request.form.getlist('motivo[]')
 
+        itens = []
         for tipo, modelo, qtd, mp, defeito, outro in zip(tipos, modelos, quantidades, motivos_padrao, defeitos, motivos_outros):
             tipo = (tipo or '').strip()
             if tipo:
-                motivo_texto = None
-                if mp == 'outro':
-                    motivo_texto = (outro or '').strip() or None
-                elif mp:
-                    motivo_texto = mp
+                itens.append({
+                    'tipo_suprimento': tipo,
+                    'modelo_impressora': modelo,
+                    'quantidade': int(qtd or 1),
+                    'motivo_padrao': mp,
+                    'defeito': defeito,
+                    'outro': outro
+                })
+
+        if itens:
+            faltantes = debitar_estoque_entrega(cur, entrega_id, itens, responsavel=responsavel)
+            if faltantes:
+                db.rollback()
+                msgs = []
+                for f in faltantes:
+                    msgs.append(f"{f['tipo']} {f['modelo']}: solicitado {f['solicitado']}, em estoque {f['saldo']}")
+                flash('Estoque insuficiente: ' + '; '.join(msgs), 'danger')
                 cur.execute("""
-                    INSERT INTO suprimentos_itens (entrega_id, tipo_suprimento, modelo_impressora, quantidade, motivo_padrao, defeito, motivo)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """, (entrega_id, tipo, modelo.strip() or None, int(qtd or 1), mp or None, defeito.strip() or None, motivo_texto))
+                    SELECT emp.id as empresa_id, emp.nome as empresa_nome,
+                           u.id as unidade_id, u.nome as unidade_nome
+                    FROM empresas emp
+                    LEFT JOIN unidades u ON u.empresa_id = emp.id AND u.ativo=1
+                    WHERE emp.ativo=1
+                    ORDER BY emp.tipo DESC, emp.nome, u.nome
+                """)
+                locais = cur.fetchall()
+                return render_template('suprimento_mobile.html', locais=locais, hoje=data_entrega)
+
+        for item in itens:
+            mp = item['motivo_padrao']
+            defeito = item['defeito']
+            outro = item['outro']
+            motivo_texto = None
+            if mp == 'outro':
+                motivo_texto = (outro or '').strip() or None
+            elif mp:
+                motivo_texto = mp
+            cur.execute("""
+                INSERT INTO suprimentos_itens (entrega_id, tipo_suprimento, modelo_impressora, quantidade, motivo_padrao, defeito, motivo)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (entrega_id, item['tipo_suprimento'], item['modelo_impressora'].strip() or None, item['quantidade'], mp or None, defeito.strip() or None, motivo_texto))
 
         db.commit()
         flash('Entrega salva com sucesso!', 'success')
@@ -1497,18 +1653,51 @@ def novo_suprimento():
         defeitos = request.form.getlist('defeito[]')
         motivos_outros = request.form.getlist('motivo[]')
 
+        itens = []
         for tipo, modelo, qtd, mp, defeito, outro in zip(tipos, modelos, quantidades, motivos_padrao, defeitos, motivos_outros):
             tipo = (tipo or '').strip()
             if tipo:
-                motivo_texto = None
-                if mp == 'outro':
-                    motivo_texto = (outro or '').strip() or None
-                elif mp:
-                    motivo_texto = mp
+                itens.append({
+                    'tipo_suprimento': tipo,
+                    'modelo_impressora': modelo,
+                    'quantidade': int(qtd or 1),
+                    'motivo_padrao': mp,
+                    'defeito': defeito,
+                    'outro': outro
+                })
+
+        if itens:
+            faltantes = debitar_estoque_entrega(cur, entrega_id, itens, responsavel=responsavel)
+            if faltantes:
+                db.rollback()
+                msgs = []
+                for f in faltantes:
+                    msgs.append(f"{f['tipo']} {f['modelo']}: solicitado {f['solicitado']}, em estoque {f['saldo']}")
+                flash('Estoque insuficiente: ' + '; '.join(msgs), 'danger')
                 cur.execute("""
-                    INSERT INTO suprimentos_itens (entrega_id, tipo_suprimento, modelo_impressora, quantidade, motivo_padrao, defeito, motivo)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """, (entrega_id, tipo, modelo.strip() or None, int(qtd or 1), mp or None, defeito.strip() or None, motivo_texto))
+                    SELECT emp.id as empresa_id, emp.nome as empresa_nome, emp.tipo as empresa_tipo,
+                           u.id as unidade_id, u.nome as unidade_nome, u.setor
+                    FROM empresas emp
+                    LEFT JOIN unidades u ON u.empresa_id = emp.id AND u.ativo=1
+                    WHERE emp.ativo=1
+                    ORDER BY emp.tipo DESC, emp.nome, u.nome
+                """)
+                locais = cur.fetchall()
+                return render_template('suprimento_form.html', locais=locais, hoje=data_entrega)
+
+        for item in itens:
+            mp = item['motivo_padrao']
+            defeito = item['defeito']
+            outro = item['outro']
+            motivo_texto = None
+            if mp == 'outro':
+                motivo_texto = (outro or '').strip() or None
+            elif mp:
+                motivo_texto = mp
+            cur.execute("""
+                INSERT INTO suprimentos_itens (entrega_id, tipo_suprimento, modelo_impressora, quantidade, motivo_padrao, defeito, motivo)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (entrega_id, item['tipo_suprimento'], item['modelo_impressora'].strip() or None, item['quantidade'], mp or None, defeito.strip() or None, motivo_texto))
 
         db.commit()
         flash('Entrega de suprimentos registrada com sucesso!', 'success')
@@ -1532,10 +1721,168 @@ def novo_suprimento():
 def excluir_suprimento(entrega_id):
     db = get_db()
     cur = db.cursor()
+    estornar_estoque_entrega(cur, entrega_id, responsavel=session.get('usuario'))
     cur.execute("DELETE FROM suprimentos_entregas WHERE id=%s", (entrega_id,))
     db.commit()
-    flash('Registro excluido com sucesso!', 'success')
+    flash('Registro excluido e estoque estornado com sucesso!', 'success')
     return redirect(url_for('lista_suprimentos'))
+
+
+@app.route('/estoque', methods=['GET'])
+@login_required
+def controle_estoque():
+    db = get_db()
+    cur = db.cursor()
+
+    busca = request.args.get('q', '').strip()
+    status = request.args.get('status', '').strip()
+
+    sql = "SELECT * FROM estoque WHERE 1=1"
+    params = []
+    if busca:
+        sql += """ AND (
+            unaccent(lower(tipo_suprimento)) LIKE unaccent(lower(%s))
+            OR unaccent(lower(modelo_impressora)) LIKE unaccent(lower(%s))
+        )"""
+        params.extend([f'%{busca}%', f'%{busca}%'])
+    sql += " ORDER BY tipo_suprimento, modelo_impressora"
+    cur.execute(sql, params)
+    itens = cur.fetchall()
+
+    resultado = []
+    for item in itens:
+        qtd = item['quantidade']
+        minimo = item['estoque_minimo']
+        if qtd == 0:
+            st = 'zerado'
+        elif qtd < minimo:
+            st = 'baixo'
+        else:
+            st = 'ok'
+        if status and st != status:
+            continue
+        resultado.append({**item, 'status': st})
+
+    resumo = {'ok': 0, 'baixo': 0, 'zerado': 0}
+    for r in resultado:
+        resumo[r['status']] += 1
+
+    return render_template('estoque.html', itens=resultado, busca=busca, filtro_status=status, resumo=resumo)
+
+
+@app.route('/estoque/entrada', methods=['GET', 'POST'])
+@login_required
+def estoque_entrada():
+    db = get_db()
+    cur = db.cursor()
+
+    if request.method == 'POST':
+        tipo = request.form.get('tipo_suprimento', '').strip()
+        cor = request.form.get('cor_selecionada', '').strip()
+        modelo = request.form.get('modelo_impressora', '').strip().upper()
+        quantidade = int(request.form.get('quantidade') or 0)
+        estoque_minimo = int(request.form.get('estoque_minimo') or 1)
+        motivo = request.form.get('motivo', '').strip() or None
+        responsavel = request.form.get('responsavel', '').strip() or session.get('usuario')
+
+        if not tipo or quantidade <= 0:
+            flash('Informe o tipo e a quantidade.', 'danger')
+            return redirect(url_for('estoque_entrada'))
+
+        tipo_final = f"{tipo} {cor}".strip() if cor else tipo
+        estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo_final, modelo)
+
+        cur.execute(
+            "UPDATE estoque SET estoque_minimo=%s WHERE id=%s",
+            (estoque_minimo, estoque_id)
+        )
+        movimentar_estoque(
+            cur, estoque_id, 'entrada', quantidade, saldo,
+            motivo=motivo or 'Entrada manual de estoque',
+            responsavel=responsavel
+        )
+        db.commit()
+        flash(f'Entrada registrada: {tipo_final} {modelo} (+{quantidade})', 'success')
+        return redirect(url_for('controle_estoque'))
+
+    return render_template('estoque_entrada.html')
+
+
+@app.route('/estoque/ajuste/<int:estoque_id>', methods=['GET', 'POST'])
+@login_required
+def estoque_ajuste(estoque_id):
+    db = get_db()
+    cur = db.cursor()
+
+    cur.execute("SELECT * FROM estoque WHERE id=%s", (estoque_id,))
+    item = cur.fetchone()
+    if not item:
+        flash('Item nao encontrado.', 'danger')
+        return redirect(url_for('controle_estoque'))
+
+    if request.method == 'POST':
+        nova_qtd = int(request.form.get('quantidade') or 0)
+        estoque_minimo = int(request.form.get('estoque_minimo') or item['estoque_minimo'])
+        motivo = request.form.get('motivo', '').strip() or 'Ajuste manual'
+        responsavel = request.form.get('responsavel', '').strip() or session.get('usuario')
+
+        if nova_qtd < 0:
+            flash('Quantidade nao pode ser negativa.', 'danger')
+            return redirect(url_for('estoque_ajuste', estoque_id=estoque_id))
+
+        diferenca = nova_qtd - item['quantidade']
+        tipo_movimento = 'ajuste'
+        if diferenca > 0:
+            tipo_movimento = 'entrada'
+        elif diferenca < 0:
+            tipo_movimento = 'saida'
+
+        cur.execute("UPDATE estoque SET estoque_minimo=%s WHERE id=%s", (estoque_minimo, estoque_id))
+        if diferenca != 0:
+            movimentar_estoque(
+                cur, estoque_id, tipo_movimento, diferenca, item['quantidade'],
+                motivo=motivo, responsavel=responsavel
+            )
+        db.commit()
+        flash('Ajuste salvo com sucesso!', 'success')
+        return redirect(url_for('controle_estoque'))
+
+    return render_template('estoque_ajuste.html', item=item)
+
+
+@app.route('/estoque/historico/<int:estoque_id>')
+@login_required
+def estoque_historico(estoque_id):
+    db = get_db()
+    cur = db.cursor()
+
+    cur.execute("SELECT * FROM estoque WHERE id=%s", (estoque_id,))
+    item = cur.fetchone()
+    if not item:
+        flash('Item nao encontrado.', 'danger')
+        return redirect(url_for('controle_estoque'))
+
+    cur.execute("""
+        SELECT * FROM estoque_movimentacoes
+        WHERE estoque_id=%s
+        ORDER BY data_movimento DESC, id DESC
+    """, (estoque_id,))
+    movimentacoes = cur.fetchall()
+
+    return render_template('estoque_historico.html', item=item, movimentacoes=movimentacoes)
+
+
+@app.route('/api/estoque/saldo')
+@login_required
+def api_estoque_saldo():
+    tipo = request.args.get('tipo', '').strip()
+    modelo = request.args.get('modelo', '').strip().upper()
+    if not tipo:
+        return jsonify({'saldo': 0})
+    db = get_db()
+    cur = db.cursor()
+    _, saldo = buscar_ou_criar_estoque(cur, tipo, modelo)
+    return jsonify({'saldo': saldo})
 
 
 # Para produção (Render / Gunicorn)

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Ajustar Estoque - RENCH{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Ajustar Estoque</h1>
+    <p class="text-muted mb-0">{{item.tipo_suprimento}} {{item.modelo_impressora or ''}}</p>
+  </div>
+  <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-secondary">Voltar</a>
+</div>
+
+<div class="row">
+  <div class="col-lg-5">
+    <div class="card card-dashboard p-4">
+      <form method="POST">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Quantidade atual</label>
+          <div class="fs-2 fw-bold text-primary">{{item.quantidade}}</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Nova quantidade *</label>
+          <input type="number" class="form-control" name="quantidade" value="{{item.quantidade}}" min="0" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Estoque mínimo</label>
+          <input type="number" class="form-control" name="estoque_minimo" value="{{item.estoque_minimo}}" min="0" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Motivo do ajuste *</label>
+          <input type="text" class="form-control" name="motivo" placeholder="Ex: inventário, correção..." required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Responsável</label>
+          <input type="text" class="form-control" name="responsavel" placeholder="Quem está ajustando">
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-secondary">Cancelar</a>
+          <button type="submit" class="btn btn-rench-primary px-4"><i class="bi bi-check-lg me-1"></i> Salvar Ajuste</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -92,7 +92,7 @@
     <a class="nav-link {{'active' if request.endpoint=='acesso_remoto' else ''}}" href="{{url_for('acesso_remoto')}}">
       <i class="bi bi-laptop"></i> Acesso Remoto
     </a>
-    <a class="nav-link {{'active' if request.endpoint=='lista_suprimentos' or request.endpoint=='novo_suprimento' or request.endpoint=='suprimento_mobile' else ''}}" href="{{url_for('lista_suprimentos')}}">
+    <a class="nav-link {{'active' if request.endpoint in ('lista_suprimentos','novo_suprimento','suprimento_mobile','controle_estoque','estoque_entrada','estoque_ajuste','estoque_historico') else ''}}" href="{{url_for('controle_estoque')}}">
       <i class="bi bi-box-seam"></i> Estoque
     </a>
     <a class="nav-link text-danger" href="{{url_for('logout')}}">

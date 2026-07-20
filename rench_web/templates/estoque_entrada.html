@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Entrada de Estoque - RENCH{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Entrada de Estoque</h1>
+    <p class="text-muted mb-0">Adicione toner, drum, fusor, transfer, coletor ou esteira ao estoque</p>
+  </div>
+  <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-secondary">Voltar</a>
+</div>
+
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card card-dashboard p-4">
+      <form method="POST" id="form-entrada">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Tipo de suprimento</label>
+            <select class="form-select" name="tipo_suprimento" required id="tipo">
+              <option value="" disabled selected>Selecione...</option>
+              <option value="Toner">Toner</option>
+              <option value="Drum">Drum</option>
+              <option value="Fusor">Fusor</option>
+              <option value="Transfer">Transfer</option>
+              <option value="Coletor">Coletor</option>
+              <option value="Esteira">Esteira</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Cor (se houver)</label>
+            <select class="form-select" name="cor_selecionada" id="cor">
+              <option value="" selected>-</option>
+              <option value="Black">Black</option>
+              <option value="Ciano">Ciano</option>
+              <option value="Magenta">Magenta</option>
+              <option value="Amarelo">Amarelo</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Modelo da impressora</label>
+            <input type="text" class="form-control" name="modelo_impressora" placeholder="Ex: C711" id="modelo" oninput="this.value = this.value.toUpperCase()">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Quantidade *</label>
+            <input type="number" class="form-control" name="quantidade" value="1" min="1" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Estoque mínimo</label>
+            <input type="number" class="form-control" name="estoque_minimo" value="1" min="0" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Responsável</label>
+            <input type="text" class="form-control" name="responsavel" placeholder="Quem está registrando">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Motivo / Observação</label>
+            <input type="text" class="form-control" name="motivo" placeholder="Ex: compra, devolução...">
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-secondary">Cancelar</a>
+          <button type="submit" class="btn btn-rench-primary px-4"><i class="bi bi-check-lg me-1"></i> Registrar Entrada</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="alert alert-info">
+      <h6 class="fw-bold"><i class="bi bi-lightbulb me-1"></i> Como funciona</h6>
+      <p class="mb-1">Cada item é identificado pela combinação <strong>Tipo + Cor + Modelo</strong>.</p>
+      <p class="mb-1">Se o item já existir, a quantidade será somada ao saldo atual.</p>
+      <p class="mb-0">Exemplo: <strong>Toner Black C711</strong>. Quando uma entrega for registrada, o sistema desconta automaticamente desse saldo.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

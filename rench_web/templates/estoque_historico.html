@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Histórico do Estoque - RENCH{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Histórico do Estoque</h1>
+    <p class="text-muted mb-0">{{item.tipo_suprimento}} {{item.modelo_impressora or ''}} — Saldo atual: <strong class="text-primary">{{item.quantidade}}</strong></p>
+  </div>
+  <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-secondary">Voltar</a>
+</div>
+
+<div class="table-rench">
+  <table class="table table-rench mb-0">
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Movimento</th>
+        <th class="text-center">Qtd</th>
+        <th class="text-center">Saldo antes</th>
+        <th class="text-center">Saldo depois</th>
+        <th>Motivo</th>
+        <th>Responsável</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in movimentacoes %}
+      <tr>
+        <td class="text-muted small">{{m.data_movimento.strftime('%d/%m/%Y %H:%M')}}</td>
+        <td>
+          {% if m.tipo_movimento == 'entrada' %}
+            <span class="badge bg-soft-success">Entrada</span>
+          {% elif m.tipo_movimento == 'saida' %}
+            <span class="badge bg-soft-danger">Saída</span>
+          {% else %}
+            <span class="badge bg-soft-primary">Ajuste</span>
+          {% endif %}
+        </td>
+        <td class="text-center fw-bold">{{'+' if m.quantidade > 0 else ''}}{{m.quantidade}}</td>
+        <td class="text-center">{{m.saldo_antes}}</td>
+        <td class="text-center">{{m.saldo_depois}}</td>
+        <td>{{m.motivo or '-'}}</td>
+        <td>{{m.responsavel or '-'}}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
