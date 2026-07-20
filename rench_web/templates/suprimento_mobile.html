@@ -7,13 +7,15 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-  html,body{background:#f5f5f5;margin:0;padding:0;font-size:15px;}
-  .mobile-wrap{max-width:100%;margin:0 auto;background:#f5f5f5;min-height:100vh;position:relative;}
-  .mobile-header{background:#850001;color:#fff;padding:14px 16px 12px;text-align:center;position:sticky;top:0;z-index:100;}
+  html,body{background:#f5f5f5;margin:0;padding:0;font-size:15px;height:100%;}
+  .mobile-wrap{max-width:100%;margin:0 auto;background:#f5f5f5;min-height:100vh;display:flex;flex-direction:column;position:relative;}
+  .mobile-header{background:#850001;color:#fff;padding:14px 16px 12px;text-align:center;flex-shrink:0;}
   .mobile-header h1{font-size:17px;margin:0;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;}
   .mobile-header p{margin:3px 0 0;font-size:11px;opacity:0.9;}
-  .mobile-body{padding:12px 12px 90px;}
-  .card{background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
+  .mobile-body{padding:12px 12px 90px;flex:1;display:flex;flex-direction:column;}
+  #form-mobile{flex:1;display:flex;flex-direction:column;}
+  .scroll-content{flex:1;overflow-y:auto;padding-bottom:12px;}
+  .card{background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.06);flex-shrink:0;}
   .card-title{font-size:13px;font-weight:700;color:#850001;margin-bottom:10px;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:0.3px;}
   .form-label{font-size:12px;font-weight:600;color:#444;margin-bottom:4px;display:block;}
   .form-control, .form-select{border-radius:10px;border:1px solid #ddd;padding:10px 12px;font-size:15px;height:auto;background:#fff;}
@@ -64,6 +66,7 @@
     {% endwith %}
 
     <form method="POST" id="form-mobile">
+      <div class="scroll-content">
       <div class="card">
         <div class="card-title"><i class="bi bi-geo-alt"></i> Onde foi entregue</div>
         <div class="mb-2">
@@ -107,6 +110,7 @@
         <div class="card-title"><i class="bi bi-journal-text"></i> Observações</div>
         <textarea class="form-control" name="observacoes" rows="2" placeholder="Algo importante sobre a entrega"></textarea>
       </div>
+      </div><!-- /scroll-content -->
 
       <div class="bottom-bar">
         <button type="submit" class="btn-save">
