@@ -2,39 +2,39 @@
 {% block title %}Estoque Mobile - RENCH{% endblock %}
 
 {% block head %}
-<meta name="theme-color" content="#850001">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <link rel="manifest" href="{{url_for('static', filename='manifest.json')}}">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-  html,body{background:#f0f0f0;margin:0;padding:0;}
-  .mobile-wrap{max-width:420px;margin:0 auto;background:#fff;min-height:100vh;position:relative;}
-  .mobile-header{background:#850001;color:#fff;padding:14px 16px;text-align:center;position:sticky;top:0;z-index:100;}
-  .mobile-header h1{font-size:18px;margin:0;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;}
-  .mobile-header p{margin:2px 0 0;font-size:11px;opacity:0.9;}
-  .mobile-body{padding:14px 14px 100px;}
-  .section{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 6px rgba(0,0,0,0.05);}
-  .section-title{font-size:14px;font-weight:700;color:#850001;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
-  .form-label{font-size:12px;font-weight:700;color:#666;margin-bottom:4px;display:block;}
-  .form-control, .form-select{border-radius:10px;border:1px solid #ddd;padding:10px 12px;font-size:15px;height:auto;}
-  .form-control:focus, .form-select:focus{border-color:#850001;box-shadow:0 0 0 3px rgba(133,0,1,0.10);}
-  .item-box{background:#fafafa;border:1px solid #e8e8e8;border-radius:14px;padding:12px;margin-bottom:10px;position:relative;}
-  .item-box .btn-remove{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;background:#fff;color:#850001;box-shadow:0 1px 3px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;font-size:14px;padding:0;}
-  .tipo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
-  .tipo-btn{background:#fff;border:1px solid #ddd;border-radius:10px;padding:8px 2px;font-size:12px;font-weight:700;color:#444;cursor:pointer;}
+  html,body{background:#f0f0f0;margin:0;padding:0;font-size:13px;}
+  .mobile-wrap{max-width:100%;margin:0 auto;background:#fff;min-height:100vh;position:relative;}
+  .mobile-header{background:#850001;color:#fff;padding:10px 12px;text-align:center;position:sticky;top:0;z-index:100;}
+  .mobile-header h1{font-size:15px;margin:0;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .mobile-header p{margin:1px 0 0;font-size:10px;opacity:0.9;}
+  .mobile-body{padding:10px 10px 85px;}
+  .section{background:#fff;border-radius:10px;padding:10px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,0.05);}
+  .section-title{font-size:12px;font-weight:700;color:#850001;margin-bottom:8px;display:flex;align-items:center;gap:4px;}
+  .form-label{font-size:10px;font-weight:700;color:#555;margin-bottom:2px;display:block;}
+  .form-control, .form-select{border-radius:8px;border:1px solid #ddd;padding:7px 9px;font-size:13px;height:auto;}
+  .form-control:focus, .form-select:focus{border-color:#850001;box-shadow:0 0 0 2px rgba(133,0,1,0.10);}
+  .item-box{background:#fafafa;border:1px solid #e8e8e8;border-radius:10px;padding:9px;margin-bottom:8px;position:relative;}
+  .item-box .btn-remove{position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;border:none;background:#fff;color:#850001;box-shadow:0 1px 2px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;font-size:11px;padding:0;}
+  .tipo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px;}
+  .tipo-btn{background:#fff;border:1px solid #ddd;border-radius:8px;padding:6px 1px;font-size:11px;font-weight:700;color:#444;cursor:pointer;}
   .tipo-btn.active{background:#850001;color:#fff;border-color:#850001;}
-  .cor-row{display:flex;gap:6px;flex-wrap:wrap;}
-  .cor-btn{background:#fff;border:1px solid #ddd;border-radius:20px;padding:5px 10px;font-size:12px;font-weight:600;color:#444;cursor:pointer;}
+  .cor-row{display:flex;gap:5px;flex-wrap:wrap;}
+  .cor-btn{background:#fff;border:1px solid #ddd;border-radius:16px;padding:3px 8px;font-size:10px;font-weight:600;color:#444;cursor:pointer;}
   .cor-btn.active{background:#850001;color:#fff;border-color:#850001;}
-  .motivo-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-  .motivo-btn{background:#fff;border:1px solid #ddd;border-radius:10px;padding:9px 6px;font-size:12px;font-weight:600;color:#444;cursor:pointer;text-align:center;line-height:1.2;}
+  .motivo-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+  .motivo-btn{background:#fff;border:1px solid #ddd;border-radius:8px;padding:7px 4px;font-size:10px;font-weight:600;color:#444;cursor:pointer;text-align:center;line-height:1.1;}
   .motivo-btn.active{background:#850001;color:#fff;border-color:#850001;}
-  .extra-field{display:none;margin-top:8px;}
+  .extra-field{display:none;margin-top:6px;}
   .extra-field.show{display:block;}
-  .btn-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:#fff;border:1.5px dashed #850001;color:#850001;border-radius:12px;padding:10px;font-weight:700;font-size:14px;}
-  .btn-save{display:block;width:100%;background:#850001;color:#fff;border:none;border-radius:12px;padding:14px;font-weight:700;font-size:16px;box-shadow:0 4px 10px rgba(133,0,1,0.25);}
-  .bottom-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;padding:10px 14px;max-width:420px;margin:0 auto;}
-  .row-mini{display:flex;gap:8px;}
+  .btn-add{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;background:#fff;border:1.5px dashed #850001;color:#850001;border-radius:10px;padding:8px;font-weight:700;font-size:12px;}
+  .btn-save{display:block;width:100%;background:#850001;color:#fff;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:14px;box-shadow:0 3px 8px rgba(133,0,1,0.25);}
+  .bottom-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;padding:8px 10px;max-width:100%;margin:0 auto;}
+  .row-mini{display:flex;gap:6px;}
   .row-mini > div{flex:1;}
   .hidden{display:none !important;}
   @media (min-width:768px){
