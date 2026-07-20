@@ -7,37 +7,39 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-  html,body{background:#f5f5f5;margin:0;padding:0;font-size:15px;height:100%;}
-  .mobile-wrap{max-width:100%;margin:0 auto;background:#f5f5f5;min-height:100vh;display:flex;flex-direction:column;position:relative;}
-  .mobile-header{background:#850001;color:#fff;padding:14px 16px 12px;text-align:center;flex-shrink:0;}
-  .mobile-header h1{font-size:17px;margin:0;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;}
-  .mobile-header p{margin:3px 0 0;font-size:11px;opacity:0.9;}
-  .mobile-body{padding:12px 12px 90px;flex:1;display:flex;flex-direction:column;}
-  #form-mobile{flex:1;display:flex;flex-direction:column;}
-  .scroll-content{flex:1;overflow-y:auto;padding-bottom:12px;}
-  .card{background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.06);flex-shrink:0;}
-  .card-title{font-size:13px;font-weight:700;color:#850001;margin-bottom:10px;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:0.3px;}
-  .form-label{font-size:12px;font-weight:600;color:#444;margin-bottom:4px;display:block;}
-  .form-control, .form-select{border-radius:10px;border:1px solid #ddd;padding:10px 12px;font-size:15px;height:auto;background:#fff;}
-  .form-control:focus, .form-select:focus{border-color:#850001;box-shadow:0 0 0 2px rgba(133,0,1,0.10);}
-  .item-box{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:12px;margin-bottom:10px;position:relative;}
-  .item-box .btn-remove{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;border:none;background:#fff;color:#850001;box-shadow:0 1px 3px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;font-size:12px;padding:0;}
+  html,body{background:#f5f5f5;margin:0;padding:0;font-size:16px;height:100%;overflow:hidden;}
+  .mobile-wrap{height:100vh;display:flex;flex-direction:column;background:#f5f5f5;}
+  .mobile-header{background:#850001;color:#fff;padding:14px 16px;text-align:center;flex:0 0 auto;}
+  .mobile-header h1{font-size:18px;margin:0;font-weight:700;}
+  .mobile-header p{margin:3px 0 0;font-size:12px;opacity:0.9;}
+  .mobile-body{flex:1 1 auto;overflow:hidden;display:flex;flex-direction:column;padding:0;}
+  #form-mobile{flex:1;display:flex;flex-direction:column;min-height:0;}
+  .scroll-content{flex:1;overflow-y:auto;padding:12px;-webkit-overflow-scrolling:touch;}
+  .card{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+  .card-title{font-size:14px;font-weight:700;color:#850001;margin-bottom:10px;}
+  .form-label{font-size:13px;font-weight:600;color:#444;margin-bottom:4px;display:block;}
+  .form-control, .form-select{border-radius:8px;border:1px solid #ccc;padding:10px 12px;font-size:16px;height:auto;background:#fff;width:100%;}
+  .form-control:focus, .form-select:focus{border-color:#850001;box-shadow:0 0 0 2px rgba(133,0,1,0.12);}
+  .item-box{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:10px;position:relative;}
+  .item-box .btn-remove{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:none;background:#fff;color:#850001;box-shadow:0 1px 3px rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;padding:0;}
   .tipo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
-  .tipo-btn{background:#fff;border:1.5px solid #ddd;border-radius:10px;padding:9px 2px;font-size:13px;font-weight:700;color:#333;cursor:pointer;}
+  .tipo-btn{background:#fff;border:1px solid #ccc;border-radius:8px;padding:9px 2px;font-size:14px;font-weight:700;color:#222;cursor:pointer;}
   .tipo-btn.active{background:#850001;color:#fff;border-color:#850001;}
-  .cor-row{display:flex;gap:6px;flex-wrap:wrap;}
-  .cor-btn{background:#fff;border:1.5px solid #ddd;border-radius:18px;padding:4px 11px;font-size:12px;font-weight:600;color:#333;cursor:pointer;}
+  .cor-row{display:flex;gap:5px;flex-wrap:wrap;}
+  .cor-btn{background:#fff;border:1px solid #ccc;border-radius:16px;padding:4px 10px;font-size:13px;font-weight:600;color:#222;cursor:pointer;}
   .cor-btn.active{background:#850001;color:#fff;border-color:#850001;}
+  .row-mini{display:flex;gap:8px;}
+  .row-mini > div{flex:1;}
   .motivo-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-  .motivo-btn{background:#fff;border:1.5px solid #ddd;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:600;color:#333;cursor:pointer;text-align:center;line-height:1.2;}
+  .motivo-btn{background:#fff;border:1px solid #ccc;border-radius:8px;padding:10px 4px;font-size:13px;font-weight:600;color:#222;cursor:pointer;text-align:center;}
   .motivo-btn.active{background:#850001;color:#fff;border-color:#850001;}
   .extra-field{display:none;margin-top:8px;}
   .extra-field.show{display:block;}
-  .btn-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:#fff;border:2px dashed #850001;color:#850001;border-radius:12px;padding:11px;font-weight:700;font-size:14px;margin-top:6px;}
-  .btn-save{display:block;width:100%;background:#850001;color:#fff;border:none;border-radius:12px;padding:14px;font-weight:700;font-size:16px;box-shadow:0 4px 10px rgba(133,0,1,0.25);}
-  .bottom-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;padding:10px 12px;max-width:100%;margin:0 auto;}
-  .row-mini{display:flex;gap:8px;}
-  .row-mini > div{flex:1;}
+  .btn-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:#fff;border:2px dashed #850001;color:#850001;border-radius:10px;padding:11px;font-weight:700;font-size:14px;margin-top:6px;}
+  .btn-save{display:block;width:100%;background:#850001;color:#fff;border:none;border-radius:10px;padding:14px;font-weight:700;font-size:16px;}
+  .bottom-bar{flex:0 0 auto;background:#fff;border-top:1px solid #ddd;padding:10px 12px;}
+  .mb-2{margin-bottom:8px;}
+  .mb-0{margin-bottom:0;}
   .hidden{display:none !important;}
   @media (min-width:768px){
     .main-content{margin-left:0 !important;padding:0 !important;}
@@ -54,63 +56,63 @@
   </div>
 
   <div class="mobile-body">
-    {% with msgs = get_flashed_messages(with_categories=true) %}
-      {% if msgs %}
-        {% for cat, msg in msgs %}
-          <div class="alert alert-{{cat}} alert-dismissible fade show rounded-3 py-2 px-3 small" role="alert">
-            {{msg}}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
     <form method="POST" id="form-mobile">
       <div class="scroll-content">
-      <div class="card">
-        <div class="card-title"><i class="bi bi-geo-alt"></i> Onde foi entregue</div>
-        <div class="mb-2">
-          <label class="form-label">Data</label>
-          <input type="date" class="form-control" name="data_entrega" value="{{hoje}}" required>
-        </div>
-        <div class="mb-2">
-          <label class="form-label">Unidade</label>
-          <select class="form-select" name="unidade_id" id="select_unidade" required>
-            <option value="" disabled selected>Selecione a unidade...</option>
-            {% set empresa_atual = namespace(val='') %}
-            {% for l in locais %}
-              {% if l.unidade_id %}
-                {% if empresa_atual.val != l.empresa_nome %}
-                  {% if not loop.first %}</optgroup>{% endif %}
-                  <optgroup label="{{l.empresa_nome}}">
-                  {% set empresa_atual.val = l.empresa_nome %}
-                {% endif %}
-                <option value="{{l.unidade_id}}">{{l.unidade_nome}}</option>
-              {% endif %}
+        {% with msgs = get_flashed_messages(with_categories=true) %}
+          {% if msgs %}
+            {% for cat, msg in msgs %}
+              <div class="alert alert-{{cat}} alert-dismissible fade show rounded-3 py-2 px-3 small" role="alert">
+                {{msg}}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
             {% endfor %}
-            {% if locais %}</optgroup>{% endif %}
-          </select>
+          {% endif %}
+        {% endwith %}
+
+        <div class="card">
+          <div class="card-title"><i class="bi bi-geo-alt"></i> Onde foi entregue</div>
+          <div class="mb-2">
+            <label class="form-label">Data</label>
+            <input type="date" class="form-control" name="data_entrega" value="{{hoje}}" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Unidade</label>
+            <select class="form-select" name="unidade_id" id="select_unidade" required>
+              <option value="" disabled selected>Selecione a unidade...</option>
+              {% set empresa_atual = namespace(val='') %}
+              {% for l in locais %}
+                {% if l.unidade_id %}
+                  {% if empresa_atual.val != l.empresa_nome %}
+                    {% if not loop.first %}</optgroup>{% endif %}
+                    <optgroup label="{{l.empresa_nome}}">
+                    {% set empresa_atual.val = l.empresa_nome %}
+                  {% endif %}
+                  <option value="{{l.unidade_id}}">{{l.unidade_nome}}</option>
+                {% endif %}
+              {% endfor %}
+              {% if locais %}</optgroup>{% endif %}
+            </select>
+          </div>
+          <div class="mb-0">
+            <label class="form-label">Responsável</label>
+            <input type="text" class="form-control" name="responsavel" placeholder="Seu nome" required>
+          </div>
         </div>
-        <div class="mb-0">
-          <label class="form-label">Responsável</label>
-          <input type="text" class="form-control" name="responsavel" placeholder="Seu nome" required>
+
+        <div class="card">
+          <div class="card-title"><i class="bi bi-box-seam"></i> Itens entregues</div>
+          <div id="itens-container"></div>
+
+          <button type="button" class="btn-add" onclick="adicionarItem()">
+            <i class="bi bi-plus-lg"></i> Adicionar suprimento
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="bi bi-journal-text"></i> Observações</div>
+          <textarea class="form-control" name="observacoes" rows="2" placeholder="Algo importante sobre a entrega"></textarea>
         </div>
       </div>
-
-      <div class="card">
-        <div class="card-title"><i class="bi bi-box-seam"></i> Itens entregues</div>
-        <div id="itens-container"></div>
-
-        <button type="button" class="btn-add" onclick="adicionarItem()">
-          <i class="bi bi-plus-lg"></i> Adicionar suprimento
-        </button>
-      </div>
-
-      <div class="card">
-        <div class="card-title"><i class="bi bi-journal-text"></i> Observações</div>
-        <textarea class="form-control" name="observacoes" rows="2" placeholder="Algo importante sobre a entrega"></textarea>
-      </div>
-      </div><!-- /scroll-content -->
 
       <div class="bottom-bar">
         <button type="submit" class="btn-save">
