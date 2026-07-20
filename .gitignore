@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv
+venv/
+
+# Node
+node_modules/
+package-lock.json
+package.json
+
+# Binários / utilitários
+gh.exe
+gh.zip
+gh_cli/
+bin/
+
+# Documentos gerados (manter no repo apenas se necessário)
+# *.docx
+# *.pdf
+
+# Dados locais
+data_atual.xlsx
+*.xlsx#
+~$*.xlsx
+
+# Scripts temporários de teste/corrigir
+_test*.py
+_cleanup*.py
+_check*.py
+_fix*.py
+_verificar*.py
+test_*.py
+
+# Logs
+*.log
