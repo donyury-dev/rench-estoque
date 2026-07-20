@@ -7,34 +7,34 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-  html,body{background:#f0f0f0;margin:0;padding:0;font-size:13px;}
-  .mobile-wrap{max-width:100%;margin:0 auto;background:#fff;min-height:100vh;position:relative;}
-  .mobile-header{background:#850001;color:#fff;padding:10px 12px;text-align:center;position:sticky;top:0;z-index:100;}
-  .mobile-header h1{font-size:15px;margin:0;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;}
-  .mobile-header p{margin:1px 0 0;font-size:10px;opacity:0.9;}
-  .mobile-body{padding:10px 10px 85px;}
-  .section{background:#fff;border-radius:10px;padding:10px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,0.05);}
-  .section-title{font-size:12px;font-weight:700;color:#850001;margin-bottom:8px;display:flex;align-items:center;gap:4px;}
-  .form-label{font-size:10px;font-weight:700;color:#555;margin-bottom:2px;display:block;}
-  .form-control, .form-select{border-radius:8px;border:1px solid #ddd;padding:7px 9px;font-size:13px;height:auto;}
+  html,body{background:#f5f5f5;margin:0;padding:0;font-size:15px;}
+  .mobile-wrap{max-width:100%;margin:0 auto;background:#f5f5f5;min-height:100vh;position:relative;}
+  .mobile-header{background:#850001;color:#fff;padding:14px 16px 12px;text-align:center;position:sticky;top:0;z-index:100;}
+  .mobile-header h1{font-size:17px;margin:0;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .mobile-header p{margin:3px 0 0;font-size:11px;opacity:0.9;}
+  .mobile-body{padding:12px 12px 90px;}
+  .card{background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
+  .card-title{font-size:13px;font-weight:700;color:#850001;margin-bottom:10px;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:0.3px;}
+  .form-label{font-size:12px;font-weight:600;color:#444;margin-bottom:4px;display:block;}
+  .form-control, .form-select{border-radius:10px;border:1px solid #ddd;padding:10px 12px;font-size:15px;height:auto;background:#fff;}
   .form-control:focus, .form-select:focus{border-color:#850001;box-shadow:0 0 0 2px rgba(133,0,1,0.10);}
-  .item-box{background:#fafafa;border:1px solid #e8e8e8;border-radius:10px;padding:9px;margin-bottom:8px;position:relative;}
-  .item-box .btn-remove{position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;border:none;background:#fff;color:#850001;box-shadow:0 1px 2px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;font-size:11px;padding:0;}
-  .tipo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px;}
-  .tipo-btn{background:#fff;border:1px solid #ddd;border-radius:8px;padding:6px 1px;font-size:11px;font-weight:700;color:#444;cursor:pointer;}
+  .item-box{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:12px;margin-bottom:10px;position:relative;}
+  .item-box .btn-remove{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;border:none;background:#fff;color:#850001;box-shadow:0 1px 3px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;font-size:12px;padding:0;}
+  .tipo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+  .tipo-btn{background:#fff;border:1.5px solid #ddd;border-radius:10px;padding:9px 2px;font-size:13px;font-weight:700;color:#333;cursor:pointer;}
   .tipo-btn.active{background:#850001;color:#fff;border-color:#850001;}
-  .cor-row{display:flex;gap:5px;flex-wrap:wrap;}
-  .cor-btn{background:#fff;border:1px solid #ddd;border-radius:16px;padding:3px 8px;font-size:10px;font-weight:600;color:#444;cursor:pointer;}
+  .cor-row{display:flex;gap:6px;flex-wrap:wrap;}
+  .cor-btn{background:#fff;border:1.5px solid #ddd;border-radius:18px;padding:4px 11px;font-size:12px;font-weight:600;color:#333;cursor:pointer;}
   .cor-btn.active{background:#850001;color:#fff;border-color:#850001;}
-  .motivo-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
-  .motivo-btn{background:#fff;border:1px solid #ddd;border-radius:8px;padding:7px 4px;font-size:10px;font-weight:600;color:#444;cursor:pointer;text-align:center;line-height:1.1;}
+  .motivo-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .motivo-btn{background:#fff;border:1.5px solid #ddd;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:600;color:#333;cursor:pointer;text-align:center;line-height:1.2;}
   .motivo-btn.active{background:#850001;color:#fff;border-color:#850001;}
-  .extra-field{display:none;margin-top:6px;}
+  .extra-field{display:none;margin-top:8px;}
   .extra-field.show{display:block;}
-  .btn-add{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;background:#fff;border:1.5px dashed #850001;color:#850001;border-radius:10px;padding:8px;font-weight:700;font-size:12px;}
-  .btn-save{display:block;width:100%;background:#850001;color:#fff;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:14px;box-shadow:0 3px 8px rgba(133,0,1,0.25);}
-  .bottom-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;padding:8px 10px;max-width:100%;margin:0 auto;}
-  .row-mini{display:flex;gap:6px;}
+  .btn-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:#fff;border:2px dashed #850001;color:#850001;border-radius:12px;padding:11px;font-weight:700;font-size:14px;margin-top:6px;}
+  .btn-save{display:block;width:100%;background:#850001;color:#fff;border:none;border-radius:12px;padding:14px;font-weight:700;font-size:16px;box-shadow:0 4px 10px rgba(133,0,1,0.25);}
+  .bottom-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;padding:10px 12px;max-width:100%;margin:0 auto;}
+  .row-mini{display:flex;gap:8px;}
   .row-mini > div{flex:1;}
   .hidden{display:none !important;}
   @media (min-width:768px){
@@ -64,8 +64,8 @@
     {% endwith %}
 
     <form method="POST" id="form-mobile">
-      <div class="section">
-        <div class="section-title"><i class="bi bi-geo-alt"></i> Onde foi entregue</div>
+      <div class="card">
+        <div class="card-title"><i class="bi bi-geo-alt"></i> Onde foi entregue</div>
         <div class="mb-2">
           <label class="form-label">Data</label>
           <input type="date" class="form-control" name="data_entrega" value="{{hoje}}" required>
@@ -73,7 +73,7 @@
         <div class="mb-2">
           <label class="form-label">Unidade</label>
           <select class="form-select" name="unidade_id" id="select_unidade" required>
-            <option value="" disabled selected>Selecione...</option>
+            <option value="" disabled selected>Selecione a unidade...</option>
             {% set empresa_atual = namespace(val='') %}
             {% for l in locais %}
               {% if l.unidade_id %}
@@ -94,8 +94,8 @@
         </div>
       </div>
 
-      <div class="section">
-        <div class="section-title"><i class="bi bi-box-seam"></i> Itens entregues</div>
+      <div class="card">
+        <div class="card-title"><i class="bi bi-box-seam"></i> Itens entregues</div>
         <div id="itens-container"></div>
 
         <button type="button" class="btn-add" onclick="adicionarItem()">
@@ -103,8 +103,8 @@
         </button>
       </div>
 
-      <div class="section">
-        <div class="section-title"><i class="bi bi-journal-text"></i> Observações</div>
+      <div class="card">
+        <div class="card-title"><i class="bi bi-journal-text"></i> Observações</div>
         <textarea class="form-control" name="observacoes" rows="2" placeholder="Algo importante sobre a entrega"></textarea>
       </div>
 
@@ -125,7 +125,7 @@
 
     <input type="hidden" name="tipo_suprimento[]" class="tipo-input" required>
 
-    <label class="form-label">Tipo</label>
+    <label class="form-label">Tipo de suprimento</label>
     <div class="tipo-grid">
       <button type="button" class="tipo-btn" data-val="Toner">Toner</button>
       <button type="button" class="tipo-btn" data-val="Drum">Drum</button>
@@ -148,8 +148,8 @@
 
     <div class="row-mini mb-2">
       <div>
-        <label class="form-label">Modelo</label>
-        <input type="text" class="form-control" name="modelo_impressora[]" placeholder="C711">
+        <label class="form-label">Modelo da impressora</label>
+        <input type="text" class="form-control" name="modelo_impressora[]" placeholder="Ex: C711">
       </div>
       <div style="max-width:80px;">
         <label class="form-label">Qtd</label>
@@ -158,7 +158,7 @@
     </div>
 
     <div class="mb-0">
-      <label class="form-label">Motivo</label>
+      <label class="form-label">Motivo da troca</label>
       <input type="hidden" name="motivo_padrao[]" class="motivo-input">
       <div class="motivo-grid">
         <button type="button" class="motivo-btn" data-val="deixar_estoque">Estoque local</button>
