@@ -23,6 +23,17 @@
     label{display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:4px;}
     input, select, textarea{width:100%;border:1px solid #ccc;border-radius:8px;padding:10px 12px;font-size:16px;background:#fff;font-family:inherit;}
     input:focus, select:focus, textarea:focus{outline:none;border-color:#850001;box-shadow:0 0 0 2px rgba(133,0,1,0.12);}
+    .search-input{width:100%;border:1px solid #ccc;border-radius:8px;padding:8px 12px;font-size:15px;background:#fff;}
+    .select-list{max-height:200px;overflow-y:auto;border:1px solid #ccc;border-radius:8px;background:#fff;margin-top:6px;display:none;}
+    .select-list.show{display:block;}
+    .select-item{padding:10px 12px;border-bottom:1px solid #eee;cursor:pointer;font-size:15px;}
+    .select-item:last-child{border-bottom:none;}
+    .select-item.empresa{background:#f8f8f8;font-weight:700;color:#850001;font-size:13px;padding-top:8px;padding-bottom:8px;}
+    .select-item.unidade{padding-left:22px;}
+    .select-item:hover{background:#f0f0f0;}
+    .selected-box{display:flex;align-items:center;justify-content:space-between;border:1px solid #ccc;border-radius:8px;padding:10px 12px;background:#fff;cursor:pointer;}
+    .selected-box span{color:#333;font-size:16px;}
+    .selected-box small{color:#888;font-size:12px;}
     .mb-2{margin-bottom:10px;}
     .mb-0{margin-bottom:0;}
     .row{display:flex;gap:8px;}
@@ -73,21 +84,29 @@
             </div>
             <div class="mb-2">
               <label>Unidade</label>
-              <select name="unidade_id" id="select_unidade" required>
-                <option value="" disabled selected>Selecione a unidade...</option>
-                {% set empresa_atual = namespace(val='') %}
-                {% for l in locais %}
-                  {% if l.unidade_id %}
-                    {% if empresa_atual.val != l.empresa_nome %}
-                      {% if not loop.first %}</optgroup>{% endif %}
-                      <optgroup label="{{l.empresa_nome}}">
-                      {% set empresa_atual.val = l.empresa_nome %}
+              <input type="hidden" name="unidade_id" id="unidade_id" required>
+              <div class="selected-box" id="selectedBox" onclick="abrirLista()">
+                <span id="selectedText">Selecione a unidade...</span>
+                <small><i class="bi bi-chevron-down"></i></small>
+              </div>
+              <div class="select-list" id="selectList">
+                <input type="text" class="search-input" id="buscaUnidade" placeholder="Buscar empresa ou unidade..." onkeyup="filtrarUnidades()" onclick="event.stopPropagation()">
+                <div id="listaUnidades">
+                  {% set empresa_atual = namespace(val='') %}
+                  {% for l in locais %}
+                    {% if l.unidade_id %}
+                      {% if empresa_atual.val != l.empresa_nome %}
+                        {% if not loop.first %}</div>{% endif %}
+                        <div class="select-item empresa" data-empresa="{{l.empresa_nome|lower}}">{{l.empresa_nome}}</div>
+                        <div class="grupo-unidades">
+                        {% set empresa_atual.val = l.empresa_nome %}
+                      {% endif %}
+                      <div class="select-item unidade" data-unidade="{{l.unidade_id}}" data-texto="{{l.unidade_nome}}" data-empresa="{{l.empresa_nome}}" onclick="selecionarUnidade(this)">{{l.unidade_nome}}</div>
                     {% endif %}
-                    <option value="{{l.unidade_id}}">{{l.unidade_nome}}</option>
-                  {% endif %}
-                {% endfor %}
-                {% if locais %}</optgroup>{% endif %}
-              </select>
+                  {% endfor %}
+                  {% if locais %}</div>{% endif %}
+                </div>
+              </div>
             </div>
             <div class="mb-0">
               <label>Responsável</label>
@@ -238,6 +257,47 @@
         alert('Pelo menos um item é necessário.');
       }
     }
+
+    function abrirLista(){
+      const list = document.getElementById('selectList');
+      list.classList.toggle('show');
+      if(list.classList.contains('show')){
+        document.getElementById('buscaUnidade').value = '';
+        document.getElementById('buscaUnidade').focus();
+        filtrarUnidades();
+      }
+    }
+
+    function filtrarUnidades(){
+      const termo = document.getElementById('buscaUnidade').value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const empresas = document.querySelectorAll('.select-item.empresa');
+      const unidades = document.querySelectorAll('.select-item.unidade');
+
+      unidades.forEach(u => {
+        const texto = (u.dataset.texto + ' ' + u.dataset.empresa).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        u.style.display = texto.includes(termo) ? 'block' : 'none';
+      });
+
+      empresas.forEach(e => {
+        const grupo = e.nextElementSibling;
+        const visiveis = grupo.querySelectorAll('.unidade:not([style*="none"])').length;
+        e.style.display = visiveis > 0 ? 'block' : 'none';
+      });
+    }
+
+    function selecionarUnidade(el){
+      document.getElementById('unidade_id').value = el.dataset.unidade;
+      document.getElementById('selectedText').textContent = el.dataset.texto + ' (' + el.dataset.empresa + ')';
+      document.getElementById('selectList').classList.remove('show');
+    }
+
+    document.addEventListener('click', function(e){
+      const box = document.getElementById('selectedBox');
+      const list = document.getElementById('selectList');
+      if(!box.contains(e.target) && !list.contains(e.target)){
+        list.classList.remove('show');
+      }
+    });
 
     adicionarItem();
 
