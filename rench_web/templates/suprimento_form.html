@@ -59,20 +59,12 @@
 
         <div id="itens-container">
           <div class="row g-2 item-row align-items-end border rounded p-3 mb-2">
-            <div class="col-md-3">
-              <label class="form-label small fw-bold">Tipo de suprimento</label>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold">Tipo</label>
               <select class="form-select" name="tipo_suprimento[]" required>
                 <option value="" disabled selected>Selecione...</option>
                 <option value="Toner">Toner</option>
-                <option value="Toner Black">Toner Black</option>
-                <option value="Toner Ciano">Toner Ciano</option>
-                <option value="Toner Magenta">Toner Magenta</option>
-                <option value="Toner Amarelo">Toner Amarelo</option>
                 <option value="Drum">Drum</option>
-                <option value="Drum Black">Drum Black</option>
-                <option value="Drum Ciano">Drum Ciano</option>
-                <option value="Drum Magenta">Drum Magenta</option>
-                <option value="Drum Amarelo">Drum Amarelo</option>
                 <option value="Fusor">Fusor</option>
                 <option value="Transfer">Transfer</option>
                 <option value="Coletor">Coletor</option>
@@ -80,17 +72,35 @@
                 <option value="Outro">Outro</option>
               </select>
             </div>
-            <div class="col-md-3">
-              <label class="form-label small fw-bold">Modelo da impressora</label>
-              <input type="text" class="form-control" name="modelo_impressora[]" placeholder="Ex: C711, M3170">
+            <div class="col-md-2">
+              <label class="form-label small fw-bold">Cor</label>
+              <select class="form-select" name="cor_selecionada[]">
+                <option value="" selected>-</option>
+                <option value="Black">Black</option>
+                <option value="Ciano">Ciano</option>
+                <option value="Magenta">Magenta</option>
+                <option value="Amarelo">Amarelo</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold">Modelo</label>
+              <input type="text" class="form-control" name="modelo_impressora[]" placeholder="Ex: C711">
             </div>
             <div class="col-md-1">
               <label class="form-label small fw-bold">Qtd</label>
               <input type="number" class="form-control" name="quantidade[]" value="1" min="1" required>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
               <label class="form-label small fw-bold">Motivo da troca</label>
-              <input type="text" class="form-control" name="motivo[]" placeholder="Ex: troca preventiva, fim de vida">
+              <select class="form-select motivo-select" name="motivo_padrao[]" required onchange="toggleMotivoOutro(this)">
+                <option value="" disabled selected>Selecione...</option>
+                <option value="deixar_estoque">Deixar para estoque local</option>
+                <option value="acabou_impressora">Acabou na impressora</option>
+                <option value="defeito_peca">Defeito na peça</option>
+                <option value="outro">Outro...</option>
+              </select>
+              <input type="text" class="form-control mt-2 outro-input" name="motivo[]" placeholder="Descreva o motivo" style="display:none;">
+              <input type="text" class="form-control mt-2 defeito-input" name="defeito[]" placeholder="Qual defeito na peça?" style="display:none;">
             </div>
             <div class="col-md-1">
               <button type="button" class="btn btn-outline-danger w-100" onclick="removerItem(this)" title="Remover item">
@@ -120,6 +130,23 @@
 const container = document.getElementById('itens-container');
 const template = container.innerHTML.trim();
 
+function toggleMotivoOutro(sel){
+  const row = sel.closest('.item-row');
+  const outro = row.querySelector('.outro-input');
+  const defeito = row.querySelector('.defeito-input');
+  outro.style.display = 'none';
+  defeito.style.display = 'none';
+  outro.removeAttribute('required');
+  defeito.removeAttribute('required');
+  if(sel.value === 'outro'){
+    outro.style.display = 'block';
+    outro.setAttribute('required','required');
+  } else if(sel.value === 'defeito_peca'){
+    defeito.style.display = 'block';
+    defeito.setAttribute('required','required');
+  }
+}
+
 function adicionarItem(){
   container.insertAdjacentHTML('beforeend', template);
 }
@@ -131,5 +158,15 @@ function removerItem(btn){
     alert('Pelo menos um item é necessário.');
   }
 }
+
+// ao enviar, combina tipo + cor se houver
+document.getElementById('form-suprimento').addEventListener('submit', function(e){
+  container.querySelectorAll('.item-row').forEach(row => {
+    const tipo = row.querySelector('[name="tipo_suprimento[]"]').value;
+    const cor = row.querySelector('[name="cor_selecionada[]"]').value;
+    const inputTipo = row.querySelector('[name="tipo_suprimento[]"]');
+    if(cor) inputTipo.value = tipo + ' ' + cor;
+  });
+});
 </script>
 {% endblock %}

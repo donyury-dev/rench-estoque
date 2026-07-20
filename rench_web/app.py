@@ -153,6 +153,8 @@ def _executar_migrations():
         ('equipamentos', 'local_atual_id', 'INTEGER'),
         ('equipamentos', 'setor_equipamento', 'VARCHAR(255)'),
         ('historico_defeitos', 'status', 'VARCHAR(50)'),
+        ('suprimentos_itens', 'motivo_padrao', 'VARCHAR(50)'),
+        ('suprimentos_itens', 'defeito', 'TEXT'),
     ]:
         if not coluna_existe(tabela, coluna):
             migracoes.append(f"ALTER TABLE {tabela} ADD COLUMN {coluna} {tipo}")
@@ -277,7 +279,9 @@ def init_db():
             tipo_suprimento VARCHAR(100) NOT NULL,
             modelo_impressora VARCHAR(255),
             quantidade INTEGER NOT NULL DEFAULT 1,
-            motivo TEXT
+            motivo TEXT,
+            motivo_padrao VARCHAR(50),
+            defeito TEXT
         )
     """)
 
@@ -1346,7 +1350,8 @@ def lista_suprimentos():
     sql = """
         SELECT se.id, se.data_entrega, se.responsavel, se.observacoes,
                u.nome as unidade_nome, emp.nome as empresa_nome,
-               si.id as item_id, si.tipo_suprimento, si.modelo_impressora, si.quantidade, si.motivo
+               si.id as item_id, si.tipo_suprimento, si.modelo_impressora, si.quantidade,
+               si.motivo_padrao, si.defeito
         FROM suprimentos_entregas se
         JOIN unidades u ON u.id = se.unidade_id
         JOIN empresas emp ON emp.id = u.empresa_id
@@ -1391,7 +1396,8 @@ def lista_suprimentos():
                 'tipo': r['tipo_suprimento'],
                 'modelo': r['modelo_impressora'],
                 'quantidade': r['quantidade'],
-                'motivo': r['motivo']
+                'motivo_padrao': r['motivo_padrao'],
+                'defeito': r['defeito']
             })
 
     cur.execute("""
@@ -1410,6 +1416,61 @@ def lista_suprimentos():
     return render_template('suprimentos.html',
         entregas=list(entregas.values()), locais=locais, tipos=tipos,
         busca=busca, filtro_unidade=unidade_id, filtro_tipo=tipo)
+
+@app.route('/suprimentos/mobile', methods=['GET', 'POST'])
+@login_required
+def suprimento_mobile():
+    db = get_db()
+    cur = db.cursor()
+
+    if request.method == 'POST':
+        unidade_id = request.form['unidade_id']
+        data_entrega = request.form['data_entrega']
+        responsavel = request.form.get('responsavel')
+        observacoes = request.form.get('observacoes')
+
+        cur.execute("""
+            INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes)
+            VALUES (%s, %s, %s, %s) RETURNING id
+        """, (unidade_id, data_entrega, responsavel, observacoes))
+        entrega_id = cur.fetchone()['id']
+
+        tipos = request.form.getlist('tipo_suprimento[]')
+        modelos = request.form.getlist('modelo_impressora[]')
+        quantidades = request.form.getlist('quantidade[]')
+        motivos_padrao = request.form.getlist('motivo_padrao[]')
+        defeitos = request.form.getlist('defeito[]')
+        motivos_outros = request.form.getlist('motivo[]')
+
+        for tipo, modelo, qtd, mp, defeito, outro in zip(tipos, modelos, quantidades, motivos_padrao, defeitos, motivos_outros):
+            tipo = (tipo or '').strip()
+            if tipo:
+                motivo_texto = None
+                if mp == 'outro':
+                    motivo_texto = (outro or '').strip() or None
+                elif mp:
+                    motivo_texto = mp
+                cur.execute("""
+                    INSERT INTO suprimentos_itens (entrega_id, tipo_suprimento, modelo_impressora, quantidade, motivo_padrao, defeito, motivo)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (entrega_id, tipo, modelo.strip() or None, int(qtd or 1), mp or None, defeito.strip() or None, motivo_texto))
+
+        db.commit()
+        flash('Entrega salva com sucesso!', 'success')
+        return redirect(url_for('suprimento_mobile'))
+
+    cur.execute("""
+        SELECT emp.id as empresa_id, emp.nome as empresa_nome,
+               u.id as unidade_id, u.nome as unidade_nome
+        FROM empresas emp
+        LEFT JOIN unidades u ON u.empresa_id = emp.id AND u.ativo=1
+        WHERE emp.ativo=1
+        ORDER BY emp.tipo DESC, emp.nome, u.nome
+    """)
+    locais = cur.fetchall()
+
+    hoje = datetime.now().strftime('%Y-%m-%d')
+    return render_template('suprimento_mobile.html', locais=locais, hoje=hoje)
 
 @app.route('/suprimentos/novo', methods=['GET', 'POST'])
 @login_required
@@ -1432,15 +1493,22 @@ def novo_suprimento():
         tipos = request.form.getlist('tipo_suprimento[]')
         modelos = request.form.getlist('modelo_impressora[]')
         quantidades = request.form.getlist('quantidade[]')
-        motivos = request.form.getlist('motivo[]')
+        motivos_padrao = request.form.getlist('motivo_padrao[]')
+        defeitos = request.form.getlist('defeito[]')
+        motivos_outros = request.form.getlist('motivo[]')
 
-        for tipo, modelo, qtd, motivo in zip(tipos, modelos, quantidades, motivos):
+        for tipo, modelo, qtd, mp, defeito, outro in zip(tipos, modelos, quantidades, motivos_padrao, defeitos, motivos_outros):
             tipo = (tipo or '').strip()
             if tipo:
+                motivo_texto = None
+                if mp == 'outro':
+                    motivo_texto = (outro or '').strip() or None
+                elif mp:
+                    motivo_texto = mp
                 cur.execute("""
-                    INSERT INTO suprimentos_itens (entrega_id, tipo_suprimento, modelo_impressora, quantidade, motivo)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (entrega_id, tipo, modelo.strip() or None, int(qtd or 1), motivo.strip() or None))
+                    INSERT INTO suprimentos_itens (entrega_id, tipo_suprimento, modelo_impressora, quantidade, motivo_padrao, defeito, motivo)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (entrega_id, tipo, modelo.strip() or None, int(qtd or 1), mp or None, defeito.strip() or None, motivo_texto))
 
         db.commit()
         flash('Entrega de suprimentos registrada com sucesso!', 'success')

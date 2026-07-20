@@ -1,0 +1,17 @@
+{
+  "name": "RENCH Suprimentos",
+  "short_name": "Suprimentos",
+  "start_url": "/suprimentos/mobile",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#850001",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/static/logo_rench.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
