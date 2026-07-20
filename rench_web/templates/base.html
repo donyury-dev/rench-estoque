@@ -92,8 +92,8 @@
     <a class="nav-link {{'active' if request.endpoint=='acesso_remoto' else ''}}" href="{{url_for('acesso_remoto')}}">
       <i class="bi bi-laptop"></i> Acesso Remoto
     </a>
-    <a class="nav-link {{'active' if request.endpoint=='lista_suprimentos' or request.endpoint=='novo_suprimento' else ''}}" href="{{url_for('lista_suprimentos')}}">
-      <i class="bi bi-box-seam"></i> Suprimentos
+    <a class="nav-link {{'active' if request.endpoint=='lista_suprimentos' or request.endpoint=='novo_suprimento' or request.endpoint=='suprimento_mobile' else ''}}" href="{{url_for('lista_suprimentos')}}">
+      <i class="bi bi-box-seam"></i> Estoque
     </a>
     <a class="nav-link text-danger" href="{{url_for('logout')}}">
       <i class="bi bi-box-arrow-right"></i> Sair

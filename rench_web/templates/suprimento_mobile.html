@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Suprimentos Mobile - RENCH{% endblock %}
+{% block title %}Estoque Mobile - RENCH{% endblock %}
 
 {% block head %}
 <meta name="theme-color" content="#850001">
@@ -7,31 +7,37 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-  body{background:#f5f5f5;font-size:16px;}
-  .mobile-container{max-width:480px;margin:0 auto;background:#fff;min-height:100vh;box-shadow:0 0 20px rgba(0,0,0,0.08);}
-  .mobile-header{background:#850001;color:#fff;padding:16px;text-align:center;position:sticky;top:0;z-index:100;}
-  .mobile-header h1{font-size:20px;margin:0;font-weight:700;}
-  .mobile-header p{margin:0;font-size:12px;opacity:0.9;}
-  .mobile-body{padding:16px;padding-bottom:120px;}
-  .form-label{font-weight:700;font-size:14px;color:#850001;margin-bottom:6px;}
-  .form-control, .form-select{border-radius:12px;border:1.5px solid #ddd;padding:12px 14px;font-size:16px;}
-  .form-control:focus, .form-select:focus{border-color:#850001;box-shadow:0 0 0 3px rgba(133,0,1,0.12);}
-  .item-card{background:#fff;border:1.5px solid #e0e0e0;border-radius:16px;padding:16px;margin-bottom:14px;position:relative;}
-  .item-card .remove-btn{position:absolute;top:10px;right:10px;background:#fff;border:1px solid #ddd;color:#850001;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;}
-  .btn-add{background:#fff;border:2px dashed #850001;color:#850001;border-radius:14px;padding:14px;width:100%;font-weight:700;margin-bottom:16px;}
-  .btn-save{background:#850001;color:#fff;border:none;border-radius:14px;padding:16px;width:100%;font-weight:700;font-size:18px;box-shadow:0 4px 12px rgba(133,0,1,0.25);}
-  .tipo-grid{display:grid;grid-template-columns:repeat(2, 1fr);gap:8px;margin-bottom:12px;}
-  .tipo-btn{background:#fff;border:1.5px solid #ddd;border-radius:12px;padding:10px 6px;text-align:center;font-size:13px;font-weight:600;color:#444;cursor:pointer;transition:0.15s;}
+  html,body{background:#f0f0f0;margin:0;padding:0;}
+  .mobile-wrap{max-width:420px;margin:0 auto;background:#fff;min-height:100vh;position:relative;}
+  .mobile-header{background:#850001;color:#fff;padding:14px 16px;text-align:center;position:sticky;top:0;z-index:100;}
+  .mobile-header h1{font-size:18px;margin:0;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .mobile-header p{margin:2px 0 0;font-size:11px;opacity:0.9;}
+  .mobile-body{padding:14px 14px 100px;}
+  .section{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 6px rgba(0,0,0,0.05);}
+  .section-title{font-size:14px;font-weight:700;color:#850001;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+  .form-label{font-size:12px;font-weight:700;color:#666;margin-bottom:4px;display:block;}
+  .form-control, .form-select{border-radius:10px;border:1px solid #ddd;padding:10px 12px;font-size:15px;height:auto;}
+  .form-control:focus, .form-select:focus{border-color:#850001;box-shadow:0 0 0 3px rgba(133,0,1,0.10);}
+  .item-box{background:#fafafa;border:1px solid #e8e8e8;border-radius:14px;padding:12px;margin-bottom:10px;position:relative;}
+  .item-box .btn-remove{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;background:#fff;color:#850001;box-shadow:0 1px 3px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;font-size:14px;padding:0;}
+  .tipo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+  .tipo-btn{background:#fff;border:1px solid #ddd;border-radius:10px;padding:8px 2px;font-size:12px;font-weight:700;color:#444;cursor:pointer;}
   .tipo-btn.active{background:#850001;color:#fff;border-color:#850001;}
-  .cor-btn{border-radius:10px;padding:6px 10px;border:1.5px solid #ddd;background:#fff;font-size:13px;font-weight:600;}
+  .cor-row{display:flex;gap:6px;flex-wrap:wrap;}
+  .cor-btn{background:#fff;border:1px solid #ddd;border-radius:20px;padding:5px 10px;font-size:12px;font-weight:600;color:#444;cursor:pointer;}
   .cor-btn.active{background:#850001;color:#fff;border-color:#850001;}
-  .motivo-btn{display:block;width:100%;text-align:left;background:#fff;border:1.5px solid #ddd;border-radius:12px;padding:12px 14px;margin-bottom:8px;font-weight:600;color:#444;}
+  .motivo-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .motivo-btn{background:#fff;border:1px solid #ddd;border-radius:10px;padding:9px 6px;font-size:12px;font-weight:600;color:#444;cursor:pointer;text-align:center;line-height:1.2;}
   .motivo-btn.active{background:#850001;color:#fff;border-color:#850001;}
+  .extra-field{display:none;margin-top:8px;}
+  .extra-field.show{display:block;}
+  .btn-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:#fff;border:1.5px dashed #850001;color:#850001;border-radius:12px;padding:10px;font-weight:700;font-size:14px;}
+  .btn-save{display:block;width:100%;background:#850001;color:#fff;border:none;border-radius:12px;padding:14px;font-weight:700;font-size:16px;box-shadow:0 4px 10px rgba(133,0,1,0.25);}
+  .bottom-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;padding:10px 14px;max-width:420px;margin:0 auto;}
+  .row-mini{display:flex;gap:8px;}
+  .row-mini > div{flex:1;}
   .hidden{display:none !important;}
-  .bottom-actions{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;padding:12px 16px;max-width:480px;margin:0 auto;}
-  .saved-badge{display:inline-block;background:#176B43;color:#fff;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700;}
   @media (min-width:768px){
-    .mobile-header{border-radius:0;}
     .main-content{margin-left:0 !important;padding:0 !important;}
     .sidebar{display:none;}
   }
@@ -39,7 +45,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="mobile-container">
+<div class="mobile-wrap">
   <div class="mobile-header">
     <h1><i class="bi bi-box-seam"></i> Entrega de Suprimentos</h1>
     <p>Preencha o que foi deixado na unidade</p>
@@ -49,7 +55,7 @@
     {% with msgs = get_flashed_messages(with_categories=true) %}
       {% if msgs %}
         {% for cat, msg in msgs %}
-          <div class="alert alert-{{cat}} alert-dismissible fade show rounded-4" role="alert">
+          <div class="alert alert-{{cat}} alert-dismissible fade show rounded-3 py-2 px-3 small" role="alert">
             {{msg}}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
           </div>
@@ -58,51 +64,51 @@
     {% endwith %}
 
     <form method="POST" id="form-mobile">
-      <div class="mb-3">
-        <label class="form-label">Data da entrega</label>
-        <input type="date" class="form-control" name="data_entrega" value="{{hoje}}" required>
-      </div>
-
-      <div class="mb-3">
-        <label class="form-label">Unidade</label>
-        <select class="form-select" name="unidade_id" id="select_unidade" required>
-          <option value="" disabled selected>Selecione a unidade...</option>
-          {% set empresa_atual = namespace(val='') %}
-          {% for l in locais %}
-            {% if l.unidade_id %}
-              {% if empresa_atual.val != l.empresa_nome %}
-                {% if not loop.first %}</optgroup>{% endif %}
-                <optgroup label="{{l.empresa_nome}}">
-                {% set empresa_atual.val = l.empresa_nome %}
+      <div class="section">
+        <div class="section-title"><i class="bi bi-geo-alt"></i> Onde foi entregue</div>
+        <div class="mb-2">
+          <label class="form-label">Data</label>
+          <input type="date" class="form-control" name="data_entrega" value="{{hoje}}" required>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Unidade</label>
+          <select class="form-select" name="unidade_id" id="select_unidade" required>
+            <option value="" disabled selected>Selecione...</option>
+            {% set empresa_atual = namespace(val='') %}
+            {% for l in locais %}
+              {% if l.unidade_id %}
+                {% if empresa_atual.val != l.empresa_nome %}
+                  {% if not loop.first %}</optgroup>{% endif %}
+                  <optgroup label="{{l.empresa_nome}}">
+                  {% set empresa_atual.val = l.empresa_nome %}
+                {% endif %}
+                <option value="{{l.unidade_id}}">{{l.unidade_nome}}</option>
               {% endif %}
-              <option value="{{l.unidade_id}}">{{l.unidade_nome}}</option>
-            {% endif %}
-          {% endfor %}
-          {% if locais %}</optgroup>{% endif %}
-        </select>
+            {% endfor %}
+            {% if locais %}</optgroup>{% endif %}
+          </select>
+        </div>
+        <div class="mb-0">
+          <label class="form-label">Responsável</label>
+          <input type="text" class="form-control" name="responsavel" placeholder="Seu nome" required>
+        </div>
       </div>
 
-      <div class="mb-4">
-        <label class="form-label">Responsável</label>
-        <input type="text" class="form-control" name="responsavel" placeholder="Seu nome" required>
+      <div class="section">
+        <div class="section-title"><i class="bi bi-box-seam"></i> Itens entregues</div>
+        <div id="itens-container"></div>
+
+        <button type="button" class="btn-add" onclick="adicionarItem()">
+          <i class="bi bi-plus-lg"></i> Adicionar suprimento
+        </button>
       </div>
 
-      <h5 class="fw-bold mb-3" style="color:#850001;">Itens entregues</h5>
-
-      <div id="itens-container">
-        <!-- itens serão adicionados via JS -->
-      </div>
-
-      <button type="button" class="btn-add" onclick="adicionarItem()">
-        <i class="bi bi-plus-lg"></i> Adicionar suprimento
-      </button>
-
-      <div class="mb-3">
-        <label class="form-label">Observações</label>
+      <div class="section">
+        <div class="section-title"><i class="bi bi-journal-text"></i> Observações</div>
         <textarea class="form-control" name="observacoes" rows="2" placeholder="Algo importante sobre a entrega"></textarea>
       </div>
 
-      <div class="bottom-actions">
+      <div class="bottom-bar">
         <button type="submit" class="btn-save">
           <i class="bi bi-check-lg"></i> Salvar Entrega
         </button>
@@ -111,15 +117,15 @@
   </div>
 </div>
 
-<!-- template de item -->
 <template id="item-template">
-  <div class="item-card">
-    <button type="button" class="remove-btn" onclick="removerItem(this)" title="Remover">
+  <div class="item-box">
+    <button type="button" class="btn-remove" onclick="removerItem(this)" title="Remover">
       <i class="bi bi-x-lg"></i>
     </button>
 
     <input type="hidden" name="tipo_suprimento[]" class="tipo-input" required>
-    <label class="form-label">Tipo de suprimento</label>
+
+    <label class="form-label">Tipo</label>
     <div class="tipo-grid">
       <button type="button" class="tipo-btn" data-val="Toner">Toner</button>
       <button type="button" class="tipo-btn" data-val="Drum">Drum</button>
@@ -129,10 +135,10 @@
       <button type="button" class="tipo-btn" data-val="Esteira">Esteira</button>
     </div>
 
-    <div class="mb-3">
+    <div class="mb-2">
       <label class="form-label">Cor (se houver)</label>
       <input type="hidden" name="cor_selecionada[]" class="cor-input">
-      <div class="d-flex gap-2 flex-wrap">
+      <div class="cor-row">
         <button type="button" class="cor-btn" data-cor="Black">Black</button>
         <button type="button" class="cor-btn" data-cor="Ciano">Ciano</button>
         <button type="button" class="cor-btn" data-cor="Magenta">Magenta</button>
@@ -140,28 +146,30 @@
       </div>
     </div>
 
-    <div class="mb-3">
-      <label class="form-label">Modelo da impressora</label>
-      <input type="text" class="form-control" name="modelo_impressora[]" placeholder="Ex: C711, M3170" required>
+    <div class="row-mini mb-2">
+      <div>
+        <label class="form-label">Modelo</label>
+        <input type="text" class="form-control" name="modelo_impressora[]" placeholder="C711">
+      </div>
+      <div style="max-width:80px;">
+        <label class="form-label">Qtd</label>
+        <input type="number" class="form-control" name="quantidade[]" value="1" min="1" required>
+      </div>
     </div>
 
-    <div class="mb-3">
-      <label class="form-label">Quantidade</label>
-      <input type="number" class="form-control" name="quantidade[]" value="1" min="1" required>
-    </div>
-
-    <div class="mb-2">
-      <label class="form-label">Motivo da troca</label>
+    <div class="mb-0">
+      <label class="form-label">Motivo</label>
       <input type="hidden" name="motivo_padrao[]" class="motivo-input">
-      <button type="button" class="motivo-btn" data-val="deixar_estoque">Deixar para estoque local</button>
-      <button type="button" class="motivo-btn" data-val="acabou_impressora">Acabou na impressora</button>
-      <button type="button" class="motivo-btn" data-val="defeito_peca">Defeito na peça</button>
-      <button type="button" class="motivo-btn" data-val="outro">Outro motivo...</button>
-
-      <div class="defeito-area hidden mt-2">
+      <div class="motivo-grid">
+        <button type="button" class="motivo-btn" data-val="deixar_estoque">Estoque local</button>
+        <button type="button" class="motivo-btn" data-val="acabou_impressora">Acabou</button>
+        <button type="button" class="motivo-btn" data-val="defeito_peca">Defeito</button>
+        <button type="button" class="motivo-btn" data-val="outro">Outro...</button>
+      </div>
+      <div class="extra-field defeito-field">
         <input type="text" class="form-control" name="defeito[]" placeholder="Qual defeito na peça?">
       </div>
-      <div class="outro-area hidden mt-2">
+      <div class="extra-field outro-field">
         <input type="text" class="form-control" name="motivo[]" placeholder="Descreva o motivo">
       </div>
     </div>
@@ -174,50 +182,44 @@
 const container = document.getElementById('itens-container');
 const template = document.getElementById('item-template');
 
-function atualizarTipoInput(card){
-  const tipoBtn = card.querySelector('.tipo-btn.active');
-  const corBtn = card.querySelector('.cor-btn.active');
-  const tipoInput = card.querySelector('.tipo-input');
-  let tipo = tipoBtn ? tipoBtn.dataset.val : '';
-  const cor = corBtn ? corBtn.dataset.cor : '';
-  if(tipo && cor) tipo += ' ' + cor;
-  tipoInput.value = tipo;
+function atualizarTipo(card){
+  const tipo = card.querySelector('.tipo-btn.active')?.dataset.val || '';
+  const cor = card.querySelector('.cor-btn.active')?.dataset.cor || '';
+  card.querySelector('.tipo-input').value = cor ? tipo + ' ' + cor : tipo;
 }
 
 function configurarItem(card){
-  card.querySelectorAll('.tipo-btn').forEach(btn => {
+  card.querySelectorAll('.tipo-btn').forEach(btn=>{
     btn.addEventListener('click', function(){
-      card.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('active'));
+      card.querySelectorAll('.tipo-btn').forEach(b=>b.classList.remove('active'));
       this.classList.add('active');
-      atualizarTipoInput(card);
+      atualizarTipo(card);
     });
   });
-  card.querySelectorAll('.cor-btn').forEach(btn => {
+  card.querySelectorAll('.cor-btn').forEach(btn=>{
     btn.addEventListener('click', function(){
-      const jaAtivo = this.classList.contains('active');
-      card.querySelectorAll('.cor-btn').forEach(b => b.classList.remove('active'));
-      if(!jaAtivo) this.classList.add('active');
-      atualizarTipoInput(card);
+      const ja = this.classList.contains('active');
+      card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
+      if(!ja) this.classList.add('active');
+      atualizarTipo(card);
     });
   });
-  card.querySelectorAll('.motivo-btn').forEach(btn => {
+  card.querySelectorAll('.motivo-btn').forEach(btn=>{
     btn.addEventListener('click', function(){
-      card.querySelectorAll('.motivo-btn').forEach(b => b.classList.remove('active'));
+      card.querySelectorAll('.motivo-btn').forEach(b=>b.classList.remove('active'));
       this.classList.add('active');
       card.querySelector('.motivo-input').value = this.dataset.val;
-      card.querySelector('.defeito-area').classList.add('hidden');
-      card.querySelector('.outro-area').classList.add('hidden');
+      card.querySelector('.defeito-field').classList.remove('show');
+      card.querySelector('.outro-field').classList.remove('show');
+      card.querySelector('.defeito-field input').removeAttribute('required');
+      card.querySelector('.outro-field input').removeAttribute('required');
       if(this.dataset.val === 'defeito_peca'){
-        card.querySelector('.defeito-area').classList.remove('hidden');
-        card.querySelector('.defeito-area input').setAttribute('required','required');
-      } else {
-        card.querySelector('.defeito-area input').removeAttribute('required');
+        card.querySelector('.defeito-field').classList.add('show');
+        card.querySelector('.defeito-field input').setAttribute('required','required');
       }
       if(this.dataset.val === 'outro'){
-        card.querySelector('.outro-area').classList.remove('hidden');
-        card.querySelector('.outro-area input').setAttribute('required','required');
-      } else {
-        card.querySelector('.outro-area input').removeAttribute('required');
+        card.querySelector('.outro-field').classList.add('show');
+        card.querySelector('.outro-field input').setAttribute('required','required');
       }
     });
   });
@@ -225,14 +227,14 @@ function configurarItem(card){
 
 function adicionarItem(){
   const clone = template.content.cloneNode(true);
-  const card = clone.querySelector('.item-card');
+  const card = clone.querySelector('.item-box');
   configurarItem(card);
   container.appendChild(card);
 }
 
 function removerItem(btn){
-  if(container.querySelectorAll('.item-card').length > 1){
-    btn.closest('.item-card').remove();
+  if(container.querySelectorAll('.item-box').length > 1){
+    btn.closest('.item-box').remove();
   } else {
     alert('Pelo menos um item é necessário.');
   }
@@ -240,7 +242,6 @@ function removerItem(btn){
 
 adicionarItem();
 
-// registrar service worker do PWA
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/static/sw.js').catch(console.error);
 }

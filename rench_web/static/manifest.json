@@ -1,6 +1,6 @@
 {
-  "name": "RENCH Suprimentos",
-  "short_name": "Suprimentos",
+  "name": "RENCH Estoque",
+  "short_name": "Estoque",
   "start_url": "/suprimentos/mobile",
   "display": "standalone",
   "background_color": "#ffffff",
