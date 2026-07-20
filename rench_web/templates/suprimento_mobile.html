@@ -1,255 +1,249 @@
-{% extends "base.html" %}
-{% block title %}Estoque Mobile - RENCH{% endblock %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#850001">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="{{url_for('static', filename='manifest.json')}}">
+  <title>Estoque Mobile - RENCH</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    *{box-sizing:border-box;}
+    html,body{margin:0;padding:0;width:100%;height:100%;background:#f0f0f0;font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;font-size:16px;color:#222;overflow:hidden;}
+    #app{width:100%;height:100vh;display:flex;flex-direction:column;background:#f0f0f0;}
+    header{background:#850001;color:#fff;padding:12px 16px;text-align:center;flex:0 0 auto;}
+    header h1{margin:0;font-size:18px;font-weight:700;}
+    header p{margin:2px 0 0;font-size:11px;opacity:0.9;}
+    main{flex:1;display:flex;flex-direction:column;min-height:0;}
+    .scroll-area{flex:1;overflow-y:auto;padding:12px;-webkit-overflow-scrolling:touch;}
+    .card{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+    .card-title{font-size:14px;font-weight:700;color:#850001;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+    label{display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:4px;}
+    input, select, textarea{width:100%;border:1px solid #ccc;border-radius:8px;padding:10px 12px;font-size:16px;background:#fff;font-family:inherit;}
+    input:focus, select:focus, textarea:focus{outline:none;border-color:#850001;box-shadow:0 0 0 2px rgba(133,0,1,0.12);}
+    .mb-2{margin-bottom:10px;}
+    .mb-0{margin-bottom:0;}
+    .row{display:flex;gap:8px;}
+    .row > div{flex:1;}
+    .tipo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+    .tipo-btn{background:#fff;border:1px solid #ccc;border-radius:8px;padding:10px 2px;font-size:14px;font-weight:700;color:#222;text-align:center;cursor:pointer;}
+    .tipo-btn.active{background:#850001;color:#fff;border-color:#850001;}
+    .cor-row{display:flex;gap:5px;flex-wrap:wrap;}
+    .cor-btn{background:#fff;border:1px solid #ccc;border-radius:16px;padding:5px 10px;font-size:13px;font-weight:600;color:#222;cursor:pointer;}
+    .cor-btn.active{background:#850001;color:#fff;border-color:#850001;}
+    .motivo-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+    .motivo-btn{background:#fff;border:1px solid #ccc;border-radius:8px;padding:10px 4px;font-size:13px;font-weight:600;color:#222;text-align:center;cursor:pointer;}
+    .motivo-btn.active{background:#850001;color:#fff;border-color:#850001;}
+    .extra-field{display:none;margin-top:8px;}
+    .extra-field.show{display:block;}
+    .item-box{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:10px;position:relative;}
+    .item-box .remove{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:none;background:#fff;color:#850001;box-shadow:0 1px 3px rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;}
+    .btn-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:#fff;border:2px dashed #850001;color:#850001;border-radius:10px;padding:11px;font-weight:700;font-size:14px;margin-top:6px;cursor:pointer;}
+    .footer{flex:0 0 auto;background:#fff;border-top:1px solid #ddd;padding:10px 12px;}
+    .btn-save{display:block;width:100%;background:#850001;color:#fff;border:none;border-radius:10px;padding:14px;font-weight:700;font-size:16px;cursor:pointer;}
+    .alert{background:#d1ecf1;color:#0c5460;border:1px solid #bee5eb;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;}
+    .hidden{display:none !important;}
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1><i class="bi bi-box-seam"></i> Entrega de Suprimentos</h1>
+      <p>Preencha o que foi deixado na unidade</p>
+    </header>
 
-{% block head %}
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<link rel="manifest" href="{{url_for('static', filename='manifest.json')}}">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<style>
-  html,body{background:#f5f5f5;margin:0;padding:0;font-size:16px;height:100%;overflow:hidden;}
-  .mobile-wrap{height:100vh;display:flex;flex-direction:column;background:#f5f5f5;}
-  .mobile-header{background:#850001;color:#fff;padding:14px 16px;text-align:center;flex:0 0 auto;}
-  .mobile-header h1{font-size:18px;margin:0;font-weight:700;}
-  .mobile-header p{margin:3px 0 0;font-size:12px;opacity:0.9;}
-  .mobile-body{flex:1 1 auto;overflow:hidden;display:flex;flex-direction:column;padding:0;}
-  #form-mobile{flex:1;display:flex;flex-direction:column;min-height:0;}
-  .scroll-content{flex:1;overflow-y:auto;padding:12px;-webkit-overflow-scrolling:touch;}
-  .card{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.08);}
-  .card-title{font-size:14px;font-weight:700;color:#850001;margin-bottom:10px;}
-  .form-label{font-size:13px;font-weight:600;color:#444;margin-bottom:4px;display:block;}
-  .form-control, .form-select{border-radius:8px;border:1px solid #ccc;padding:10px 12px;font-size:16px;height:auto;background:#fff;width:100%;}
-  .form-control:focus, .form-select:focus{border-color:#850001;box-shadow:0 0 0 2px rgba(133,0,1,0.12);}
-  .item-box{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:10px;position:relative;}
-  .item-box .btn-remove{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:none;background:#fff;color:#850001;box-shadow:0 1px 3px rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;padding:0;}
-  .tipo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
-  .tipo-btn{background:#fff;border:1px solid #ccc;border-radius:8px;padding:9px 2px;font-size:14px;font-weight:700;color:#222;cursor:pointer;}
-  .tipo-btn.active{background:#850001;color:#fff;border-color:#850001;}
-  .cor-row{display:flex;gap:5px;flex-wrap:wrap;}
-  .cor-btn{background:#fff;border:1px solid #ccc;border-radius:16px;padding:4px 10px;font-size:13px;font-weight:600;color:#222;cursor:pointer;}
-  .cor-btn.active{background:#850001;color:#fff;border-color:#850001;}
-  .row-mini{display:flex;gap:8px;}
-  .row-mini > div{flex:1;}
-  .motivo-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-  .motivo-btn{background:#fff;border:1px solid #ccc;border-radius:8px;padding:10px 4px;font-size:13px;font-weight:600;color:#222;cursor:pointer;text-align:center;}
-  .motivo-btn.active{background:#850001;color:#fff;border-color:#850001;}
-  .extra-field{display:none;margin-top:8px;}
-  .extra-field.show{display:block;}
-  .btn-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:#fff;border:2px dashed #850001;color:#850001;border-radius:10px;padding:11px;font-weight:700;font-size:14px;margin-top:6px;}
-  .btn-save{display:block;width:100%;background:#850001;color:#fff;border:none;border-radius:10px;padding:14px;font-weight:700;font-size:16px;}
-  .bottom-bar{flex:0 0 auto;background:#fff;border-top:1px solid #ddd;padding:10px 12px;}
-  .mb-2{margin-bottom:8px;}
-  .mb-0{margin-bottom:0;}
-  .hidden{display:none !important;}
-  @media (min-width:768px){
-    .main-content{margin-left:0 !important;padding:0 !important;}
-    .sidebar{display:none;}
-  }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="mobile-wrap">
-  <div class="mobile-header">
-    <h1><i class="bi bi-box-seam"></i> Entrega de Suprimentos</h1>
-    <p>Preencha o que foi deixado na unidade</p>
-  </div>
-
-  <div class="mobile-body">
-    <form method="POST" id="form-mobile">
-      <div class="scroll-content">
-        {% with msgs = get_flashed_messages(with_categories=true) %}
-          {% if msgs %}
-            {% for cat, msg in msgs %}
-              <div class="alert alert-{{cat}} alert-dismissible fade show rounded-3 py-2 px-3 small" role="alert">
-                {{msg}}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-              </div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
-
-        <div class="card">
-          <div class="card-title"><i class="bi bi-geo-alt"></i> Onde foi entregue</div>
-          <div class="mb-2">
-            <label class="form-label">Data</label>
-            <input type="date" class="form-control" name="data_entrega" value="{{hoje}}" required>
-          </div>
-          <div class="mb-2">
-            <label class="form-label">Unidade</label>
-            <select class="form-select" name="unidade_id" id="select_unidade" required>
-              <option value="" disabled selected>Selecione a unidade...</option>
-              {% set empresa_atual = namespace(val='') %}
-              {% for l in locais %}
-                {% if l.unidade_id %}
-                  {% if empresa_atual.val != l.empresa_nome %}
-                    {% if not loop.first %}</optgroup>{% endif %}
-                    <optgroup label="{{l.empresa_nome}}">
-                    {% set empresa_atual.val = l.empresa_nome %}
-                  {% endif %}
-                  <option value="{{l.unidade_id}}">{{l.unidade_nome}}</option>
-                {% endif %}
+    <main>
+      <form method="POST" id="form-mobile">
+        <div class="scroll-area">
+          {% with msgs = get_flashed_messages(with_categories=true) %}
+            {% if msgs %}
+              {% for cat, msg in msgs %}
+                <div class="alert">{{msg}}</div>
               {% endfor %}
-              {% if locais %}</optgroup>{% endif %}
-            </select>
+            {% endif %}
+          {% endwith %}
+
+          <div class="card">
+            <div class="card-title"><i class="bi bi-geo-alt"></i> Onde foi entregue</div>
+            <div class="mb-2">
+              <label>Data</label>
+              <input type="date" name="data_entrega" value="{{hoje}}" required>
+            </div>
+            <div class="mb-2">
+              <label>Unidade</label>
+              <select name="unidade_id" id="select_unidade" required>
+                <option value="" disabled selected>Selecione a unidade...</option>
+                {% set empresa_atual = namespace(val='') %}
+                {% for l in locais %}
+                  {% if l.unidade_id %}
+                    {% if empresa_atual.val != l.empresa_nome %}
+                      {% if not loop.first %}</optgroup>{% endif %}
+                      <optgroup label="{{l.empresa_nome}}">
+                      {% set empresa_atual.val = l.empresa_nome %}
+                    {% endif %}
+                    <option value="{{l.unidade_id}}">{{l.unidade_nome}}</option>
+                  {% endif %}
+                {% endfor %}
+                {% if locais %}</optgroup>{% endif %}
+              </select>
+            </div>
+            <div class="mb-0">
+              <label>Responsável</label>
+              <input type="text" name="responsavel" placeholder="Seu nome" required>
+            </div>
           </div>
-          <div class="mb-0">
-            <label class="form-label">Responsável</label>
-            <input type="text" class="form-control" name="responsavel" placeholder="Seu nome" required>
+
+          <div class="card">
+            <div class="card-title"><i class="bi bi-box-seam"></i> Itens entregues</div>
+            <div id="itens-container"></div>
+            <button type="button" class="btn-add" onclick="adicionarItem()">
+              <i class="bi bi-plus-lg"></i> Adicionar suprimento
+            </button>
+          </div>
+
+          <div class="card">
+            <div class="card-title"><i class="bi bi-journal-text"></i> Observações</div>
+            <textarea name="observacoes" rows="2" placeholder="Algo importante sobre a entrega"></textarea>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-title"><i class="bi bi-box-seam"></i> Itens entregues</div>
-          <div id="itens-container"></div>
-
-          <button type="button" class="btn-add" onclick="adicionarItem()">
-            <i class="bi bi-plus-lg"></i> Adicionar suprimento
+        <div class="footer">
+          <button type="submit" class="btn-save">
+            <i class="bi bi-check-lg"></i> Salvar Entrega
           </button>
         </div>
+      </form>
+    </main>
+  </div>
 
-        <div class="card">
-          <div class="card-title"><i class="bi bi-journal-text"></i> Observações</div>
-          <textarea class="form-control" name="observacoes" rows="2" placeholder="Algo importante sobre a entrega"></textarea>
+  <template id="item-template">
+    <div class="item-box">
+      <button type="button" class="remove" onclick="removerItem(this)" title="Remover">
+        <i class="bi bi-x-lg"></i>
+      </button>
+
+      <input type="hidden" name="tipo_suprimento[]" class="tipo-input" required>
+
+      <label>Tipo de suprimento</label>
+      <div class="tipo-grid">
+        <button type="button" class="tipo-btn" data-val="Toner">Toner</button>
+        <button type="button" class="tipo-btn" data-val="Drum">Drum</button>
+        <button type="button" class="tipo-btn" data-val="Fusor">Fusor</button>
+        <button type="button" class="tipo-btn" data-val="Transfer">Transfer</button>
+        <button type="button" class="tipo-btn" data-val="Coletor">Coletor</button>
+        <button type="button" class="tipo-btn" data-val="Esteira">Esteira</button>
+      </div>
+
+      <div class="mb-2">
+        <label>Cor (se houver)</label>
+        <input type="hidden" name="cor_selecionada[]" class="cor-input">
+        <div class="cor-row">
+          <button type="button" class="cor-btn" data-cor="Black">Black</button>
+          <button type="button" class="cor-btn" data-cor="Ciano">Ciano</button>
+          <button type="button" class="cor-btn" data-cor="Magenta">Magenta</button>
+          <button type="button" class="cor-btn" data-cor="Amarelo">Amarelo</button>
         </div>
       </div>
 
-      <div class="bottom-bar">
-        <button type="submit" class="btn-save">
-          <i class="bi bi-check-lg"></i> Salvar Entrega
-        </button>
+      <div class="row mb-2">
+        <div>
+          <label>Modelo</label>
+          <input type="text" name="modelo_impressora[]" placeholder="Ex: C711">
+        </div>
+        <div style="max-width:80px;">
+          <label>Qtd</label>
+          <input type="number" name="quantidade[]" value="1" min="1" required>
+        </div>
       </div>
-    </form>
-  </div>
-</div>
 
-<template id="item-template">
-  <div class="item-box">
-    <button type="button" class="btn-remove" onclick="removerItem(this)" title="Remover">
-      <i class="bi bi-x-lg"></i>
-    </button>
-
-    <input type="hidden" name="tipo_suprimento[]" class="tipo-input" required>
-
-    <label class="form-label">Tipo de suprimento</label>
-    <div class="tipo-grid">
-      <button type="button" class="tipo-btn" data-val="Toner">Toner</button>
-      <button type="button" class="tipo-btn" data-val="Drum">Drum</button>
-      <button type="button" class="tipo-btn" data-val="Fusor">Fusor</button>
-      <button type="button" class="tipo-btn" data-val="Transfer">Transfer</button>
-      <button type="button" class="tipo-btn" data-val="Coletor">Coletor</button>
-      <button type="button" class="tipo-btn" data-val="Esteira">Esteira</button>
-    </div>
-
-    <div class="mb-2">
-      <label class="form-label">Cor (se houver)</label>
-      <input type="hidden" name="cor_selecionada[]" class="cor-input">
-      <div class="cor-row">
-        <button type="button" class="cor-btn" data-cor="Black">Black</button>
-        <button type="button" class="cor-btn" data-cor="Ciano">Ciano</button>
-        <button type="button" class="cor-btn" data-cor="Magenta">Magenta</button>
-        <button type="button" class="cor-btn" data-cor="Amarelo">Amarelo</button>
+      <div class="mb-0">
+        <label>Motivo da troca</label>
+        <input type="hidden" name="motivo_padrao[]" class="motivo-input">
+        <div class="motivo-grid">
+          <button type="button" class="motivo-btn" data-val="deixar_estoque">Estoque local</button>
+          <button type="button" class="motivo-btn" data-val="acabou_impressora">Acabou</button>
+          <button type="button" class="motivo-btn" data-val="defeito_peca">Defeito</button>
+          <button type="button" class="motivo-btn" data-val="outro">Outro...</button>
+        </div>
+        <div class="extra-field defeito-field">
+          <input type="text" name="defeito[]" placeholder="Qual defeito na peça?">
+        </div>
+        <div class="extra-field outro-field">
+          <input type="text" name="motivo[]" placeholder="Descreva o motivo">
+        </div>
       </div>
     </div>
+  </template>
 
-    <div class="row-mini mb-2">
-      <div>
-        <label class="form-label">Modelo da impressora</label>
-        <input type="text" class="form-control" name="modelo_impressora[]" placeholder="Ex: C711">
-      </div>
-      <div style="max-width:80px;">
-        <label class="form-label">Qtd</label>
-        <input type="number" class="form-control" name="quantidade[]" value="1" min="1" required>
-      </div>
-    </div>
+  <script>
+    const container = document.getElementById('itens-container');
+    const template = document.getElementById('item-template');
 
-    <div class="mb-0">
-      <label class="form-label">Motivo da troca</label>
-      <input type="hidden" name="motivo_padrao[]" class="motivo-input">
-      <div class="motivo-grid">
-        <button type="button" class="motivo-btn" data-val="deixar_estoque">Estoque local</button>
-        <button type="button" class="motivo-btn" data-val="acabou_impressora">Acabou</button>
-        <button type="button" class="motivo-btn" data-val="defeito_peca">Defeito</button>
-        <button type="button" class="motivo-btn" data-val="outro">Outro...</button>
-      </div>
-      <div class="extra-field defeito-field">
-        <input type="text" class="form-control" name="defeito[]" placeholder="Qual defeito na peça?">
-      </div>
-      <div class="extra-field outro-field">
-        <input type="text" class="form-control" name="motivo[]" placeholder="Descreva o motivo">
-      </div>
-    </div>
-  </div>
-</template>
-{% endblock %}
+    function atualizarTipo(card){
+      const tipo = card.querySelector('.tipo-btn.active')?.dataset.val || '';
+      const cor = card.querySelector('.cor-btn.active')?.dataset.cor || '';
+      card.querySelector('.tipo-input').value = cor ? tipo + ' ' + cor : tipo;
+    }
 
-{% block scripts %}
-<script>
-const container = document.getElementById('itens-container');
-const template = document.getElementById('item-template');
+    function configurarItem(card){
+      card.querySelectorAll('.tipo-btn').forEach(btn=>{
+        btn.addEventListener('click', function(){
+          card.querySelectorAll('.tipo-btn').forEach(b=>b.classList.remove('active'));
+          this.classList.add('active');
+          atualizarTipo(card);
+        });
+      });
+      card.querySelectorAll('.cor-btn').forEach(btn=>{
+        btn.addEventListener('click', function(){
+          const ja = this.classList.contains('active');
+          card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
+          if(!ja) this.classList.add('active');
+          atualizarTipo(card);
+        });
+      });
+      card.querySelectorAll('.motivo-btn').forEach(btn=>{
+        btn.addEventListener('click', function(){
+          card.querySelectorAll('.motivo-btn').forEach(b=>b.classList.remove('active'));
+          this.classList.add('active');
+          card.querySelector('.motivo-input').value = this.dataset.val;
+          card.querySelector('.defeito-field').classList.remove('show');
+          card.querySelector('.outro-field').classList.remove('show');
+          card.querySelector('.defeito-field input').removeAttribute('required');
+          card.querySelector('.outro-field input').removeAttribute('required');
+          if(this.dataset.val === 'defeito_peca'){
+            card.querySelector('.defeito-field').classList.add('show');
+            card.querySelector('.defeito-field input').setAttribute('required','required');
+          }
+          if(this.dataset.val === 'outro'){
+            card.querySelector('.outro-field').classList.add('show');
+            card.querySelector('.outro-field input').setAttribute('required','required');
+          }
+        });
+      });
+    }
 
-function atualizarTipo(card){
-  const tipo = card.querySelector('.tipo-btn.active')?.dataset.val || '';
-  const cor = card.querySelector('.cor-btn.active')?.dataset.cor || '';
-  card.querySelector('.tipo-input').value = cor ? tipo + ' ' + cor : tipo;
-}
+    function adicionarItem(){
+      const clone = template.content.cloneNode(true);
+      const card = clone.querySelector('.item-box');
+      configurarItem(card);
+      container.appendChild(card);
+    }
 
-function configurarItem(card){
-  card.querySelectorAll('.tipo-btn').forEach(btn=>{
-    btn.addEventListener('click', function(){
-      card.querySelectorAll('.tipo-btn').forEach(b=>b.classList.remove('active'));
-      this.classList.add('active');
-      atualizarTipo(card);
-    });
-  });
-  card.querySelectorAll('.cor-btn').forEach(btn=>{
-    btn.addEventListener('click', function(){
-      const ja = this.classList.contains('active');
-      card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
-      if(!ja) this.classList.add('active');
-      atualizarTipo(card);
-    });
-  });
-  card.querySelectorAll('.motivo-btn').forEach(btn=>{
-    btn.addEventListener('click', function(){
-      card.querySelectorAll('.motivo-btn').forEach(b=>b.classList.remove('active'));
-      this.classList.add('active');
-      card.querySelector('.motivo-input').value = this.dataset.val;
-      card.querySelector('.defeito-field').classList.remove('show');
-      card.querySelector('.outro-field').classList.remove('show');
-      card.querySelector('.defeito-field input').removeAttribute('required');
-      card.querySelector('.outro-field input').removeAttribute('required');
-      if(this.dataset.val === 'defeito_peca'){
-        card.querySelector('.defeito-field').classList.add('show');
-        card.querySelector('.defeito-field input').setAttribute('required','required');
+    function removerItem(btn){
+      if(container.querySelectorAll('.item-box').length > 1){
+        btn.closest('.item-box').remove();
+      } else {
+        alert('Pelo menos um item é necessário.');
       }
-      if(this.dataset.val === 'outro'){
-        card.querySelector('.outro-field').classList.add('show');
-        card.querySelector('.outro-field input').setAttribute('required','required');
-      }
-    });
-  });
-}
+    }
 
-function adicionarItem(){
-  const clone = template.content.cloneNode(true);
-  const card = clone.querySelector('.item-box');
-  configurarItem(card);
-  container.appendChild(card);
-}
+    adicionarItem();
 
-function removerItem(btn){
-  if(container.querySelectorAll('.item-box').length > 1){
-    btn.closest('.item-box').remove();
-  } else {
-    alert('Pelo menos um item é necessário.');
-  }
-}
-
-adicionarItem();
-
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/static/sw.js').catch(console.error);
-}
-</script>
-{% endblock %}
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('/static/sw.js').catch(console.error);
+    }
+  </script>
+</body>
+</html>
