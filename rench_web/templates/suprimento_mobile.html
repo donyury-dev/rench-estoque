@@ -50,6 +50,27 @@
     .extra-field{display:none;margin-top:8px;}
     .extra-field.show{display:block;}
     .item-box{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:10px;position:relative;}
+    .nav-tabs{display:flex;background:#fff;border-bottom:1px solid #ddd;flex:0 0 auto;}
+    .nav-tab{flex:1;text-align:center;padding:12px 4px;font-size:13px;font-weight:700;color:#666;background:#f8f8f8;border:none;cursor:pointer;}
+    .nav-tab.active{color:#fff;background:#850001;}
+    .tab-content{display:none;}
+    .tab-content.active{display:block;}
+
+    .estoque-lista{list-style:none;margin:0;padding:0;}
+    .estoque-item{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+    .estoque-item .info{flex:1;}
+    .estoque-item .tipo{font-weight:700;color:#222;font-size:15px;}
+    .estoque-item .modelo{font-size:12px;color:#666;}
+    .estoque-item .qtd{font-size:20px;font-weight:700;}
+    .estoque-item .qtd.ok{color:#176B43;}
+    .estoque-item .qtd.baixo{color:#B76E00;}
+    .estoque-item .qtd.zerado{color:#850001;}
+    .estoque-empty{text-align:center;color:#888;padding:30px 12px;}
+
+    .form-section{margin-bottom:10px;}
+    .btn-block{width:100%;background:#850001;color:#fff;border:none;border-radius:10px;padding:14px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;}
+    .btn-block-outline{width:100%;background:#fff;border:2px solid #850001;color:#850001;border-radius:10px;padding:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;}
+
     .saldo-info{padding:8px 10px;border-radius:8px;font-size:13px;font-weight:600;}
     .saldo-ok{background:#D6F0E0;color:#176B43;}
     .saldo-baixo{background:#FFF3CD;color:#B76E00;}
@@ -67,79 +88,184 @@
 <body>
   <div id="app">
     <header>
-      <h1><i class="bi bi-box-seam"></i> Entrega de Suprimentos</h1>
-      <p>Preencha o que foi deixado na unidade</p>
+      <h1><i class="bi bi-box-seam"></i> Estoque Mobile</h1>
+      <p>Controle de entregas e saldo</p>
     </header>
 
-    <main>
-      <form method="POST" id="form-mobile">
-        <div class="scroll-area">
-          {% with msgs = get_flashed_messages(with_categories=true) %}
-            {% if msgs %}
-              {% for cat, msg in msgs %}
-                <div class="alert">{{msg}}</div>
-              {% endfor %}
-            {% endif %}
-          {% endwith %}
+    <div class="nav-tabs">
+      <button type="button" class="nav-tab {{'active' if aba=='entrega' else ''}}" onclick="mostrarAba('entrega')">
+        <i class="bi bi-arrow-up-right-circle"></i> Entrega
+      </button>
+      <button type="button" class="nav-tab {{'active' if aba=='estoque' else ''}}" onclick="mostrarAba('estoque')">
+        <i class="bi bi-box-seam"></i> Estoque
+      </button>
+      <button type="button" class="nav-tab {{'active' if aba=='entrada' else ''}}" onclick="mostrarAba('entrada')">
+        <i class="bi bi-plus-lg"></i> Entrada
+      </button>
+    </div>
 
-          <div class="card">
-            <div class="card-title"><i class="bi bi-geo-alt"></i> Onde foi entregue</div>
-            <div class="mb-2">
-              <label>Data</label>
-              <input type="date" name="data_entrega" value="{{hoje}}" required>
-            </div>
-            <div class="mb-2">
-              <label>Unidade</label>
-              <input type="hidden" name="unidade_id" id="unidade_id" required>
-              <div class="selected-box" id="selectedBox" onclick="abrirLista()">
-                <span id="selectedText">Selecione a unidade...</span>
-                <small><i class="bi bi-chevron-down"></i></small>
+    <main>
+      <!-- ABA ENTREGA -->
+      <div id="aba-entrega" class="tab-content {{'active' if aba=='entrega' else ''}}">
+        <form method="POST" id="form-mobile">
+          <div class="scroll-area">
+            {% with msgs = get_flashed_messages(with_categories=true) %}
+              {% if msgs %}
+                {% for cat, msg in msgs %}
+                  <div class="alert">{{msg}}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <div class="card">
+              <div class="card-title"><i class="bi bi-geo-alt"></i> Onde foi entregue</div>
+              <div class="mb-2">
+                <label>Data</label>
+                <input type="date" name="data_entrega" value="{{hoje}}" required>
               </div>
-              <div class="select-list" id="selectList">
-                <input type="text" class="search-input" id="buscaUnidade" placeholder="Buscar empresa ou unidade..." onkeyup="filtrarUnidades()" onclick="event.stopPropagation()">
-                <div id="listaUnidades">
-                  {% set empresa_atual = namespace(val='') %}
-                  {% for l in locais %}
-                    {% if l.unidade_id %}
-                      {% if empresa_atual.val != l.empresa_nome %}
-                        {% if not loop.first %}</div>{% endif %}
-                        <div class="select-item empresa" data-empresa="{{l.empresa_nome|lower}}">{{l.empresa_nome}}</div>
-                        <div class="grupo-unidades">
-                        {% set empresa_atual.val = l.empresa_nome %}
+              <div class="mb-2">
+                <label>Unidade</label>
+                <input type="hidden" name="unidade_id" id="unidade_id" required>
+                <div class="selected-box" id="selectedBox" onclick="abrirLista()">
+                  <span id="selectedText">Selecione a unidade...</span>
+                  <small><i class="bi bi-chevron-down"></i></small>
+                </div>
+                <div class="select-list" id="selectList">
+                  <input type="text" class="search-input" id="buscaUnidade" placeholder="Buscar empresa ou unidade..." onkeyup="filtrarUnidades()" onclick="event.stopPropagation()">
+                  <div id="listaUnidades">
+                    {% set empresa_atual = namespace(val='') %}
+                    {% for l in locais %}
+                      {% if l.unidade_id %}
+                        {% if empresa_atual.val != l.empresa_nome %}
+                          {% if not loop.first %}</div>{% endif %}
+                          <div class="select-item empresa" data-empresa="{{l.empresa_nome|lower}}">{{l.empresa_nome}}</div>
+                          <div class="grupo-unidades">
+                          {% set empresa_atual.val = l.empresa_nome %}
+                        {% endif %}
+                        <div class="select-item unidade" data-unidade="{{l.unidade_id}}" data-texto="{{l.unidade_nome}}" data-empresa="{{l.empresa_nome}}" onclick="selecionarUnidade(this)">{{l.unidade_nome}}</div>
                       {% endif %}
-                      <div class="select-item unidade" data-unidade="{{l.unidade_id}}" data-texto="{{l.unidade_nome}}" data-empresa="{{l.empresa_nome}}" onclick="selecionarUnidade(this)">{{l.unidade_nome}}</div>
-                    {% endif %}
-                  {% endfor %}
-                  {% if locais %}</div>{% endif %}
+                    {% endfor %}
+                    {% if locais %}</div>{% endif %}
+                  </div>
                 </div>
               </div>
+              <div class="mb-0">
+                <label>Responsável</label>
+                <input type="text" name="responsavel" placeholder="Seu nome" required>
+              </div>
             </div>
-            <div class="mb-0">
-              <label>Responsável</label>
-              <input type="text" name="responsavel" placeholder="Seu nome" required>
+
+            <div class="card">
+              <div class="card-title"><i class="bi bi-box-seam"></i> Itens entregues</div>
+              <div id="itens-container"></div>
+              <button type="button" class="btn-add" onclick="adicionarItem()">
+                <i class="bi bi-plus-lg"></i> Adicionar suprimento
+              </button>
+            </div>
+
+            <div class="card">
+              <div class="card-title"><i class="bi bi-journal-text"></i> Observações</div>
+              <textarea name="observacoes" rows="2" placeholder="Algo importante sobre a entrega"></textarea>
             </div>
           </div>
 
-          <div class="card">
-            <div class="card-title"><i class="bi bi-box-seam"></i> Itens entregues</div>
-            <div id="itens-container"></div>
-            <button type="button" class="btn-add" onclick="adicionarItem()">
-              <i class="bi bi-plus-lg"></i> Adicionar suprimento
+          <div class="footer">
+            <button type="submit" class="btn-save">
+              <i class="bi bi-check-lg"></i> Salvar Entrega
             </button>
           </div>
+        </form>
+      </div>
 
+      <!-- ABA ESTOQUE -->
+      <div id="aba-estoque" class="tab-content {{'active' if aba=='estoque' else ''}}">
+        <div class="scroll-area">
           <div class="card">
-            <div class="card-title"><i class="bi bi-journal-text"></i> Observações</div>
-            <textarea name="observacoes" rows="2" placeholder="Algo importante sobre a entrega"></textarea>
+            <div class="card-title"><i class="bi bi-box-seam"></i> Saldos atuais</div>
+            {% if estoque %}
+              <ul class="estoque-lista">
+                {% for e in estoque %}
+                <li class="estoque-item">
+                  <div class="info">
+                    <div class="tipo">{{e.tipo_suprimento}}</div>
+                    <div class="modelo">{{e.modelo_impressora or 'Sem modelo'}}</div>
+                  </div>
+                  <div class="qtd {{'zerado' if e.quantidade==0 else ('baixo' if e.quantidade < 2 else 'ok')}}">
+                    {{e.quantidade}}
+                  </div>
+                </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <div class="estoque-empty">
+                <i class="bi bi-box-seam" style="font-size:36px;"></i>
+                <p class="mb-0 mt-2">Nenhum item em estoque.</p>
+                <button type="button" class="btn-block-outline" onclick="mostrarAba('entrada')">Registrar entrada</button>
+              </div>
+            {% endif %}
           </div>
         </div>
+      </div>
 
-        <div class="footer">
-          <button type="submit" class="btn-save">
-            <i class="bi bi-check-lg"></i> Salvar Entrega
-          </button>
-        </div>
-      </form>
+      <!-- ABA ENTRADA -->
+      <div id="aba-entrada" class="tab-content {{'active' if aba=='entrada' else ''}}">
+        <form id="form-entrada-mobile" onsubmit="return salvarEntrada(event)">
+          <div class="scroll-area">
+            <div class="card">
+              <div class="card-title"><i class="bi bi-plus-lg"></i> Entrada de estoque</div>
+              <div class="mb-2">
+                <label>Tipo</label>
+                <select class="tipo-entrada" required>
+                  <option value="" disabled selected>Selecione...</option>
+                  <option value="Toner">Toner</option>
+                  <option value="Drum">Drum</option>
+                  <option value="Fusor">Fusor</option>
+                  <option value="Transfer">Transfer</option>
+                  <option value="Coletor">Coletor</option>
+                  <option value="Esteira">Esteira</option>
+                </select>
+              </div>
+              <div class="mb-2">
+                <label>Cor</label>
+                <select class="cor-entrada">
+                  <option value="" selected>-</option>
+                  <option value="Black">Black</option>
+                  <option value="Ciano">Ciano</option>
+                  <option value="Magenta">Magenta</option>
+                  <option value="Amarelo">Amarelo</option>
+                </select>
+              </div>
+              <div class="mb-2">
+                <label>Modelo</label>
+                <input type="text" class="modelo-entrada" placeholder="Ex: C711" oninput="this.value = this.value.toUpperCase()">
+              </div>
+              <div class="row mb-2">
+                <div style="flex:1;">
+                  <label>Quantidade</label>
+                  <input type="number" class="qtd-entrada" value="1" min="1" required>
+                </div>
+                <div style="flex:1;">
+                  <label>Mínimo</label>
+                  <input type="number" class="minimo-entrada" value="1" min="0" required>
+                </div>
+              </div>
+              <div class="mb-2">
+                <label>Responsável</label>
+                <input type="text" class="resp-entrada" placeholder="Seu nome">
+              </div>
+              <div class="mb-0">
+                <label>Motivo / Observação</label>
+                <input type="text" class="motivo-entrada" placeholder="Ex: compra, devolução...">
+              </div>
+            </div>
+          </div>
+          <div class="footer">
+            <button type="submit" class="btn-save">
+              <i class="bi bi-check-lg"></i> Salvar Entrada
+            </button>
+          </div>
+        </form>
+      </div>
     </main>
   </div>
 
@@ -352,6 +478,51 @@
         list.classList.remove('show');
       }
     });
+
+    function mostrarAba(aba){
+      document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+      document.querySelector(`.nav-tab[onclick="mostrarAba('${aba}')"]`).classList.add('active');
+      document.getElementById('aba-' + aba).classList.add('active');
+      window.scrollTo(0,0);
+    }
+
+    async function salvarEntrada(e){
+      e.preventDefault();
+      const form = e.target;
+      const tipo = form.querySelector('.tipo-entrada').value;
+      const cor = form.querySelector('.cor-entrada').value;
+      const modelo = form.querySelector('.modelo-entrada').value;
+      const qtd = form.querySelector('.qtd-entrada').value;
+      const minimo = form.querySelector('.minimo-entrada').value;
+      const resp = form.querySelector('.resp-entrada').value;
+      const motivo = form.querySelector('.motivo-entrada').value;
+
+      const fd = new FormData();
+      fd.append('tipo_suprimento', tipo);
+      fd.append('cor_selecionada', cor);
+      fd.append('modelo_impressora', modelo);
+      fd.append('quantidade', qtd);
+      fd.append('estoque_minimo', minimo);
+      fd.append('responsavel', resp);
+      fd.append('motivo', motivo);
+
+      try{
+        const r = await fetch('/api/estoque/entrada', {method:'POST', body:fd});
+        const data = await r.json();
+        if(r.ok && data.ok){
+          alert('Entrada salva: ' + data.mensagem);
+          form.reset();
+          mostrarAba('estoque');
+          setTimeout(()=>location.reload(), 300);
+        } else {
+          alert(data.erro || 'Erro ao salvar entrada.');
+        }
+      } catch(err){
+        alert('Erro de conexão.');
+      }
+      return false;
+    }
 
     adicionarItem();
 

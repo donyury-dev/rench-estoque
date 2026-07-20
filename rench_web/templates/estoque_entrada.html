@@ -10,6 +10,24 @@
   <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-secondary">Voltar</a>
 </div>
 
+<ul class="nav nav-tabs mb-4" style="border-bottom:1px solid var(--primary-borda);">
+  <li class="nav-item">
+    <a class="nav-link" href="{{url_for('controle_estoque')}}" style="color:var(--primary);">
+      <i class="bi bi-box-seam me-1"></i> Saldos
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{{url_for('lista_suprimentos')}}" style="color:var(--primary);">
+      <i class="bi bi-arrow-up-right-circle me-1"></i> Entregas / Histórico de Saídas
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link active fw-bold" href="#" style="color:var(--primary);border-color:var(--primary-borda) var(--primary-borda) #fff;">
+      <i class="bi bi-plus-lg me-1"></i> Entrada de Estoque
+    </a>
+  </li>
+</ul>
+
 <div class="row">
   <div class="col-lg-6">
     <div class="card card-dashboard p-4">

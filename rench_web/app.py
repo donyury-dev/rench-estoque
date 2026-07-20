@@ -1595,7 +1595,7 @@ def suprimento_mobile():
                     ORDER BY emp.tipo DESC, emp.nome, u.nome
                 """)
                 locais = cur.fetchall()
-                return render_template('suprimento_mobile.html', locais=locais, hoje=data_entrega)
+                return render_template('suprimento_mobile.html', locais=locais, hoje=data_entrega, aba='entrega')
 
         for item in itens:
             mp = item['motivo_padrao']
@@ -1625,8 +1625,11 @@ def suprimento_mobile():
     """)
     locais = cur.fetchall()
 
+    cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade FROM estoque ORDER BY tipo_suprimento, modelo_impressora")
+    estoque = cur.fetchall()
+
     hoje = datetime.now().strftime('%Y-%m-%d')
-    return render_template('suprimento_mobile.html', locais=locais, hoje=hoje)
+    return render_template('suprimento_mobile.html', locais=locais, hoje=hoje, estoque=estoque, aba=request.args.get('aba', 'entrega'))
 
 @app.route('/suprimentos/novo', methods=['GET', 'POST'])
 @login_required
@@ -1883,6 +1886,34 @@ def api_estoque_saldo():
     cur = db.cursor()
     _, saldo = buscar_ou_criar_estoque(cur, tipo, modelo)
     return jsonify({'saldo': saldo})
+
+
+@app.route('/api/estoque/entrada', methods=['POST'])
+@login_required
+def api_estoque_entrada():
+    tipo = request.form.get('tipo_suprimento', '').strip()
+    cor = request.form.get('cor_selecionada', '').strip()
+    modelo = request.form.get('modelo_impressora', '').strip().upper()
+    quantidade = int(request.form.get('quantidade') or 0)
+    estoque_minimo = int(request.form.get('estoque_minimo') or 1)
+    motivo = request.form.get('motivo', '').strip() or None
+    responsavel = request.form.get('responsavel', '').strip() or session.get('usuario')
+
+    if not tipo or quantidade <= 0:
+        return jsonify({'erro': 'Informe o tipo e a quantidade.'}), 400
+
+    tipo_final = f"{tipo} {cor}".strip() if cor else tipo
+    db = get_db()
+    cur = db.cursor()
+    estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo_final, modelo)
+    cur.execute("UPDATE estoque SET estoque_minimo=%s WHERE id=%s", (estoque_minimo, estoque_id))
+    movimentar_estoque(
+        cur, estoque_id, 'entrada', quantidade, saldo,
+        motivo=motivo or 'Entrada via app mobile',
+        responsavel=responsavel
+    )
+    db.commit()
+    return jsonify({'ok': True, 'mensagem': f'{tipo_final} {modelo}: +{quantidade}'})
 
 
 # Para produção (Render / Gunicorn)
