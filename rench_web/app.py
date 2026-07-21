@@ -1731,6 +1731,118 @@ def excluir_suprimento(entrega_id):
     return redirect(url_for('lista_suprimentos'))
 
 
+@app.route('/relatorio/mensal')
+@login_required
+def relatorio_mensal():
+    db = get_db()
+    cur = db.cursor()
+
+    mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+    try:
+        ano, numero_mes = mes.split('-')
+        ano = int(ano)
+        numero_mes = int(numero_mes)
+    except Exception:
+        ano = datetime.now().year
+        numero_mes = datetime.now().month
+        mes = f'{ano:04d}-{numero_mes:02d}'
+
+    data_inicio = f'{ano}-{numero_mes:02d}-01'
+    if numero_mes == 12:
+        data_fim = f'{ano + 1}-01-01'
+    else:
+        data_fim = f'{ano}-{numero_mes + 1:02d}-01'
+
+    # Resumo por tipo de suprimento
+    cur.execute("""
+        SELECT si.tipo_suprimento, si.modelo_impressora, SUM(si.quantidade) as total
+        FROM suprimentos_itens si
+        JOIN suprimentos_entregas se ON se.id = si.entrega_id
+        WHERE se.data_entrega >= %s AND se.data_entrega < %s
+        GROUP BY si.tipo_suprimento, si.modelo_impressora
+        ORDER BY si.modelo_impressora, si.tipo_suprimento
+    """, (data_inicio, data_fim))
+    resumo_tipo = cur.fetchall()
+
+    # Resumo por unidade
+    cur.execute("""
+        SELECT u.nome as unidade_nome, emp.nome as empresa_nome,
+               si.tipo_suprimento, si.modelo_impressora, SUM(si.quantidade) as total
+        FROM suprimentos_itens si
+        JOIN suprimentos_entregas se ON se.id = si.entrega_id
+        JOIN unidades u ON u.id = se.unidade_id
+        JOIN empresas emp ON emp.id = u.empresa_id
+        WHERE se.data_entrega >= %s AND se.data_entrega < %s
+        GROUP BY u.nome, emp.nome, si.tipo_suprimento, si.modelo_impressora
+        ORDER BY emp.nome, u.nome, si.modelo_impressora, si.tipo_suprimento
+    """, (data_inicio, data_fim))
+    resumo_unidade = cur.fetchall()
+
+    # Lista de entregas detalhadas
+    cur.execute("""
+        SELECT se.id, se.data_entrega, se.data_registro, se.responsavel, se.observacoes,
+               u.nome as unidade_nome, emp.nome as empresa_nome
+        FROM suprimentos_entregas se
+        JOIN unidades u ON u.id = se.unidade_id
+        JOIN empresas emp ON emp.id = u.empresa_id
+        WHERE se.data_entrega >= %s AND se.data_entrega < %s
+        ORDER BY se.data_entrega DESC, se.data_registro DESC
+    """, (data_inicio, data_fim))
+    entregas = cur.fetchall()
+
+    resultado_entregas = []
+    for e in entregas:
+        cur.execute("""
+            SELECT tipo_suprimento, modelo_impressora, quantidade, motivo_padrao, defeito, motivo
+            FROM suprimentos_itens WHERE entrega_id=%s
+        """, (e['id'],))
+        itens = cur.fetchall()
+        itens_fmt = []
+        for item in itens:
+            nome = item['tipo_suprimento']
+            if item['modelo_impressora']:
+                nome += ' ' + item['modelo_impressora']
+            motivo = item['motivo'] or item['motivo_padrao'] or ''
+            itens_fmt.append({
+                'nome': nome,
+                'quantidade': item['quantidade'],
+                'motivo': motivo
+            })
+        resultado_entregas.append({
+            'id': e['id'],
+            'data': e['data_entrega'].strftime('%d/%m/%Y') if hasattr(e['data_entrega'], 'strftime') else (str(e['data_entrega'])[:10] if e['data_entrega'] else '-'),
+            'hora': e['data_registro'].strftime('%H:%M') if hasattr(e['data_registro'], 'strftime') else (str(e['data_registro'])[11:16] if e['data_registro'] else '-'),
+            'unidade': e['unidade_nome'],
+            'empresa': e['empresa_nome'],
+            'responsavel': e['responsavel'],
+            'observacoes': e['observacoes'],
+            'itens': itens_fmt
+        })
+
+    # Agrupar por modelo para o resumo geral
+    resumo_por_modelo = {}
+    for r in resumo_tipo:
+        modelo = r['modelo_impressora'] or 'Sem modelo'
+        resumo_por_modelo.setdefault(modelo, []).append(r)
+
+    # Agrupar por unidade
+    unidades_map = {}
+    for r in resumo_unidade:
+        chave = (r['empresa_nome'], r['unidade_nome'])
+        unidades_map.setdefault(chave, []).append(r)
+
+    meses = [
+        '2026-01','2026-02','2026-03','2026-04','2026-05','2026-06',
+        '2026-07','2026-08','2026-09','2026-10','2026-11','2026-12'
+    ]
+
+    return render_template('relatorio_mensal.html',
+        mes=mes, meses=meses, ano=ano, numero_mes=numero_mes,
+        resumo_por_modelo=resumo_por_modelo,
+        unidades_map=unidades_map,
+        entregas=resultado_entregas)
+
+
 @app.route('/estoque', methods=['GET'])
 @login_required
 def controle_estoque():
@@ -1748,7 +1860,7 @@ def controle_estoque():
             OR unaccent(lower(modelo_impressora)) LIKE unaccent(lower(%s))
         )"""
         params.extend([f'%{busca}%', f'%{busca}%'])
-    sql += " ORDER BY tipo_suprimento, modelo_impressora"
+    sql += " ORDER BY modelo_impressora, tipo_suprimento"
     cur.execute(sql, params)
     itens = cur.fetchall()
 
@@ -1758,7 +1870,7 @@ def controle_estoque():
         minimo = item['estoque_minimo']
         if qtd == 0:
             st = 'zerado'
-        elif qtd < minimo:
+        elif qtd <= minimo:
             st = 'baixo'
         else:
             st = 'ok'
@@ -1766,11 +1878,17 @@ def controle_estoque():
             continue
         resultado.append({**item, 'status': st})
 
+    # Agrupar por modelo
+    grupos = {}
+    for r in resultado:
+        modelo = r['modelo_impressora'] or 'Sem modelo'
+        grupos.setdefault(modelo, []).append(r)
+
     resumo = {'ok': 0, 'baixo': 0, 'zerado': 0}
     for r in resultado:
         resumo[r['status']] += 1
 
-    return render_template('estoque.html', itens=resultado, busca=busca, filtro_status=status, resumo=resumo)
+    return render_template('estoque.html', itens=resultado, grupos=grupos, busca=busca, filtro_status=status, resumo=resumo)
 
 
 @app.route('/estoque/entrada', methods=['GET', 'POST'])

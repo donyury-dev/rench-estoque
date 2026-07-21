@@ -5,11 +5,16 @@
 <div class="page-header">
   <div>
     <h1>Controle de Estoque</h1>
-    <p class="text-muted mb-0">Acompanhe toner, drum, fusor, transfer, coletor e esteira</p>
+    <p class="text-muted mb-0">Acompanhe toner, drum, fusor, transfer, coletor e esteira por modelo</p>
   </div>
-  <a href="{{url_for('estoque_entrada')}}" class="btn btn-rench-primary">
-    <i class="bi bi-plus-lg me-1"></i> Entrada de Estoque
-  </a>
+  <div class="d-flex gap-2">
+    <a href="{{url_for('relatorio_mensal')}}" class="btn btn-outline-primary">
+      <i class="bi bi-calendar3 me-1"></i> Relatório Mensal
+    </a>
+    <a href="{{url_for('estoque_entrada')}}" class="btn btn-rench-primary">
+      <i class="bi bi-plus-lg me-1"></i> Entrada
+    </a>
+  </div>
 </div>
 
 <ul class="nav nav-tabs mb-4" style="border-bottom:1px solid var(--primary-borda);">
@@ -79,45 +84,63 @@
 </div>
 
 {% if itens %}
-<div class="table-rench">
-  <table class="table table-rench mb-0">
-    <thead>
-      <tr>
-        <th>Suprimento</th>
-        <th>Modelo</th>
-        <th class="text-center">Quantidade</th>
-        <th class="text-center">Mínimo</th>
-        <th class="text-center">Status</th>
-        <th class="text-center">Última atualização</th>
-        <th class="text-center" style="width:180px;">Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in itens %}
-      <tr>
-        <td><span class="badge bg-soft-primary">{{item.tipo_suprimento}}</span></td>
-        <td>{{item.modelo_impressora or '-'}}</td>
-        <td class="text-center fw-bold">{{item.quantidade}}</td>
-        <td class="text-center">{{item.estoque_minimo}}</td>
-        <td class="text-center">
-          {% if item.status == 'ok' %}
-            <span class="badge bg-soft-success">OK</span>
-          {% elif item.status == 'baixo' %}
-            <span class="badge bg-soft-warning">Baixo</span>
-          {% else %}
-            <span class="badge bg-soft-danger">Em falta</span>
-          {% endif %}
-        </td>
-        <td class="text-center text-muted small">{{item.data_atualizacao.strftime('%d/%m/%Y %H:%M') if item.data_atualizacao else '-'}}</td>
-        <td class="text-center">
-          <a href="{{url_for('estoque_ajuste', estoque_id=item.id)}}" class="btn btn-sm btn-outline-primary me-1" title="Ajustar saldo"><i class="bi bi-pencil"></i></a>
-          <a href="{{url_for('estoque_historico', estoque_id=item.id)}}" class="btn btn-sm btn-outline-secondary" title="Ver histórico"><i class="bi bi-clock-history"></i></a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+{% for modelo, grupo in grupos.items() %}
+<div class="card card-dashboard mb-3">
+  <div class="card-header bg-white" style="border-bottom:1px solid var(--primary-borda);padding:14px 18px;">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-printer fs-5" style="color:var(--primary);"></i>
+        <div>
+          <div class="fw-bold" style="color:var(--primary);font-size:16px;">{{modelo}}</div>
+          <div class="text-muted small">{{grupo|length}} item(ns)</div>
+        </div>
+      </div>
+      {% set qtd_zerado = grupo|selectattr('status','equalto','zerado')|list|length %}
+      {% set qtd_baixo = grupo|selectattr('status','equalto','baixo')|list|length %}
+      {% if qtd_zerado > 0 %}
+        <span class="badge bg-danger">{{qtd_zerado}} em falta</span>
+      {% elif qtd_baixo > 0 %}
+        <span class="badge" style="background:#B76E00;">{{qtd_baixo}} baixo</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-rench mb-0">
+      <thead>
+        <tr>
+          <th>Suprimento</th>
+          <th class="text-center">Qtd</th>
+          <th class="text-center">Mín.</th>
+          <th class="text-center">Status</th>
+          <th class="text-center" style="width:120px;">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in grupo %}
+        <tr>
+          <td><span class="badge bg-soft-primary">{{item.tipo_suprimento}}</span></td>
+          <td class="text-center fw-bold">{{item.quantidade}}</td>
+          <td class="text-center">{{item.estoque_minimo}}</td>
+          <td class="text-center">
+            {% if item.status == 'ok' %}
+              <span class="badge bg-soft-success">OK</span>
+            {% elif item.status == 'baixo' %}
+              <span class="badge bg-soft-warning">Baixo</span>
+            {% else %}
+              <span class="badge bg-soft-danger">Em falta</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <a href="{{url_for('estoque_ajuste', estoque_id=item.id)}}" class="btn btn-sm btn-outline-primary me-1" title="Ajustar saldo"><i class="bi bi-pencil"></i></a>
+            <a href="{{url_for('estoque_historico', estoque_id=item.id)}}" class="btn btn-sm btn-outline-secondary" title="Ver histórico"><i class="bi bi-clock-history"></i></a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
+{% endfor %}
 {% else %}
 <div class="text-center text-muted py-5">
   <i class="bi bi-box-seam" style="font-size:48px;"></i>

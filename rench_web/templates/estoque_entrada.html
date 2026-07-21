@@ -35,7 +35,7 @@
         <div class="row g-3">
           <div class="col-md-6">
             <label class="form-label fw-bold">Tipo de suprimento</label>
-            <select class="form-select" name="tipo_suprimento" required id="tipo">
+            <select class="form-select" name="tipo_suprimento" required id="tipo" onchange="toggleCor()">
               <option value="" disabled selected>Selecione...</option>
               <option value="Toner">Toner</option>
               <option value="Drum">Drum</option>
@@ -45,7 +45,7 @@
               <option value="Esteira">Esteira</option>
             </select>
           </div>
-          <div class="col-md-6">
+          <div class="col-md-6" id="cor-wrap">
             <label class="form-label fw-bold">Cor (se houver)</label>
             <select class="form-select" name="cor_selecionada" id="cor">
               <option value="" selected>-</option>
@@ -57,7 +57,23 @@
           </div>
           <div class="col-md-6">
             <label class="form-label fw-bold">Modelo da impressora</label>
-            <input type="text" class="form-control" name="modelo_impressora" placeholder="Ex: C711" id="modelo" oninput="this.value = this.value.toUpperCase()">
+            <input type="text" class="form-control" name="modelo_impressora" placeholder="Ex: C711" id="modelo" oninput="this.value = this.value.toUpperCase(); atualizarCorMonocromatica()">
+            <div class="mt-2">
+              <label class="form-label small fw-bold">Modelos OKI</label>
+              <div class="d-flex flex-wrap gap-2">
+                {% for m in ['C711','ES5112','ES4172','ES8473','MC573','C831','C911'] %}
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setModelo('{{m}}')">{{m}}</button>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="mt-2">
+              <label class="form-label small fw-bold">Modelos HP</label>
+              <div class="d-flex flex-wrap gap-2">
+                {% for m in ['408','4103','479','4303','428'] %}
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setModelo('{{m}}')">{{m}}</button>
+                {% endfor %}
+              </div>
+            </div>
           </div>
           <div class="col-md-3">
             <label class="form-label fw-bold">Quantidade *</label>
@@ -93,4 +109,36 @@
     </div>
   </div>
 </div>
+
+<script>
+  function setModelo(modelo){
+    document.getElementById('modelo').value = modelo;
+    atualizarCorMonocromatica();
+  }
+
+  function atualizarCorMonocromatica(){
+    const modelo = document.getElementById('modelo').value.trim().toUpperCase();
+    const cor = document.getElementById('cor');
+    if(['ES5112','ES4172'].includes(modelo)){
+      cor.value = 'Black';
+      cor.disabled = true;
+    } else {
+      cor.disabled = false;
+    }
+  }
+
+  function toggleCor(){
+    const tipo = document.getElementById('tipo').value;
+    const corWrap = document.getElementById('cor-wrap');
+    if(['Toner','Drum'].includes(tipo)){
+      corWrap.style.display = 'block';
+      atualizarCorMonocromatica();
+    } else {
+      corWrap.style.display = 'none';
+      document.getElementById('cor').value = '';
+    }
+  }
+
+  toggleCor();
+</script>
 {% endblock %}

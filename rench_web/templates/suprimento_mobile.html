@@ -86,9 +86,21 @@
     .entrega-item .item-qtd{font-weight:700;color:#850001;}
     .entrega-item .resp{font-size:12px;color:#888;margin-top:6px;}
 
-    .modelo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
-    .modelo-grid button{background:#fff;border:1px solid #ccc;border-radius:8px;padding:8px 2px;font-size:13px;font-weight:700;color:#850001;cursor:pointer;}
-    .modelo-grid button:active{background:#850001;color:#fff;border-color:#850001;}
+    .modelo-grupo{background:#fff;border:1px solid #ddd;border-radius:12px;margin-bottom:12px;overflow:hidden;}
+    .modelo-grupo-header{background:#f8f8f8;padding:10px 14px;border-bottom:1px solid #eee;font-weight:700;font-size:15px;color:#850001;display:flex;align-items:center;gap:8px;}
+    .modelo-grupo-header small{color:#666;font-weight:400;}
+    .modelo-itens{padding:8px;}
+    .modelo-item{padding:8px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f0f0f0;}
+    .modelo-item:last-child{border-bottom:none;}
+    .modelo-item .info{flex:1;}
+    .modelo-item .nome{font-size:14px;font-weight:600;color:#222;}
+    .modelo-item .qtd{font-size:18px;font-weight:700;min-width:28px;text-align:right;}
+    .modelo-item .qtd.ok{color:#176B43;}
+    .modelo-item .qtd.baixo{color:#B76E00;}
+    .modelo-item .qtd.zerado{color:#850001;}
+    .acoes-mini{display:flex;gap:5px;margin-top:4px;}
+    .btn-mini{background:#fff;border:1px solid #850001;color:#850001;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:700;}
+
     .hist-item{background:#fff;border:1px solid #ddd;border-radius:10px;padding:10px 12px;margin-bottom:8px;}
     .hist-item .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
     .hist-item .tipo{font-weight:700;font-size:14px;}
@@ -97,6 +109,7 @@
     .hist-item .qtd.saida{color:#850001;}
     .hist-item .info{font-size:12px;color:#666;}
     .hist-empty{text-align:center;color:#888;padding:20px 12px;}
+
 
     .saldo-info{padding:8px 10px;border-radius:8px;font-size:13px;font-weight:600;}
     .saldo-ok{background:#D6F0E0;color:#176B43;}
@@ -211,25 +224,42 @@
       <div id="aba-estoque" class="tab-content {{'active' if aba=='estoque' else ''}}">
         <div class="scroll-area">
           <div class="card">
-            <div class="card-title"><i class="bi bi-box-seam"></i> Saldos atuais</div>
+            <div class="card-title"><i class="bi bi-box-seam"></i> Saldos por modelo</div>
             {% if estoque %}
-              <ul class="estoque-lista">
-                {% for e in estoque %}
-                <li class="estoque-item">
-                  <div class="info">
-                    <div class="tipo">{{e.tipo_suprimento}}</div>
-                    <div class="modelo">{{e.modelo_impressora or 'Sem modelo'}}</div>
-                    <div class="acoes-estoque" style="margin-top:6px;">
-                      <button type="button" class="btn-acao-estoque" onclick="event.stopPropagation(); abrirAjuste('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}', {{e.quantidade}})">Ajustar</button>
-                      <button type="button" class="btn-acao-estoque" onclick="event.stopPropagation(); abrirMovimentacoes('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}')">Movimentações</button>
+              {% set modelos = {} %}
+              {% for e in estoque %}
+                {% set modelo = (e.modelo_impressora or 'Sem modelo') %}
+                {% if modelo not in modelos %}
+                  {% set _ = modelos.update({modelo: []}) %}
+                {% endif %}
+                {% set _ = modelos[modelo].append(e) %}
+              {% endfor %}
+
+              {% for modelo in modelos|sort %}
+              <div class="modelo-grupo">
+                <div class="modelo-grupo-header">
+                  <i class="bi bi-printer"></i>
+                  {{modelo}}
+                  <small>({{modelos[modelo]|length}} itens)</small>
+                </div>
+                <div class="modelo-itens">
+                  {% for e in modelos[modelo]|sort(attribute='tipo_suprimento') %}
+                  <div class="modelo-item">
+                    <div class="info">
+                      <div class="nome">{{e.tipo_suprimento}}</div>
+                      <div class="acoes-mini">
+                        <button type="button" class="btn-mini" onclick="event.stopPropagation(); abrirAjuste('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}', {{e.quantidade}})">Ajustar</button>
+                        <button type="button" class="btn-mini" onclick="event.stopPropagation(); abrirMovimentacoes('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}')">Mov.</button>
+                      </div>
+                    </div>
+                    <div class="qtd {{'zerado' if e.quantidade==0 else ('baixo' if e.quantidade <= 1 else 'ok')}}">
+                      {{e.quantidade}}
                     </div>
                   </div>
-                  <div class="qtd {{'zerado' if e.quantidade==0 else ('baixo' if e.quantidade < 2 else 'ok')}}">
-                    {{e.quantidade}}
-                  </div>
-                </li>
-                {% endfor %}
-              </ul>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endfor %}
             {% else %}
               <div class="estoque-empty">
                 <i class="bi bi-box-seam" style="font-size:36px;"></i>
@@ -283,6 +313,16 @@
                   <button type="button" onclick="setModeloEntrada('MC573')">MC573</button>
                   <button type="button" onclick="setModeloEntrada('C831')">C831</button>
                   <button type="button" onclick="setModeloEntrada('C911')">C911</button>
+                </div>
+              </div>
+              <div class="mb-2 modelo-botoes">
+                <label>Modelos HP</label>
+                <div class="modelo-grid">
+                  <button type="button" onclick="setModeloEntrada('408')">408</button>
+                  <button type="button" onclick="setModeloEntrada('4103')">4103</button>
+                  <button type="button" onclick="setModeloEntrada('479')">479</button>
+                  <button type="button" onclick="setModeloEntrada('4303')">4303</button>
+                  <button type="button" onclick="setModeloEntrada('428')">428</button>
                 </div>
               </div>
               <div class="row mb-2">
@@ -550,6 +590,13 @@
           const corRow = card.querySelector('.cor-row').parentElement;
           if(['Toner','Drum'].includes(tipo)){
             corRow.style.display = 'block';
+            // ES5112 e ES4172 sao monocromaticas: pre-seleciona Black e desabilita outras cores
+            const modeloInput = card.querySelector('.modelo-input');
+            const modelo = (modeloInput?.value || '').trim().toUpperCase();
+            if(['ES5112','ES4172'].includes(modelo)){
+              card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
+              card.querySelector('.cor-btn[data-cor="Black"]').classList.add('active');
+            }
           } else {
             corRow.style.display = 'none';
             card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
@@ -559,11 +606,32 @@
       });
       card.querySelectorAll('.cor-btn').forEach(btn=>{
         btn.addEventListener('click', function(){
+          const modeloInput = this.closest('.item-box').querySelector('.modelo-input');
+          const modelo = (modeloInput?.value || '').trim().toUpperCase();
+          if(['ES5112','ES4172'].includes(modelo)){
+            // forca apenas Black para monocromaticas
+            card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
+            card.querySelector('.cor-btn[data-cor="Black"]').classList.add('active');
+            atualizarTipo(card);
+            return;
+          }
           const ja = this.classList.contains('active');
           card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
           if(!ja) this.classList.add('active');
           atualizarTipo(card);
         });
+      });
+      // Forca Black quando digitar ES5112/ES4172 no modelo
+      card.querySelector('.modelo-input').addEventListener('input', function(){
+        const modelo = (this.value || '').trim().toUpperCase();
+        if(['ES5112','ES4172'].includes(modelo)){
+          const corRow = card.querySelector('.cor-row').parentElement;
+          if(corRow.style.display !== 'none'){
+            card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
+            card.querySelector('.cor-btn[data-cor="Black"]').classList.add('active');
+            atualizarTipo(card);
+          }
+        }
       });
       card.querySelectorAll('.motivo-btn').forEach(btn=>{
         btn.addEventListener('click', function(){

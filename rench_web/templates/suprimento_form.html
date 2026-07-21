@@ -61,7 +61,7 @@
           <div class="row g-2 item-row align-items-end border rounded p-3 mb-2">
             <div class="col-md-2">
               <label class="form-label small fw-bold">Tipo</label>
-              <select class="form-select" name="tipo_suprimento[]" required>
+              <select class="form-select tipo-select" name="tipo_suprimento[]" required onchange="atualizarLinha(this)">
                 <option value="" disabled selected>Selecione...</option>
                 <option value="Toner">Toner</option>
                 <option value="Drum">Drum</option>
@@ -72,9 +72,9 @@
                 <option value="Outro">Outro</option>
               </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-2 cor-wrap">
               <label class="form-label small fw-bold">Cor</label>
-              <select class="form-select" name="cor_selecionada[]">
+              <select class="form-select cor-select" name="cor_selecionada[]">
                 <option value="" selected>-</option>
                 <option value="Black">Black</option>
                 <option value="Ciano">Ciano</option>
@@ -84,7 +84,7 @@
             </div>
             <div class="col-md-2">
               <label class="form-label small fw-bold">Modelo</label>
-              <input type="text" class="form-control" name="modelo_impressora[]" placeholder="Ex: C711">
+              <input type="text" class="form-control modelo-input" name="modelo_impressora[]" placeholder="Ex: C711" oninput="this.value = this.value.toUpperCase(); atualizarCorMonocromatica(this)">
             </div>
             <div class="col-md-1">
               <label class="form-label small fw-bold">Qtd</label>
@@ -149,6 +149,37 @@ function toggleMotivoOutro(sel){
 
 function adicionarItem(){
   container.insertAdjacentHTML('beforeend', template);
+  const last = container.lastElementChild;
+  const tipo = last.querySelector('.tipo-select').value;
+  if(!['Toner','Drum'].includes(tipo)){
+    last.querySelector('.cor-wrap').style.display = 'none';
+  }
+}
+
+function atualizarLinha(sel){
+  const row = sel.closest('.item-row');
+  const corWrap = row.querySelector('.cor-wrap');
+  const cor = row.querySelector('.cor-select');
+  if(['Toner','Drum'].includes(sel.value)){
+    corWrap.style.display = 'block';
+    atualizarCorMonocromatica(row.querySelector('.modelo-input'));
+  } else {
+    corWrap.style.display = 'none';
+    cor.value = '';
+  }
+}
+
+function atualizarCorMonocromatica(input){
+  const row = input.closest('.item-row');
+  const modelo = input.value.trim().toUpperCase();
+  const cor = row.querySelector('.cor-select');
+  const tipo = row.querySelector('.tipo-select').value;
+  if(['Toner','Drum'].includes(tipo) && ['ES5112','ES4172'].includes(modelo)){
+    cor.value = 'Black';
+    cor.disabled = true;
+  } else {
+    cor.disabled = false;
+  }
 }
 
 function removerItem(btn){

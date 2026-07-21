@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Relatório Mensal de Entregas - RENCH{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Relatório Mensal de Entregas</h1>
+    <p class="text-muted mb-0">Suprimentes entregues por modelo e unidade</p>
+  </div>
+  <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-primary">
+    <i class="bi bi-arrow-left me-1"></i> Voltar ao estoque
+  </a>
+</div>
+
+<div class="filter-bar">
+  <form method="GET" class="d-flex flex-wrap gap-2 align-items-center w-100">
+    <label class="fw-bold mb-0" style="color:var(--primary);">Mês/Ano:</label>
+    <select name="mes" class="form-select" style="max-width:160px;">
+      {% for m in meses %}
+      <option value="{{m}}" {{'selected' if m==mes else ''}}>{{m.split('-')[1]}}/{{m.split('-')[0]}}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-outline-primary">
+      <i class="bi bi-search"></i> Consultar
+    </button>
+  </form>
+</div>
+
+<div class="row g-4">
+  <!-- RESUMO POR MODELO -->
+  <div class="col-lg-6">
+    <div class="card card-dashboard h-100">
+      <div class="p-3 border-bottom" style="border-color:var(--primary-borda)!important;">
+        <h5 class="mb-0 fw-bold" style="color:var(--primary);">
+          <i class="bi bi-printer me-2"></i>Por modelo de impressora
+        </h5>
+      </div>
+      <div class="p-0">
+        {% if resumo_por_modelo %}
+          {% for modelo, itens in resumo_por_modelo.items() %}
+          <div class="p-3 border-bottom" style="border-color:#eee!important;">
+            <div class="fw-bold mb-2" style="color:var(--primary);">{{modelo}}</div>
+            <div class="d-flex flex-wrap gap-2">
+              {% for item in itens %}
+              <span class="badge bg-soft-primary">{{item.tipo_suprimento}}: <strong>{{item.total}}</strong></span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="p-4 text-center text-muted">Nenhuma entrega neste mês.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- RESUMO POR UNIDADE -->
+  <div class="col-lg-6">
+    <div class="card card-dashboard h-100">
+      <div class="p-3 border-bottom" style="border-color:var(--primary-borda)!important;">
+        <h5 class="mb-0 fw-bold" style="color:var(--primary);">
+          <i class="bi bi-building me-2"></i>Por unidade
+        </h5>
+      </div>
+      <div class="p-0">
+        {% if unidades_map %}
+          {% for (empresa, unidade), itens in unidades_map.items() %}
+          <div class="p-3 border-bottom" style="border-color:#eee!important;">
+            <div class="fw-bold" style="color:var(--primary);">{{unidade}}</div>
+            <div class="small text-muted mb-2">{{empresa}}</div>
+            <div class="d-flex flex-wrap gap-2">
+              {% for item in itens %}
+              <span class="badge bg-soft-secondary" style="color:#444;">
+                {{item.tipo_suprimento}}{% if item.modelo_impressora %} {{item.modelo_impressora}}{% endif %}: <strong>{{item.total}}</strong>
+              </span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="p-4 text-center text-muted">Nenhuma entrega neste mês.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ENTREGAS DETALHADAS -->
+<div class="card card-dashboard mt-4">
+  <div class="p-3 border-bottom" style="border-color:var(--primary-borda)!important;">
+    <h5 class="mb-0 fw-bold" style="color:var(--primary);">
+      <i class="bi bi-list-check me-2"></i>Entregas detalhadas
+    </h5>
+  </div>
+  <div class="p-0">
+    {% if entregas %}
+      {% for ent in entregas %}
+      <div class="p-3 border-bottom" style="border-color:#eee!important;">
+        <div class="d-flex justify-content-between align-items-start flex-wrap">
+          <div>
+            <div class="fw-bold" style="color:var(--primary);">{{ent.unidade}}</div>
+            <div class="small text-muted">{{ent.empresa}}</div>
+          </div>
+          <div class="text-end small text-muted">
+            {{ent.data}} <span class="fw-bold">{{ent.hora}}</span>
+            <br>Resp: {{ent.responsavel or '-'}}
+          </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mt-2">
+          {% for item in ent.itens %}
+          <span class="badge bg-soft-primary">{{item.nome}} <strong>{{item.quantidade}}x</strong>{% if item.motivo %} <small>({{item.motivo}})</small>{% endif %}</span>
+          {% endfor %}
+        </div>
+        {% if ent.observacoes %}
+        <div class="mt-2 small text-muted"><i class="bi bi-chat-left-text me-1"></i>{{ent.observacoes}}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="p-4 text-center text-muted">Nenhuma entrega registrada neste mês.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
