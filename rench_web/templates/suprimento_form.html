@@ -84,7 +84,7 @@
                 <option value="Amarelo">Amarelo</option>
               </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-2 modelo-wrap">
               <label class="form-label small fw-bold">Modelo</label>
               <input type="text" class="form-control modelo-input" name="modelo_impressora[]" placeholder="Ex: C711" oninput="this.value = this.value.toUpperCase(); atualizarCorMonocromatica(this)">
             </div>
@@ -156,17 +156,30 @@ function adicionarItem(){
   if(!['Toner','Drum','Drum para Transformar'].includes(tipo)){
     last.querySelector('.cor-wrap').style.display = 'none';
   }
+  if(tipo === 'Papel Fotografico'){
+    last.querySelector('.modelo-wrap').style.display = 'none';
+    last.querySelector('.modelo-input').value = '-';
+  }
 }
 
 function atualizarLinha(sel){
   const row = sel.closest('.item-row');
   const corWrap = row.querySelector('.cor-wrap');
+  const modeloWrap = row.querySelector('.modelo-wrap');
+  const modeloInput = row.querySelector('.modelo-input');
   const cor = row.querySelector('.cor-select');
   if(['Toner','Drum','Drum para Transformar'].includes(sel.value)){
     corWrap.style.display = 'block';
+    modeloWrap.style.display = 'block';
     atualizarCorMonocromatica(row.querySelector('.modelo-input'));
+  } else if(sel.value === 'Papel Fotografico'){
+    corWrap.style.display = 'none';
+    cor.value = '';
+    modeloWrap.style.display = 'none';
+    modeloInput.value = '-';
   } else {
     corWrap.style.display = 'none';
+    modeloWrap.style.display = 'block';
     cor.value = '';
   }
 }

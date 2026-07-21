@@ -57,9 +57,9 @@
               <option value="Amarelo">Amarelo</option>
             </select>
           </div>
-          <div class="col-md-6">
+          <div class="col-md-6" id="modelo-wrap">
             <label class="form-label fw-bold">Modelo da impressora</label>
-            <input type="text" class="form-control" name="modelo_impressora" placeholder="Ex: C711" id="modelo" oninput="this.value = this.value.toUpperCase(); atualizarCorMonocromatica()">
+            <input type="text" class="form-control" name="modelo_impressora" placeholder="Ex: C711 (não obrigatório para Papel Fotográfico)" id="modelo" oninput="this.value = this.value.toUpperCase(); atualizarCorMonocromatica()">
             <div class="mt-2">
               <label class="form-label small fw-bold">Modelos OKI</label>
               <div class="d-flex flex-wrap gap-2">
@@ -138,11 +138,19 @@
   function toggleCor(){
     const tipo = document.getElementById('tipo').value;
     const corWrap = document.getElementById('cor-wrap');
+    const modeloWrap = document.getElementById('modelo-wrap');
     if(['Toner','Drum','Drum para Transformar'].includes(tipo)){
       corWrap.style.display = 'block';
+      modeloWrap.style.display = 'block';
       atualizarCorMonocromatica();
+    } else if(tipo === 'Papel Fotografico'){
+      corWrap.style.display = 'none';
+      document.getElementById('cor').value = '';
+      modeloWrap.style.display = 'none';
+      document.getElementById('modelo').value = '-';
     } else {
       corWrap.style.display = 'none';
+      modeloWrap.style.display = 'block';
       document.getElementById('cor').value = '';
     }
   }
