@@ -39,6 +39,7 @@
               <option value="" disabled selected>Selecione...</option>
               <option value="Toner">Toner</option>
               <option value="Drum">Drum</option>
+              <option value="Drum para Transformar">Drum para Transformar</option>
               <option value="Fusor">Fusor</option>
               <option value="Transfer">Transfer</option>
               <option value="Coletor">Coletor</option>
@@ -72,6 +73,12 @@
                 {% for m in ['408','4103','479','4303','428'] %}
                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setModelo('{{m}}')">{{m}}</button>
                 {% endfor %}
+              </div>
+            </div>
+            <div class="mt-2">
+              <label class="form-label small fw-bold">Outros</label>
+              <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setModelo('PARA TRANSFORMAR')">PARA TRANSFORMAR</button>
               </div>
             </div>
           </div>
@@ -130,7 +137,7 @@
   function toggleCor(){
     const tipo = document.getElementById('tipo').value;
     const corWrap = document.getElementById('cor-wrap');
-    if(['Toner','Drum'].includes(tipo)){
+    if(['Toner','Drum','Drum para Transformar'].includes(tipo)){
       corWrap.style.display = 'block';
       atualizarCorMonocromatica();
     } else {

@@ -83,6 +83,26 @@
   </form>
 </div>
 
+{% block scripts %}
+<script>
+  document.querySelectorAll('.card-header').forEach(header => {
+    const card = header.closest('.card-dashboard');
+    const tabela = card.querySelector('.table-responsive');
+    const seta = header.querySelector('.bi-chevron-down') || document.createElement('i');
+    header.style.cursor = 'pointer';
+    if(!header.querySelector('.bi-chevron-down')){
+      seta.className = 'bi bi-chevron-down ms-2';
+      header.querySelector('.d-flex').appendChild(seta);
+    }
+    header.addEventListener('click', () => {
+      tabela.classList.toggle('d-none');
+      seta.classList.toggle('bi-chevron-down');
+      seta.classList.toggle('bi-chevron-up');
+    });
+  });
+</script>
+{% endblock %}
+
 {% if itens %}
 {% for modelo, grupo in grupos.items() %}
 <div class="card card-dashboard mb-3">
