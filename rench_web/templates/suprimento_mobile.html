@@ -314,6 +314,7 @@
                   <option value="" disabled selected>Selecione...</option>
                   <option value="Toner">Toner</option>
                   <option value="Drum">Drum</option>
+                  <option value="Drum para Transformar">Drum para Transformar</option>
                   <option value="Fusor">Fusor</option>
                   <option value="Transfer">Transfer</option>
                   <option value="Coletor">Coletor</option>
@@ -354,6 +355,12 @@
                   <button type="button" onclick="setModeloEntrada('479')">479</button>
                   <button type="button" onclick="setModeloEntrada('4303')">4303</button>
                   <button type="button" onclick="setModeloEntrada('428')">428</button>
+                </div>
+              </div>
+              <div class="mb-2 modelo-botoes">
+                <label>Outros</label>
+                <div class="modelo-grid">
+                  <button type="button" onclick="setModeloEntrada('PARA TRANSFORMAR')">PARA TRANSFORMAR</button>
                 </div>
               </div>
               <div class="row mb-2">
@@ -769,7 +776,7 @@
     function atualizarCorEntrada(){
       const tipo = document.querySelector('.tipo-entrada').value;
       const wrap = document.querySelector('.cor-entrada-wrap');
-      if(['Toner','Drum'].includes(tipo)){
+      if(['Toner','Drum','Drum para Transformar'].includes(tipo)){
         wrap.style.display = 'block';
       } else {
         wrap.style.display = 'none';
