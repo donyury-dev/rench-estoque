@@ -427,6 +427,8 @@ def gerar_codigo_rastreio(cur, tipo_equipamento):
 
 def _chave_estoque(tipo_suprimento, modelo_impressora):
     tipo = (tipo_suprimento or '').strip()
+    if tipo == 'Papel Fotografico':
+        return tipo, '-'
     modelo = (modelo_impressora or '').strip().upper()
     return tipo, modelo
 

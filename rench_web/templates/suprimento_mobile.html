@@ -332,11 +332,11 @@
                   <option value="Amarelo">Amarelo</option>
                 </select>
               </div>
-              <div class="mb-2">
+              <div class="mb-2" id="modelo-entrada-wrap">
                 <label>Modelo</label>
-                <input type="text" class="modelo-entrada" placeholder="Ex: C711 (não obrigatório para Papel Fotográfico)" oninput="this.value = this.value.toUpperCase()">
+                <input type="text" class="modelo-entrada" placeholder="Ex: C711" oninput="this.value = this.value.toUpperCase()">
               </div>
-              <div class="mb-2 modelo-botoes">
+              <div class="mb-2 modelo-botoes" id="modelo-botoes-wrap">
                 <label>Modelos OKI</label>
                 <div class="modelo-grid">
                   <button type="button" onclick="setModeloEntrada('C711')">C711</button>
@@ -348,7 +348,7 @@
                   <button type="button" onclick="setModeloEntrada('C911')">C911</button>
                 </div>
               </div>
-              <div class="mb-2 modelo-botoes">
+              <div class="mb-2 modelo-botoes" id="modelo-hp-wrap">
                 <label>Modelos HP</label>
                 <div class="modelo-grid">
                   <button type="button" onclick="setModeloEntrada('408')">408</button>
@@ -358,7 +358,7 @@
                   <button type="button" onclick="setModeloEntrada('428')">428</button>
                 </div>
               </div>
-              <div class="mb-2 modelo-botoes">
+              <div class="mb-2 modelo-botoes" id="modelo-outros-wrap">
                 <label>Outros</label>
                 <div class="modelo-grid">
                   <button type="button" onclick="setModeloEntrada('PARA TRANSFORMAR')">PARA TRANSFORMAR</button>
@@ -367,7 +367,16 @@
               <div class="row mb-2">
                 <div style="flex:1;">
                   <label>Quantidade</label>
-                  <input type="number" class="qtd-entrada" value="1" min="1" required>
+                  <input type="number" class="qtd-entrada" id="qtd-entrada" value="1" min="1" required>
+                </div>
+                <div style="flex:1;" id="unidade-papel-entrada-wrap" class="d-none">
+                  <label>Unidade</label>
+                  <select class="form-select" id="unidade-papel-entrada" onchange="converterPapelEntrada()">
+                    <option value="1">Folhas</option>
+                    <option value="20" selected>Pacote 20</option>
+                    <option value="50">Pacote 50</option>
+                    <option value="1600">Caixa 1600</option>
+                  </select>
                 </div>
                 <div style="flex:1;">
                   <label>Mínimo</label>
@@ -526,13 +535,22 @@
       </div>
 
       <div class="row mb-2">
-        <div style="flex:1;">
+        <div style="flex:1;" class="modelo-wrap">
           <label>Modelo</label>
           <input type="text" name="modelo_impressora[]" class="modelo-input" placeholder="Ex: C711" oninput="this.value = this.value.toUpperCase(); atualizarSaldo(this.closest('.item-box'))">
         </div>
-        <div style="max-width:80px;">
+        <div style="max-width:80px;" class="qtd-wrap">
           <label>Qtd</label>
           <input type="number" name="quantidade[]" value="1" min="1" required class="qtd-input" onchange="atualizarSaldo(this.closest('.item-box'))">
+        </div>
+        <div style="flex:1;" class="papel-wrap" style="display:none;">
+          <label>Unidade</label>
+          <select class="form-select unidade-papel" onchange="converterPapelItem(this)" name="unidade_papel[]">
+            <option value="1">Folhas</option>
+            <option value="20" selected>Pct 20</option>
+            <option value="50">Pct 50</option>
+            <option value="1600">Cx 1600</option>
+          </select>
         </div>
       </div>
 
@@ -628,18 +646,30 @@
           this.classList.add('active');
           const tipo = this.dataset.val;
           const corRow = card.querySelector('.cor-row').parentElement;
+          const modeloWrap = card.querySelector('.modelo-wrap');
+          const papelWrap = card.querySelector('.papel-wrap');
           if(['Toner','Drum'].includes(tipo)){
             corRow.style.display = 'block';
-            // ES5112 e ES4172 sao monocromaticas: pre-seleciona Black e desabilita outras cores
+            modeloWrap.style.display = 'block';
+            papelWrap.style.display = 'none';
             const modeloInput = card.querySelector('.modelo-input');
             const modelo = (modeloInput?.value || '').trim().toUpperCase();
             if(['ES5112','ES4172'].includes(modelo)){
               card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
               card.querySelector('.cor-btn[data-cor="Black"]').classList.add('active');
             }
+          } else if(tipo === 'Papel Fotografico'){
+            corRow.style.display = 'none';
+            card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
+            modeloWrap.style.display = 'none';
+            card.querySelector('.modelo-input').value = '-';
+            papelWrap.style.display = 'block';
+            converterPapelItem(card.querySelector('.unidade-papel'));
           } else {
             corRow.style.display = 'none';
             card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
+            modeloWrap.style.display = 'block';
+            papelWrap.style.display = 'none';
           }
           atualizarTipo(card);
         });
@@ -778,12 +808,65 @@
     function atualizarCorEntrada(){
       const tipo = document.querySelector('.tipo-entrada').value;
       const wrap = document.querySelector('.cor-entrada-wrap');
+      const modeloWrap = document.getElementById('modelo-entrada-wrap');
+      const botoesWrap = document.getElementById('modelo-botoes-wrap');
+      const hpWrap = document.getElementById('modelo-hp-wrap');
+      const outrosWrap = document.getElementById('modelo-outros-wrap');
+      const papelWrap = document.getElementById('unidade-papel-entrada-wrap');
       if(['Toner','Drum','Drum para Transformar'].includes(tipo)){
         wrap.style.display = 'block';
+        modeloWrap.style.display = 'block';
+        botoesWrap.style.display = 'block';
+        hpWrap.style.display = 'block';
+        outrosWrap.style.display = 'block';
+        papelWrap.classList.add('d-none');
+      } else if(tipo === 'Papel Fotografico'){
+        wrap.style.display = 'none';
+        document.querySelector('.cor-entrada').value = '';
+        modeloWrap.style.display = 'none';
+        document.querySelector('.modelo-entrada').value = '-';
+        botoesWrap.style.display = 'none';
+        hpWrap.style.display = 'none';
+        outrosWrap.style.display = 'none';
+        papelWrap.classList.remove('d-none');
       } else {
         wrap.style.display = 'none';
         document.querySelector('.cor-entrada').value = '';
+        modeloWrap.style.display = 'block';
+        botoesWrap.style.display = 'block';
+        hpWrap.style.display = 'block';
+        outrosWrap.style.display = 'block';
+        papelWrap.classList.add('d-none');
       }
+    }
+
+    function converterPapelEntrada(){
+      const qtd = parseInt(document.getElementById('qtd-entrada').dataset.original || document.getElementById('qtd-entrada').value || '1');
+      const unidade = parseInt(document.getElementById('unidade-papel-entrada').value || '1');
+      document.getElementById('qtd-entrada').dataset.original = qtd;
+      document.getElementById('qtd-entrada').value = qtd * unidade;
+    }
+
+    function converterPapelItem(sel){
+      const card = sel.closest('.item-box');
+      const qtdInput = card.querySelector('.qtd-input');
+      const qtd = parseInt(qtdInput.dataset.original || qtdInput.value || '1');
+      const unidade = parseInt(sel.value || '1');
+      qtdInput.dataset.original = qtd;
+      qtdInput.value = qtd * unidade;
+    }
+
+    function converterPapelEntrega(){
+      document.querySelectorAll('#itens-container .item-box').forEach(card => {
+        const tipoBtn = card.querySelector('.tipo-btn.active');
+        if(tipoBtn && tipoBtn.dataset.val === 'Papel Fotografico'){
+          const sel = card.querySelector('.unidade-papel');
+          const qtdInput = card.querySelector('.qtd-input');
+          const qtd = parseInt(qtdInput.dataset.original || qtdInput.value || '1');
+          const unidade = parseInt(sel.value || '1');
+          qtdInput.value = qtd * unidade;
+        }
+      });
     }
 
     function abrirAjuste(tipo, modelo, saldo){
@@ -1029,10 +1112,16 @@
       const tipo = form.querySelector('.tipo-entrada').value;
       const cor = form.querySelector('.cor-entrada').value;
       const modelo = form.querySelector('.modelo-entrada').value;
-      const qtd = form.querySelector('.qtd-entrada').value;
+      let qtd = parseInt(form.querySelector('.qtd-entrada').value || '1');
       const minimo = form.querySelector('.minimo-entrada').value;
       const resp = form.querySelector('.resp-entrada').value;
       const motivo = form.querySelector('.motivo-entrada').value;
+
+      if(tipo === 'Papel Fotografico'){
+        const unidade = parseInt(document.getElementById('unidade-papel-entrada').value || '1');
+        const original = parseInt(document.getElementById('qtd-entrada').dataset.original || qtd);
+        qtd = original * unidade;
+      }
 
       const fd = new FormData();
       fd.append('tipo_suprimento', tipo);

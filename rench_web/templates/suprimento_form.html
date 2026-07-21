@@ -88,9 +88,18 @@
               <label class="form-label small fw-bold">Modelo</label>
               <input type="text" class="form-control modelo-input" name="modelo_impressora[]" placeholder="Ex: C711" oninput="this.value = this.value.toUpperCase(); atualizarCorMonocromatica(this)">
             </div>
-            <div class="col-md-1">
+            <div class="col-md-1 qtd-wrap">
               <label class="form-label small fw-bold">Qtd</label>
-              <input type="number" class="form-control" name="quantidade[]" value="1" min="1" required>
+              <input type="number" class="form-control qtd-input" name="quantidade[]" value="1" min="1" required>
+            </div>
+            <div class="col-md-2 papel-wrap" style="display:none;">
+              <label class="form-label small fw-bold">Unidade</label>
+              <select class="form-select unidade-papel" onchange="converterPapelLinha(this)">
+                <option value="1">Folhas</option>
+                <option value="20" selected>Pct 20</option>
+                <option value="50">Pct 50</option>
+                <option value="1600">Cx 1600</option>
+              </select>
             </div>
             <div class="col-md-3">
               <label class="form-label small fw-bold">Motivo da troca</label>
@@ -159,6 +168,8 @@ function adicionarItem(){
   if(tipo === 'Papel Fotografico'){
     last.querySelector('.modelo-wrap').style.display = 'none';
     last.querySelector('.modelo-input').value = '-';
+    last.querySelector('.papel-wrap').style.display = 'block';
+    last.querySelector('.qtd-wrap').classList.replace('col-md-1','col-md-1');
   }
 }
 
@@ -166,22 +177,49 @@ function atualizarLinha(sel){
   const row = sel.closest('.item-row');
   const corWrap = row.querySelector('.cor-wrap');
   const modeloWrap = row.querySelector('.modelo-wrap');
+  const papelWrap = row.querySelector('.papel-wrap');
   const modeloInput = row.querySelector('.modelo-input');
   const cor = row.querySelector('.cor-select');
   if(['Toner','Drum','Drum para Transformar'].includes(sel.value)){
     corWrap.style.display = 'block';
     modeloWrap.style.display = 'block';
+    papelWrap.style.display = 'none';
     atualizarCorMonocromatica(row.querySelector('.modelo-input'));
   } else if(sel.value === 'Papel Fotografico'){
     corWrap.style.display = 'none';
     cor.value = '';
     modeloWrap.style.display = 'none';
     modeloInput.value = '-';
+    papelWrap.style.display = 'block';
+    converterPapelLinha(row.querySelector('.unidade-papel'));
   } else {
     corWrap.style.display = 'none';
     modeloWrap.style.display = 'block';
+    papelWrap.style.display = 'none';
     cor.value = '';
   }
+}
+
+function converterPapelLinha(sel){
+  const row = sel.closest('.item-row');
+  const qtdInput = row.querySelector('.qtd-input');
+  const qtd = parseInt(qtdInput.dataset.original || qtdInput.value || '1');
+  const unidade = parseInt(sel.value || '1');
+  qtdInput.dataset.original = qtd;
+  qtdInput.value = qtd * unidade;
+}
+
+function converterPapelEnvio(){
+  container.querySelectorAll('.item-row').forEach(row => {
+    const tipo = row.querySelector('.tipo-select').value;
+    if(tipo === 'Papel Fotografico'){
+      const sel = row.querySelector('.unidade-papel');
+      const qtdInput = row.querySelector('.qtd-input');
+      const qtd = parseInt(qtdInput.dataset.original || qtdInput.value || '1');
+      const unidade = parseInt(sel.value || '1');
+      qtdInput.value = qtd * unidade;
+    }
+  });
 }
 
 function atualizarCorMonocromatica(input){
@@ -205,8 +243,9 @@ function removerItem(btn){
   }
 }
 
-// ao enviar, combina tipo + cor se houver
+// ao enviar, combina tipo + cor se houver e converte papel
 document.getElementById('form-suprimento').addEventListener('submit', function(e){
+  converterPapelEnvio();
   container.querySelectorAll('.item-row').forEach(row => {
     const tipo = row.querySelector('[name="tipo_suprimento[]"]').value;
     const cor = row.querySelector('[name="cor_selecionada[]"]').value;
