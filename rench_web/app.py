@@ -1474,7 +1474,7 @@ def lista_suprimentos():
         SELECT se.id, se.data_entrega, se.responsavel, se.observacoes,
                u.nome as unidade_nome, emp.nome as empresa_nome,
                si.id as item_id, si.tipo_suprimento, si.modelo_impressora, si.quantidade,
-               si.motivo_padrao, si.defeito
+               si.motivo_padrao, si.defeito, si.motivo
         FROM suprimentos_entregas se
         JOIN unidades u ON u.id = se.unidade_id
         JOIN empresas emp ON emp.id = u.empresa_id
@@ -1520,7 +1520,8 @@ def lista_suprimentos():
                 'modelo': r['modelo_impressora'],
                 'quantidade': r['quantidade'],
                 'motivo_padrao': r['motivo_padrao'],
-                'defeito': r['defeito']
+                'defeito': r['defeito'],
+                'motivo': r['motivo']
             })
 
     cur.execute("""

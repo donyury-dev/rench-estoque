@@ -102,7 +102,19 @@
                 <td><span class="badge bg-soft-primary">{{item.tipo}}</span></td>
                 <td>{{item.modelo or '-'}}</td>
                 <td><strong>{{item.quantidade}}</strong></td>
-                <td class="text-muted small">{{item.motivo or '-'}}</td>
+                <td class="text-muted small">
+                  {% if item.motivo %}
+                    {{item.motivo}}
+                  {% elif item.motivo_padrao %}
+                    {% if item.motivo_padrao == 'deixar_estoque' %}Deixar para estoque local
+                    {% elif item.motivo_padrao == 'acabou_impressora' %}Acabou na impressora
+                    {% elif item.motivo_padrao == 'defeito_peca' %}Defeito na peça{% if item.defeito %} - {{item.defeito}}{% endif %}
+                    {% else %}{{item.motivo_padrao}}
+                    {% endif %}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
               </tr>
               {% endfor %}
             </tbody>
