@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#850001">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="{{url_for('static', filename='manifest.json')}}">
+  <link rel="manifest" href="{{url_for('static', filename='manifest.json')}}?v=2">
   <title>Estoque Mobile - RENCH</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css?v=2">
   <style>
     *{box-sizing:border-box;}
     html,body{margin:0;padding:0;width:100%;height:100%;background:#f0f0f0;font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;font-size:16px;color:#222;}
@@ -350,8 +350,8 @@
       const saldoInfo = card.querySelector('.saldo-info');
       const saldoBadge = card.querySelector('.saldo-badge');
 
-      const tipo = tipoInput?.value || '';
-      const modelo = (modeloInput?.value || '').trim();
+      const tipo = (tipoInput?.value || '').trim();
+      const modelo = (modeloInput?.value || '').trim().toUpperCase();
       const qtd = parseInt(qtdInput?.value || 1);
 
       if(!tipo){
@@ -364,7 +364,8 @@
       saldoBadge.textContent = 'Consultando estoque...';
 
       try{
-        const resp = await fetch(`/api/estoque/saldo?tipo=${encodeURIComponent(tipo)}&modelo=${encodeURIComponent(modelo)}`);
+        const url = `/api/estoque/saldo?tipo=${encodeURIComponent(tipo)}&modelo=${encodeURIComponent(modelo)}&_=${Date.now()}`;
+        const resp = await fetch(url);
         const data = await resp.json();
         const saldo = data.saldo || 0;
 
@@ -380,6 +381,7 @@
           saldoBadge.textContent = `Em estoque: ${saldo}`;
         }
       } catch(e){
+        console.error(e);
         saldoBadge.className = 'saldo-badge';
         saldoBadge.textContent = 'Não foi possível consultar o estoque';
       }
@@ -420,6 +422,9 @@
           }
         });
       });
+
+      card.querySelector('.modelo-input').addEventListener('blur', ()=>atualizarSaldo(card));
+      card.querySelector('.qtd-input').addEventListener('input', ()=>atualizarSaldo(card));
     }
 
     function adicionarItem(){
