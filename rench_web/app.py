@@ -1908,6 +1908,66 @@ def api_estoque_historico():
     return jsonify({'movimentacoes': movimentacoes})
 
 
+@app.route('/api/suprimentos/historico')
+@login_required
+def api_suprimentos_historico():
+    db = get_db()
+    cur = db.cursor()
+
+    limite = request.args.get('limite', 50, type=int)
+    unidade_id = request.args.get('unidade_id', type=int)
+
+    params = []
+    sql = """
+        SELECT se.id, se.data_entrega, se.data_registro, se.responsavel, se.observacoes,
+               u.nome as unidade_nome, emp.nome as empresa_nome
+        FROM suprimentos_entregas se
+        JOIN unidades u ON u.id = se.unidade_id
+        JOIN empresas emp ON emp.id = u.empresa_id
+        WHERE 1=1
+    """
+    if unidade_id:
+        sql += " AND se.unidade_id=%s"
+        params.append(unidade_id)
+    sql += " ORDER BY se.data_registro DESC LIMIT %s"
+    params.append(limite)
+
+    cur.execute(sql, params)
+    entregas = cur.fetchall()
+
+    resultado = []
+    for e in entregas:
+        cur.execute("""
+            SELECT tipo_suprimento, modelo_impressora, quantidade, motivo_padrao, defeito, motivo
+            FROM suprimentos_itens
+            WHERE entrega_id=%s
+        """, (e['id'],))
+        itens = cur.fetchall()
+        itens_fmt = []
+        for item in itens:
+            nome = item['tipo_suprimento']
+            if item['modelo_impressora']:
+                nome += ' ' + item['modelo_impressora']
+            motivo = item['motivo'] or item['motivo_padrao'] or ''
+            itens_fmt.append({
+                'nome': nome,
+                'quantidade': item['quantidade'],
+                'motivo': motivo
+            })
+        resultado.append({
+            'id': e['id'],
+            'data': e['data_entrega'] or '-',
+            'hora': e['data_registro'].strftime('%H:%M') if e['data_registro'] else '-',
+            'unidade': e['unidade_nome'],
+            'empresa': e['empresa_nome'],
+            'responsavel': e['responsavel'],
+            'observacoes': e['observacoes'],
+            'itens': itens_fmt
+        })
+
+    return jsonify({'entregas': resultado})
+
+
 @app.route('/api/estoque/ajuste', methods=['POST'])
 @login_required
 def api_estoque_ajuste():

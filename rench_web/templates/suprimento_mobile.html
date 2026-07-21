@@ -71,6 +71,21 @@
     .btn-block{width:100%;background:#850001;color:#fff;border:none;border-radius:10px;padding:14px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;}
     .btn-block-outline{width:100%;background:#fff;border:2px solid #850001;color:#850001;border-radius:10px;padding:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;}
 
+    .acoes-estoque{display:flex;gap:6px;}
+    .btn-acao-estoque{background:#fff;border:1px solid #850001;color:#850001;border-radius:6px;padding:4px 8px;font-size:12px;font-weight:700;cursor:pointer;}
+    .btn-acao-estoque:active{background:#850001;color:#fff;}
+
+    .entrega-item{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:10px;}
+    .entrega-item .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+    .entrega-item .unidade{font-weight:700;font-size:15px;color:#222;}
+    .entrega-item .empresa{font-size:12px;color:#666;}
+    .entrega-item .datahora{text-align:right;font-size:12px;color:#666;}
+    .entrega-item .itens{margin-top:8px;padding-top:8px;border-top:1px solid #eee;}
+    .entrega-item .item-row{display:flex;justify-content:space-between;font-size:14px;margin-bottom:3px;}
+    .entrega-item .item-nome{color:#222;}
+    .entrega-item .item-qtd{font-weight:700;color:#850001;}
+    .entrega-item .resp{font-size:12px;color:#888;margin-top:6px;}
+
     .modelo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
     .modelo-grid button{background:#fff;border:1px solid #ccc;border-radius:8px;padding:8px 2px;font-size:13px;font-weight:700;color:#850001;cursor:pointer;}
     .modelo-grid button:active{background:#850001;color:#fff;border-color:#850001;}
@@ -200,10 +215,14 @@
             {% if estoque %}
               <ul class="estoque-lista">
                 {% for e in estoque %}
-                <li class="estoque-item" onclick="abrirAjuste('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}', {{e.quantidade}})">
+                <li class="estoque-item">
                   <div class="info">
                     <div class="tipo">{{e.tipo_suprimento}}</div>
                     <div class="modelo">{{e.modelo_impressora or 'Sem modelo'}}</div>
+                    <div class="acoes-estoque" style="margin-top:6px;">
+                      <button type="button" class="btn-acao-estoque" onclick="event.stopPropagation(); abrirAjuste('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}', {{e.quantidade}})">Ajustar</button>
+                      <button type="button" class="btn-acao-estoque" onclick="event.stopPropagation(); abrirMovimentacoes('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}')">Movimentações</button>
+                    </div>
                   </div>
                   <div class="qtd {{'zerado' if e.quantidade==0 else ('baixo' if e.quantidade < 2 else 'ok')}}">
                     {{e.quantidade}}
@@ -298,49 +317,38 @@
       <div id="aba-historico" class="tab-content {{'active' if aba=='historico' else ''}}">
         <div class="scroll-area">
           <div class="card">
-            <div class="card-title"><i class="bi bi-clock-history"></i> Histórico</div>
+            <div class="card-title"><i class="bi bi-clock-history"></i> Histórico de entregas</div>
             <div class="mb-2">
-              <label>Tipo</label>
-              <select id="hist-tipo" onchange="atualizarCorHistorico()">
-                <option value="" disabled selected>Selecione...</option>
-                <option value="Toner">Toner</option>
-                <option value="Drum">Drum</option>
-                <option value="Fusor">Fusor</option>
-                <option value="Transfer">Transfer</option>
-                <option value="Coletor">Coletor</option>
-                <option value="Esteira">Esteira</option>
-              </select>
-            </div>            
-            <div class="mb-2" id="hist-cor-wrap">
-              <label>Cor</label>
-              <select id="hist-cor">
-                <option value="" selected>-</option>
-                <option value="Black">Black</option>
-                <option value="Ciano">Ciano</option>
-                <option value="Magenta">Magenta</option>
-                <option value="Amarelo">Amarelo</option>
-              </select>
-            </div>
-            <div class="mb-2">
-              <label>Modelo</label>
-              <input type="text" id="hist-modelo" placeholder="Ex: C711" oninput="this.value = this.value.toUpperCase()">
-            </div>
-            <div class="mb-2 modelo-botoes">
-              <label>Modelos OKI</label>
-              <div class="modelo-grid">
-                <button type="button" onclick="setModeloHistorico('C711')">C711</button>
-                <button type="button" onclick="setModeloHistorico('ES5112')">ES5112</button>
-                <button type="button" onclick="setModeloHistorico('ES4172')">ES4172</button>
-                <button type="button" onclick="setModeloHistorico('ES8473')">ES8473</button>
-                <button type="button" onclick="setModeloHistorico('MC573')">MC573</button>
-                <button type="button" onclick="setModeloHistorico('C831')">C831</button>
-                <button type="button" onclick="setModeloHistorico('C911')">C911</button>
+              <label>Filtrar por unidade (opcional)</label>
+              <input type="hidden" id="hist-unidade-id">
+              <div class="selected-box" id="histSelectedBox" onclick="abrirListaUnidades()">
+                <span id="histSelectedText">Todas as unidades</span>
+                <small><i class="bi bi-chevron-down"></i></small>
+              </div>
+              <div class="select-list" id="histSelectList">
+                <input type="text" class="search-input" id="buscaHistUnidade" placeholder="Buscar empresa ou unidade..." onkeyup="filtrarHistUnidades()" onclick="event.stopPropagation()">
+                <div id="listaHistUnidades">
+                  <div class="select-item unidade" data-unidade="" data-texto="Todas as unidades" onclick="selecionarHistUnidade(this)">Todas as unidades</div>
+                  {% set empresa_atual = namespace(val='') %}
+                  {% for l in locais %}
+                    {% if l.unidade_id %}
+                      {% if empresa_atual.val != l.empresa_nome %}
+                        {% if not loop.first %}</div>{% endif %}
+                        <div class="select-item empresa" data-empresa="{{l.empresa_nome|lower}}">{{l.empresa_nome}}</div>
+                        <div class="grupo-unidades">
+                        {% set empresa_atual.val = l.empresa_nome %}
+                      {% endif %}
+                      <div class="select-item unidade" data-unidade="{{l.unidade_id}}" data-texto="{{l.unidade_nome}}" data-empresa="{{l.empresa_nome}}" onclick="selecionarHistUnidade(this)">{{l.unidade_nome}}</div>
+                    {% endif %}
+                  {% endfor %}
+                  {% if locais %}</div>{% endif %}
+                </div>
               </div>
             </div>
-            <button type="button" class="btn-block mb-3" onclick="carregarHistorico()">
-              <i class="bi bi-search"></i> Buscar Histórico
+            <button type="button" class="btn-block mb-3" onclick="carregarHistoricoEntregas()">
+              <i class="bi bi-search"></i> Buscar Entregas
             </button>
-            <div id="historico-resultado"></div>
+            <div id="historico-entregas-resultado"></div>
           </div>
         </div>
       </div>
@@ -382,6 +390,28 @@
             </button>
           </div>
         </form>
+      </div>
+
+      <!-- MODAL DE MOVIMENTACOES -->
+      <div id="modal-movimentacoes" class="tab-content">
+        <div class="scroll-area">
+          <div class="card">
+            <div class="card-title"><i class="bi bi-clock-history"></i> Movimentações do item</div>
+            <input type="hidden" id="mov-tipo">
+            <input type="hidden" id="mov-modelo">
+            <div class="mb-2">
+              <label>Item</label>
+              <div id="mov-item-nome" class="fs-6 fw-bold"></div>
+            </div>
+            <button type="button" class="btn-block mb-3" onclick="carregarMovimentacoes()">
+              <i class="bi bi-search"></i> Atualizar
+            </button>
+            <div id="movimentacoes-resultado"></div>
+          </div>
+        </div>
+        <div class="footer">
+          <button type="button" class="btn-block-outline" onclick="mostrarAba('estoque')">Voltar</button>
+        </div>
       </div>
     </main>
   </div>
@@ -629,10 +659,6 @@
       document.querySelector('.modelo-entrada').value = modelo;
     }
 
-    function setModeloHistorico(modelo){
-      document.getElementById('hist-modelo').value = modelo;
-    }
-
     function atualizarCorEntrada(){
       const tipo = document.querySelector('.tipo-entrada').value;
       const wrap = document.querySelector('.cor-entrada-wrap');
@@ -641,17 +667,6 @@
       } else {
         wrap.style.display = 'none';
         document.querySelector('.cor-entrada').value = '';
-      }
-    }
-
-    function atualizarCorHistorico(){
-      const tipo = document.getElementById('hist-tipo').value;
-      const wrap = document.getElementById('hist-cor-wrap');
-      if(['Toner','Drum'].includes(tipo)){
-        wrap.style.display = 'block';
-      } else {
-        wrap.style.display = 'none';
-        document.getElementById('hist-cor').value = '';
       }
     }
 
@@ -665,6 +680,149 @@
       document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
       document.getElementById('modal-ajuste').classList.add('active');
       window.scrollTo(0,0);
+    }
+
+    function abrirMovimentacoes(tipo, modelo){
+      document.getElementById('mov-tipo').value = tipo;
+      document.getElementById('mov-modelo').value = modelo;
+      document.getElementById('mov-item-nome').textContent = tipo + (modelo ? ' - ' + modelo : '');
+      document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+      document.getElementById('modal-movimentacoes').classList.add('active');
+      carregarMovimentacoes();
+    }
+
+    function abrirListaUnidades(){
+      document.getElementById('histSelectList').classList.toggle('show');
+      if(document.getElementById('histSelectList').classList.contains('show')){
+        document.getElementById('buscaHistUnidade').value = '';
+        document.getElementById('buscaHistUnidade').focus();
+        filtrarHistUnidades();
+      }
+    }
+
+    function filtrarHistUnidades(){
+      const termo = document.getElementById('buscaHistUnidade').value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const empresas = document.querySelectorAll('#listaHistUnidades .select-item.empresa');
+      const unidades = document.querySelectorAll('#listaHistUnidades .select-item.unidade');
+
+      unidades.forEach(u => {
+        const texto = (u.dataset.texto + ' ' + (u.dataset.empresa || '')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        u.style.display = texto.includes(termo) ? 'block' : 'none';
+      });
+
+      empresas.forEach(e => {
+        const grupo = e.nextElementSibling;
+        const visiveis = grupo.querySelectorAll('.unidade:not([style*="none"])').length;
+        e.style.display = visiveis > 0 ? 'block' : 'none';
+      });
+    }
+
+    function selecionarHistUnidade(el){
+      document.getElementById('hist-unidade-id').value = el.dataset.unidade;
+      document.getElementById('histSelectedText').textContent = el.dataset.texto;
+      document.getElementById('histSelectList').classList.remove('show');
+    }
+
+    document.addEventListener('click', function(e){
+      const box = document.getElementById('histSelectedBox');
+      const list = document.getElementById('histSelectList');
+      if(box && list && !box.contains(e.target) && !list.contains(e.target)){
+        list.classList.remove('show');
+      }
+    });
+
+    async function carregarMovimentacoes(){
+      const tipo = document.getElementById('mov-tipo').value;
+      const modelo = document.getElementById('mov-modelo').value;
+      const container = document.getElementById('movimentacoes-resultado');
+      container.innerHTML = '<div class="hist-empty">Carregando...</div>';
+
+      try{
+        const url = `/api/estoque/historico?tipo=${encodeURIComponent(tipo)}&modelo=${encodeURIComponent(modelo)}&_=${Date.now()}`;
+        const r = await fetch(url);
+        const data = await r.json();
+        if(!r.ok){
+          container.innerHTML = `<div class="hist-empty">${data.erro || 'Erro'}</div>`;
+          return;
+        }
+        if(!data.movimentacoes || data.movimentacoes.length === 0){
+          container.innerHTML = '<div class="hist-empty">Nenhuma movimentação.</div>';
+          return;
+        }
+        let html = '';
+        data.movimentacoes.forEach(m => {
+          const sinal = m.quantidade > 0 ? '+' : '';
+          const classe = m.tipo_movimento === 'saida' ? 'saida' : 'entrada';
+          const nome = m.tipo_movimento === 'entrada' ? 'Entrada' : (m.tipo_movimento === 'saida' ? 'Saída' : 'Ajuste');
+          html += `
+            <div class="hist-item">
+              <div class="top">
+                <span class="tipo">${nome}</span>
+                <span class="qtd ${classe}">${sinal}${m.quantidade}</span>
+              </div>
+              <div class="info">
+                Saldo: ${m.saldo_antes} → ${m.saldo_depois}<br>
+                ${m.motivo || '-'} <span style="color:#999;">| ${m.data_movimento}${m.responsavel ? ' | ' + m.responsavel : ''}</span>
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      } catch(err){
+        container.innerHTML = '<div class="hist-empty">Erro de conexão.</div>';
+      }
+    }
+
+    async function carregarHistoricoEntregas(){
+      const unidadeId = document.getElementById('hist-unidade-id').value;
+      const container = document.getElementById('historico-entregas-resultado');
+      container.innerHTML = '<div class="hist-empty">Carregando...</div>';
+
+      try{
+        let url = `/api/suprimentos/historico?limite=50&_=${Date.now()}`;
+        if(unidadeId) url += `&unidade_id=${unidadeId}`;
+        const r = await fetch(url);
+        const data = await r.json();
+        if(!data.entregas || data.entregas.length === 0){
+          container.innerHTML = '<div class="hist-empty">Nenhuma entrega encontrada.</div>';
+          return;
+        }
+        let html = '';
+        data.entregas.forEach(ent => {
+          let itensHtml = '';
+          ent.itens.forEach(item => {
+            itensHtml += `
+              <div class="item-row">
+                <span class="item-nome">${item.nome}</span>
+                <span class="item-qtd">${item.quantidade}x</span>
+              </div>
+            `;
+          });
+          html += `
+            <div class="entrega-item">
+              <div class="top">
+                <div>
+                  <div class="unidade">${ent.unidade}</div>
+                  <div class="empresa">${ent.empresa}</div>
+                </div>
+                <div class="datahora">
+                  ${ent.data}<br>${ent.hora}
+                </div>
+              </div>
+              <div class="itens">
+                ${itensHtml}
+              </div>
+              <div class="resp">
+                Responsável: ${ent.responsavel || '-'}${ent.observacoes ? ' | Obs: ' + ent.observacoes : ''}
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      } catch(err){
+        container.innerHTML = '<div class="hist-empty">Erro de conexão.</div>';
+      }
     }
 
     async function salvarAjuste(e){
