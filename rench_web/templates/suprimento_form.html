@@ -65,10 +65,12 @@
                 <option value="" disabled selected>Selecione...</option>
                 <option value="Toner">Toner</option>
                 <option value="Drum">Drum</option>
+                <option value="Drum para Transformar">Drum para Transformar</option>
                 <option value="Fusor">Fusor</option>
                 <option value="Transfer">Transfer</option>
                 <option value="Coletor">Coletor</option>
                 <option value="Esteira">Esteira</option>
+                <option value="Papel Fotografico">Papel Fotográfico</option>
                 <option value="Outro">Outro</option>
               </select>
             </div>
@@ -151,7 +153,7 @@ function adicionarItem(){
   container.insertAdjacentHTML('beforeend', template);
   const last = container.lastElementChild;
   const tipo = last.querySelector('.tipo-select').value;
-  if(!['Toner','Drum'].includes(tipo)){
+  if(!['Toner','Drum','Drum para Transformar'].includes(tipo)){
     last.querySelector('.cor-wrap').style.display = 'none';
   }
 }
@@ -160,7 +162,7 @@ function atualizarLinha(sel){
   const row = sel.closest('.item-row');
   const corWrap = row.querySelector('.cor-wrap');
   const cor = row.querySelector('.cor-select');
-  if(['Toner','Drum'].includes(sel.value)){
+  if(['Toner','Drum','Drum para Transformar'].includes(sel.value)){
     corWrap.style.display = 'block';
     atualizarCorMonocromatica(row.querySelector('.modelo-input'));
   } else {
@@ -174,7 +176,7 @@ function atualizarCorMonocromatica(input){
   const modelo = input.value.trim().toUpperCase();
   const cor = row.querySelector('.cor-select');
   const tipo = row.querySelector('.tipo-select').value;
-  if(['Toner','Drum'].includes(tipo) && ['ES5112','ES4172'].includes(modelo)){
+  if(['Toner','Drum','Drum para Transformar'].includes(tipo) && ['ES5112','ES4172'].includes(modelo)){
     cor.value = 'Black';
     cor.disabled = true;
   } else {
@@ -196,7 +198,7 @@ document.getElementById('form-suprimento').addEventListener('submit', function(e
     const tipo = row.querySelector('[name="tipo_suprimento[]"]').value;
     const cor = row.querySelector('[name="cor_selecionada[]"]').value;
     const inputTipo = row.querySelector('[name="tipo_suprimento[]"]');
-    if(cor) inputTipo.value = tipo + ' ' + cor;
+    if(cor && ['Toner','Drum','Drum para Transformar'].includes(tipo)) inputTipo.value = tipo + ' ' + cor;
   });
 });
 </script>
