@@ -1875,6 +1875,73 @@ def estoque_historico(estoque_id):
     return render_template('estoque_historico.html', item=item, movimentacoes=movimentacoes)
 
 
+@app.route('/api/estoque/historico')
+@login_required
+def api_estoque_historico():
+    tipo = request.args.get('tipo', '').strip()
+    modelo = request.args.get('modelo', '').strip().upper()
+    if not tipo:
+        return jsonify({'erro': 'Informe o tipo.'}), 400
+    db = get_db()
+    cur = db.cursor()
+    estoque_id, _ = buscar_ou_criar_estoque(cur, tipo, modelo)
+    cur.execute("""
+        SELECT id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, data_movimento
+        FROM estoque_movimentacoes
+        WHERE estoque_id=%s
+        ORDER BY data_movimento DESC, id DESC
+        LIMIT 100
+    """, (estoque_id,))
+    rows = cur.fetchall()
+    movimentacoes = []
+    for r in rows:
+        movimentacoes.append({
+            'id': r['id'],
+            'tipo_movimento': r['tipo_movimento'],
+            'quantidade': r['quantidade'],
+            'saldo_antes': r['saldo_antes'],
+            'saldo_depois': r['saldo_depois'],
+            'motivo': r['motivo'],
+            'responsavel': r['responsavel'],
+            'data_movimento': r['data_movimento'].strftime('%d/%m/%Y %H:%M') if r['data_movimento'] else None
+        })
+    return jsonify({'movimentacoes': movimentacoes})
+
+
+@app.route('/api/estoque/ajuste', methods=['POST'])
+@login_required
+def api_estoque_ajuste():
+    tipo = request.form.get('tipo_suprimento', '').strip()
+    cor = request.form.get('cor_selecionada', '').strip()
+    modelo = request.form.get('modelo_impressora', '').strip().upper()
+    nova_qtd = int(request.form.get('quantidade') or 0)
+    motivo = request.form.get('motivo', '').strip() or 'Ajuste via app mobile'
+    responsavel = request.form.get('responsavel', '').strip() or session.get('usuario')
+
+    if not tipo or nova_qtd < 0:
+        return jsonify({'erro': 'Informe o tipo e uma quantidade válida.'}), 400
+
+    tipo_final = f"{tipo} {cor}".strip() if cor else tipo
+    db = get_db()
+    cur = db.cursor()
+    estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo_final, modelo)
+
+    diferenca = nova_qtd - saldo
+    tipo_movimento = 'ajuste'
+    if diferenca > 0:
+        tipo_movimento = 'entrada'
+    elif diferenca < 0:
+        tipo_movimento = 'saida'
+
+    if diferenca != 0:
+        movimentar_estoque(
+            cur, estoque_id, tipo_movimento, diferenca, saldo,
+            motivo=motivo, responsavel=responsavel
+        )
+    db.commit()
+    return jsonify({'ok': True, 'mensagem': f'{tipo_final} {modelo}: saldo ajustado para {nova_qtd}'})
+
+
 @app.route('/api/estoque/saldo')
 @login_required
 def api_estoque_saldo():
