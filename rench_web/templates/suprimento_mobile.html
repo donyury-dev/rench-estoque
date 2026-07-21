@@ -361,6 +361,13 @@
 
       saldoInfo.style.display = 'block';
       saldoBadge.className = 'saldo-badge saldo-loading';
+
+      if(!modelo){
+        saldoBadge.className = 'saldo-badge';
+        saldoBadge.textContent = 'Informe o modelo para consultar o estoque';
+        return;
+      }
+
       saldoBadge.textContent = 'Consultando estoque...';
 
       try{
@@ -392,6 +399,14 @@
         btn.addEventListener('click', function(){
           card.querySelectorAll('.tipo-btn').forEach(b=>b.classList.remove('active'));
           this.classList.add('active');
+          const tipo = this.dataset.val;
+          const corRow = card.querySelector('.cor-row').parentElement;
+          if(['Toner','Drum'].includes(tipo)){
+            corRow.style.display = 'block';
+          } else {
+            corRow.style.display = 'none';
+            card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
+          }
           atualizarTipo(card);
         });
       });
