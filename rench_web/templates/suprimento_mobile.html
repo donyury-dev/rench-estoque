@@ -87,9 +87,18 @@
     .entrega-item .resp{font-size:12px;color:#888;margin-top:6px;}
 
     .modelo-grupo{background:#fff;border:1px solid #ddd;border-radius:12px;margin-bottom:12px;overflow:hidden;}
-    .modelo-grupo-header{background:#f8f8f8;padding:10px 14px;border-bottom:1px solid #eee;font-weight:700;font-size:15px;color:#850001;display:flex;align-items:center;gap:8px;}
+    .modelo-grupo-header{background:#f8f8f8;padding:10px 14px;border-bottom:1px solid #eee;font-weight:700;font-size:15px;color:#850001;display:flex;align-items:center;gap:8px;cursor:pointer;}
     .modelo-grupo-header small{color:#666;font-weight:400;}
-    .modelo-itens{padding:8px;}
+    .modelo-grupo-header i.seta{margin-left:auto;font-size:14px;transition:transform 0.2s;}
+    .modelo-grupo-header i.seta.girou{transform:rotate(180deg);}
+    .modelo-itens{padding:8px;display:none;}
+    .modelo-itens.show{display:block;}
+    .modelo-resumo{display:flex;gap:6px;align-items:center;margin-left:auto;margin-right:8px;}
+    .bolinha{width:8px;height:8px;border-radius:50%;display:inline-block;}
+    .bolinha.ok{background:#176B43;}
+    .bolinha.baixo{background:#B76E00;}
+    .bolinha.zerado{background:#850001;}
+    .modelo-alertas{font-size:12px;font-weight:600;}
     .modelo-item{padding:8px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f0f0f0;}
     .modelo-item:last-child{border-bottom:none;}
     .modelo-item .info{flex:1;}
@@ -236,14 +245,36 @@
               {% endfor %}
 
               {% for modelo in modelos|sort %}
-              <div class="modelo-grupo">
-                <div class="modelo-grupo-header">
+              {% set itens_modelo = modelos[modelo] %}
+              {% set qtd_zerado = itens_modelo|selectattr('quantidade','equalto',0)|list|length %}
+              {% set qtd_baixo = itens_modelo|selectattr('quantidade','lessthan',2)|list|length %}
+              {% set alerta_texto = '' %}
+              {% if qtd_zerado > 0 %}
+                {% set alerta_texto = qtd_zerado|string + ' em falta' %}
+              {% elif qtd_baixo > 0 %}
+                {% set alerta_texto = qtd_baixo|string + ' baixo' %}
+              {% endif %}
+              <div class="modelo-grupo" data-modelo="{{modelo}}">
+                <div class="modelo-grupo-header" onclick="toggleModelo(this)">
                   <i class="bi bi-printer"></i>
                   {{modelo}}
-                  <small>({{modelos[modelo]|length}} itens)</small>
+                  <small>({{itens_modelo|length}} itens)</small>
+                  <div class="modelo-resumo">
+                    {% if qtd_zerado > 0 %}
+                      <span class="modelo-alertas" style="color:#850001;">{{qtd_zerado}} falta</span>
+                      <span class="bolinha zerado"></span>
+                    {% elif qtd_baixo > 0 %}
+                      <span class="modelo-alertas" style="color:#B76E00;">{{qtd_baixo}} baixo</span>
+                      <span class="bolinha baixo"></span>
+                    {% else %}
+                      <span class="modelo-alertas" style="color:#176B43;">OK</span>
+                      <span class="bolinha ok"></span>
+                    {% endif %}
+                  </div>
+                  <i class="bi bi-chevron-down seta"></i>
                 </div>
-                <div class="modelo-itens">
-                  {% for e in modelos[modelo]|sort(attribute='tipo_suprimento') %}
+                <div class="modelo-itens" id="itens-{{loop.index}}">
+                  {% for e in itens_modelo|sort(attribute='tipo_suprimento') %}
                   <div class="modelo-item">
                     <div class="info">
                       <div class="nome">{{e.tipo_suprimento}}</div>
@@ -725,6 +756,14 @@
 
     function setModeloEntrada(modelo){
       document.querySelector('.modelo-entrada').value = modelo;
+    }
+
+    function toggleModelo(header){
+      const grupo = header.closest('.modelo-grupo');
+      const itens = grupo.querySelector('.modelo-itens');
+      const seta = header.querySelector('.seta');
+      itens.classList.toggle('show');
+      seta.classList.toggle('girou');
     }
 
     function atualizarCorEntrada(){
