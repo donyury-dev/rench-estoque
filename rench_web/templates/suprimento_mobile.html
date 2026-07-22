@@ -585,7 +585,10 @@
     function atualizarTipo(card){
       const tipo = card.querySelector('.tipo-btn.active')?.dataset.val || '';
       const cor = card.querySelector('.cor-btn.active')?.dataset.cor || '';
-      card.querySelector('.tipo-input').value = cor ? tipo + ' ' + cor : tipo;
+      const corInput = card.querySelector('.cor-input');
+      const tipoInput = card.querySelector('.tipo-input');
+      tipoInput.value = cor ? tipo + ' ' + cor : tipo;
+      if(corInput) corInput.value = cor;
       atualizarSaldo(card);
     }
 
