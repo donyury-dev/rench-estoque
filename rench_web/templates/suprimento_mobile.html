@@ -159,7 +159,7 @@
     <main>
       <!-- ABA ENTREGA -->
       <div id="aba-entrega" class="tab-content {{'active' if aba=='entrega' else ''}}">
-        <form method="POST" id="form-mobile">
+        <form method="POST" id="form-mobile" onsubmit="converterPapelEntrega()">
           <div class="scroll-area">
             {% with msgs = get_flashed_messages(with_categories=true) %}
               {% if msgs %}
@@ -371,7 +371,7 @@
                 </div>
                 <div style="flex:1;" id="unidade-papel-entrada-wrap" class="d-none">
                   <label>Unidade</label>
-                  <select class="form-select" id="unidade-papel-entrada" onchange="converterPapelEntrada()">
+                  <select class="form-select" id="unidade-papel-entrada">
                     <option value="1">Folhas</option>
                     <option value="20" selected>Pacote 20</option>
                     <option value="50">Pacote 50</option>
@@ -545,7 +545,7 @@
         </div>
         <div style="flex:1;" class="papel-wrap" style="display:none;">
           <label>Unidade</label>
-          <select class="form-select unidade-papel" onchange="converterPapelItem(this)" name="unidade_papel[]">
+          <select class="form-select unidade-papel" name="unidade_papel[]">
             <option value="1">Folhas</option>
             <option value="20" selected>Pct 20</option>
             <option value="50">Pct 50</option>
@@ -664,7 +664,6 @@
             modeloWrap.style.display = 'none';
             card.querySelector('.modelo-input').value = '-';
             papelWrap.style.display = 'block';
-            converterPapelItem(card.querySelector('.unidade-papel'));
           } else {
             corRow.style.display = 'none';
             card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
@@ -813,6 +812,7 @@
       const hpWrap = document.getElementById('modelo-hp-wrap');
       const outrosWrap = document.getElementById('modelo-outros-wrap');
       const papelWrap = document.getElementById('unidade-papel-entrada-wrap');
+      document.getElementById('qtd-entrada').value = '1';
       if(['Toner','Drum','Drum para Transformar'].includes(tipo)){
         wrap.style.display = 'block';
         modeloWrap.style.display = 'block';
@@ -841,10 +841,9 @@
     }
 
     function converterPapelEntrada(){
-      const qtd = parseInt(document.getElementById('qtd-entrada').dataset.original || document.getElementById('qtd-entrada').value || '1');
+      const qtd = parseInt(document.getElementById('qtd-entrada').value || '1');
       const unidade = parseInt(document.getElementById('unidade-papel-entrada').value || '1');
-      document.getElementById('qtd-entrada').dataset.original = qtd;
-      document.getElementById('qtd-entrada').value = qtd * unidade;
+      return qtd * unidade;
     }
 
     function converterPapelItem(sel){
@@ -860,10 +859,9 @@
       document.querySelectorAll('#itens-container .item-box').forEach(card => {
         const tipoBtn = card.querySelector('.tipo-btn.active');
         if(tipoBtn && tipoBtn.dataset.val === 'Papel Fotografico'){
-          const sel = card.querySelector('.unidade-papel');
           const qtdInput = card.querySelector('.qtd-input');
-          const qtd = parseInt(qtdInput.dataset.original || qtdInput.value || '1');
-          const unidade = parseInt(sel.value || '1');
+          const unidade = parseInt(card.querySelector('.unidade-papel').value || '1');
+          const qtd = parseInt(qtdInput.value || '1');
           qtdInput.value = qtd * unidade;
         }
       });
@@ -1119,7 +1117,7 @@
 
       if(tipo === 'Papel Fotografico'){
         const unidade = parseInt(document.getElementById('unidade-papel-entrada').value || '1');
-        const original = parseInt(document.getElementById('qtd-entrada').dataset.original || qtd);
+        const original = parseInt(document.getElementById('qtd-entrada').value || '1');
         qtd = original * unidade;
       }
 

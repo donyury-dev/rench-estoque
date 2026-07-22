@@ -94,7 +94,7 @@
             </div>
             <div class="col-md-2 papel-wrap" style="display:none;">
               <label class="form-label small fw-bold">Unidade</label>
-              <select class="form-select unidade-papel" onchange="converterPapelLinha(this)">
+              <select class="form-select unidade-papel" name="unidade_papel[]">
                 <option value="1">Folhas</option>
                 <option value="20" selected>Pct 20</option>
                 <option value="50">Pct 50</option>
@@ -173,55 +173,6 @@ function adicionarItem(){
   }
 }
 
-function atualizarLinha(sel){
-  const row = sel.closest('.item-row');
-  const corWrap = row.querySelector('.cor-wrap');
-  const modeloWrap = row.querySelector('.modelo-wrap');
-  const papelWrap = row.querySelector('.papel-wrap');
-  const modeloInput = row.querySelector('.modelo-input');
-  const cor = row.querySelector('.cor-select');
-  if(['Toner','Drum','Drum para Transformar'].includes(sel.value)){
-    corWrap.style.display = 'block';
-    modeloWrap.style.display = 'block';
-    papelWrap.style.display = 'none';
-    atualizarCorMonocromatica(row.querySelector('.modelo-input'));
-  } else if(sel.value === 'Papel Fotografico'){
-    corWrap.style.display = 'none';
-    cor.value = '';
-    modeloWrap.style.display = 'none';
-    modeloInput.value = '-';
-    papelWrap.style.display = 'block';
-    converterPapelLinha(row.querySelector('.unidade-papel'));
-  } else {
-    corWrap.style.display = 'none';
-    modeloWrap.style.display = 'block';
-    papelWrap.style.display = 'none';
-    cor.value = '';
-  }
-}
-
-function converterPapelLinha(sel){
-  const row = sel.closest('.item-row');
-  const qtdInput = row.querySelector('.qtd-input');
-  const qtd = parseInt(qtdInput.dataset.original || qtdInput.value || '1');
-  const unidade = parseInt(sel.value || '1');
-  qtdInput.dataset.original = qtd;
-  qtdInput.value = qtd * unidade;
-}
-
-function converterPapelEnvio(){
-  container.querySelectorAll('.item-row').forEach(row => {
-    const tipo = row.querySelector('.tipo-select').value;
-    if(tipo === 'Papel Fotografico'){
-      const sel = row.querySelector('.unidade-papel');
-      const qtdInput = row.querySelector('.qtd-input');
-      const qtd = parseInt(qtdInput.dataset.original || qtdInput.value || '1');
-      const unidade = parseInt(sel.value || '1');
-      qtdInput.value = qtd * unidade;
-    }
-  });
-}
-
 function atualizarCorMonocromatica(input){
   const row = input.closest('.item-row');
   const modelo = input.value.trim().toUpperCase();
@@ -243,14 +194,46 @@ function removerItem(btn){
   }
 }
 
-// ao enviar, combina tipo + cor se houver e converte papel
+function atualizarLinha(sel){
+  const row = sel.closest('.item-row');
+  const corWrap = row.querySelector('.cor-wrap');
+  const modeloWrap = row.querySelector('.modelo-wrap');
+  const papelWrap = row.querySelector('.papel-wrap');
+  const modeloInput = row.querySelector('.modelo-input');
+  const cor = row.querySelector('.cor-select');
+  if(['Toner','Drum','Drum para Transformar'].includes(sel.value)){
+    corWrap.style.display = 'block';
+    modeloWrap.style.display = 'block';
+    papelWrap.style.display = 'none';
+    atualizarCorMonocromatica(row.querySelector('.modelo-input'));
+  } else if(sel.value === 'Papel Fotografico'){
+    corWrap.style.display = 'none';
+    cor.value = '';
+    modeloWrap.style.display = 'none';
+    modeloInput.value = '-';
+    papelWrap.style.display = 'block';
+  } else {
+    corWrap.style.display = 'none';
+    modeloWrap.style.display = 'block';
+    papelWrap.style.display = 'none';
+    cor.value = '';
+  }
+}
+
+// ao enviar, combina tipo + cor se houver e converte papel para folhas
 document.getElementById('form-suprimento').addEventListener('submit', function(e){
-  converterPapelEnvio();
   container.querySelectorAll('.item-row').forEach(row => {
     const tipo = row.querySelector('[name="tipo_suprimento[]"]').value;
     const cor = row.querySelector('[name="cor_selecionada[]"]').value;
     const inputTipo = row.querySelector('[name="tipo_suprimento[]"]');
     if(cor && ['Toner','Drum','Drum para Transformar'].includes(tipo)) inputTipo.value = tipo + ' ' + cor;
+
+    if(tipo === 'Papel Fotografico'){
+      const qtdInput = row.querySelector('[name="quantidade[]"]');
+      const unidade = parseInt(row.querySelector('[name="unidade_papel[]"]').value || '1');
+      const qtd = parseInt(qtdInput.value || '1');
+      qtdInput.value = qtd * unidade;
+    }
   });
 });
 </script>

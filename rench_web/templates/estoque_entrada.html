@@ -89,7 +89,7 @@
           </div>
           <div class="col-md-3" id="unidade-papel-wrap" style="display:none;">
             <label class="form-label fw-bold">Unidade</label>
-            <select class="form-select" id="unidade-papel" onchange="converterPapel()">
+            <select class="form-select" id="unidade-papel">
               <option value="1">Folhas</option>
               <option value="20" selected>Pacote 20 folhas</option>
               <option value="50">Pacote 50 folhas</option>
@@ -149,6 +149,7 @@
     const corWrap = document.getElementById('cor-wrap');
     const modeloWrap = document.getElementById('modelo-wrap');
     const papelWrap = document.getElementById('unidade-papel-wrap');
+    document.getElementById('qtd').value = '1';
     if(['Toner','Drum','Drum para Transformar'].includes(tipo)){
       corWrap.style.display = 'block';
       modeloWrap.style.display = 'block';
@@ -160,7 +161,6 @@
       modeloWrap.style.display = 'none';
       document.getElementById('modelo').value = '-';
       papelWrap.style.display = 'block';
-      converterPapel();
     } else {
       corWrap.style.display = 'none';
       modeloWrap.style.display = 'block';
@@ -169,17 +169,12 @@
     }
   }
 
-  function converterPapel(){
-    const qtd = parseInt(document.getElementById('qtd').value || '1');
-    const unidade = parseInt(document.getElementById('unidade-papel').value || '1');
-    // o valor enviado ja eh convertido para folhas
-    document.getElementById('qtd').value = qtd * unidade;
-  }
-
-  // antes de enviar, garante que a quantidade esta em folhas
+  // antes de enviar, converte quantidade para folhas se for papel fotografico
   document.getElementById('form-entrada').addEventListener('submit', function(e){
     if(document.getElementById('tipo').value === 'Papel Fotografico'){
-      converterPapel();
+      const qtd = parseInt(document.getElementById('qtd').value || '1');
+      const unidade = parseInt(document.getElementById('unidade-papel').value || '1');
+      document.getElementById('qtd').value = qtd * unidade;
     }
   });
 
