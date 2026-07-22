@@ -94,10 +94,19 @@
       seta.className = 'bi bi-chevron-down ms-2';
       header.querySelector('.d-flex').appendChild(seta);
     }
+    // comeca fechado
+    tabela.classList.add('d-none');
+    seta.classList.remove('bi-chevron-down');
+    seta.classList.add('bi-chevron-left');
     header.addEventListener('click', () => {
       tabela.classList.toggle('d-none');
-      seta.classList.toggle('bi-chevron-down');
-      seta.classList.toggle('bi-chevron-up');
+      if(tabela.classList.contains('d-none')){
+        seta.classList.remove('bi-chevron-down');
+        seta.classList.add('bi-chevron-left');
+      } else {
+        seta.classList.remove('bi-chevron-left');
+        seta.classList.add('bi-chevron-down');
+      }
     });
   });
 </script>
