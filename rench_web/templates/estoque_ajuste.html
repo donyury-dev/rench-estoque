@@ -40,9 +40,10 @@
           <label class="form-label fw-bold">Nova quantidade *</label>
           <input type="number" class="form-control" name="quantidade" value="{{item.quantidade}}" min="0" required>
         </div>
-        <div class="mb-3">
-          <label class="form-label fw-bold">Estoque mínimo</label>
-          <input type="number" class="form-control" name="estoque_minimo" value="{{item.estoque_minimo}}" min="0" required>
+        <div class="mb-3 p-3 rounded" style="background:#ffe6e6;border:1px solid #dc3545;">
+          <label class="form-label fw-bold mb-1" style="color:#850001;">Estoque mínimo *</label>
+          <input type="number" class="form-control" name="estoque_minimo" value="{{item.estoque_minimo}}" min="0" required style="border-color:#dc3545;">
+          <div class="form-text" style="color:#850001;">O sistema alerta quando o saldo chegar a este valor.</div>
         </div>
         <div class="mb-3">
           <label class="form-label fw-bold">Motivo do ajuste *</label>

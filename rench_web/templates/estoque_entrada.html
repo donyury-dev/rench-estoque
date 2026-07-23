@@ -5,7 +5,7 @@
 <div class="page-header">
   <div>
     <h1>Entrada de Estoque</h1>
-    <p class="text-muted mb-0">Adicione toner, drum, fusor, transfer, coletor ou esteira ao estoque</p>
+    <p class="text-muted mb-0">Adicione toner, drum, fusor, transfer, coletor, esteira ou papel fotográfico</p>
   </div>
   <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-secondary">Voltar</a>
 </div>
@@ -29,7 +29,7 @@
 </ul>
 
 <div class="row">
-  <div class="col-lg-6">
+  <div class="col-lg-7">
     <div class="card card-dashboard p-4">
       <form method="POST" id="form-entrada">
         <div class="row g-3">
@@ -57,37 +57,41 @@
               <option value="Amarelo">Amarelo</option>
             </select>
           </div>
-          <div class="col-md-6" id="modelo-wrap">
-            <label class="form-label fw-bold">Modelo da impressora</label>
-            <input type="text" class="form-control" name="modelo_impressora" placeholder="Ex: C711 (não obrigatório para Papel Fotográfico)" id="modelo" oninput="this.value = this.value.toUpperCase(); atualizarCorMonocromatica()">
-            <div class="mt-2">
-              <label class="form-label small fw-bold">Modelos OKI</label>
-              <div class="d-flex flex-wrap gap-2">
-                {% for m in ['C711','ES5112','ES4172','ES8473','MC573','C831','C911'] %}
-                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setModelo('{{m}}')">{{m}}</button>
+          <div class="col-12" id="modelo-wrap">
+            <label class="form-label fw-bold">Modelo</label>
+            <div class="input-group mb-2">
+              <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+              <input type="text" class="form-control" name="modelo_impressora" placeholder="Pesquise ou selecione um modelo" id="modelo" list="modelos-entrada" onblur="normalizarCampoModelo()" oninput="atualizarCorMonocromatica()" autocomplete="off" required>
+              <datalist id="modelos-entrada">
+                {% for m in ['C711','ES5112/4172','ES8473','MC573','C831','C911','408','4103','479','4303','428','PARA TRANSFORMAR'] %}
+                <option value="{{m}}">
+                {% endfor %}
+              </datalist>
+            </div>
+            <div class="card bg-light border-0 p-3">
+              <div class="mb-2">
+                <span class="badge bg-white text-dark border">OKI</span>
+                {% for m in ['C711','ES5112/4172','ES8473','MC573','C831','C911'] %}
+                <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="setModelo('{{m}}')">{{m}}</button>
                 {% endfor %}
               </div>
-            </div>
-            <div class="mt-2">
-              <label class="form-label small fw-bold">Modelos HP</label>
-              <div class="d-flex flex-wrap gap-2">
+              <div class="mb-2">
+                <span class="badge bg-white text-dark border">HP</span>
                 {% for m in ['408','4103','479','4303','428'] %}
-                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setModelo('{{m}}')">{{m}}</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="setModelo('{{m}}')">{{m}}</button>
                 {% endfor %}
               </div>
-            </div>
-            <div class="mt-2">
-              <label class="form-label small fw-bold">Outros</label>
-              <div class="d-flex flex-wrap gap-2">
-                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setModelo('PARA TRANSFORMAR')">PARA TRANSFORMAR</button>
+              <div class="mb-0">
+                <span class="badge bg-white text-dark border">Outros</span>
+                <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="setModelo('PARA TRANSFORMAR')">PARA TRANSFORMAR</button>
               </div>
             </div>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-4">
             <label class="form-label fw-bold">Quantidade *</label>
             <input type="number" class="form-control" name="quantidade" id="qtd" value="1" min="1" required>
           </div>
-          <div class="col-md-3" id="unidade-papel-wrap" style="display:none;">
+          <div class="col-md-4" id="unidade-papel-wrap" style="display:none;">
             <label class="form-label fw-bold">Unidade</label>
             <select class="form-select" id="unidade-papel">
               <option value="1">Folhas</option>
@@ -95,10 +99,6 @@
               <option value="50">Pacote 50 folhas</option>
               <option value="1600">Caixa 1600 folhas</option>
             </select>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label fw-bold">Estoque mínimo</label>
-            <input type="number" class="form-control" name="estoque_minimo" value="1" min="0" required>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-bold">Responsável</label>
@@ -117,7 +117,7 @@
       </form>
     </div>
   </div>
-  <div class="col-lg-6">
+  <div class="col-lg-5">
     <div class="alert alert-info">
       <h6 class="fw-bold"><i class="bi bi-lightbulb me-1"></i> Como funciona</h6>
       <p class="mb-1">Cada item é identificado pela combinação <strong>Tipo + Cor + Modelo</strong>.</p>
@@ -128,15 +128,26 @@
 </div>
 
 <script>
+  function normalizarModelo(modelo){
+    const valor = (modelo || '').trim().toUpperCase();
+    if(['5112','ES5112','4172','ES4172','5112/4172'].includes(valor)) return 'ES5112/4172';
+    return valor;
+  }
+
   function setModelo(modelo){
-    document.getElementById('modelo').value = modelo;
+    document.getElementById('modelo').value = normalizarModelo(modelo);
+    atualizarCorMonocromatica();
+  }
+
+  function normalizarCampoModelo(){
+    document.getElementById('modelo').value = normalizarModelo(document.getElementById('modelo').value);
     atualizarCorMonocromatica();
   }
 
   function atualizarCorMonocromatica(){
     const modelo = document.getElementById('modelo').value.trim().toUpperCase();
     const cor = document.getElementById('cor');
-    if(['ES5112','ES4172'].includes(modelo)){
+    if(['ES5112','ES4172','ES5112/4172'].includes(modelo)){
       cor.value = 'Black';
       cor.disabled = true;
     } else {
@@ -171,6 +182,8 @@
 
   // antes de enviar, converte quantidade para folhas se for papel fotografico
   document.getElementById('form-entrada').addEventListener('submit', function(e){
+    normalizarCampoModelo();
+    document.getElementById('cor').disabled = false;
     if(document.getElementById('tipo').value === 'Papel Fotografico'){
       const qtd = parseInt(document.getElementById('qtd').value || '1');
       const unidade = parseInt(document.getElementById('unidade-papel').value || '1');

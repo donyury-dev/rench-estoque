@@ -40,6 +40,11 @@
     .row{display:flex;gap:8px;}
     .row > div{flex:1;}
     .tipo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+    .modelo-wrap{position:relative;}
+    .modelo-opcoes-entrega{display:none;position:absolute;z-index:30;left:0;right:0;margin-top:6px;max-height:210px;overflow-y:auto;border:1px solid #ccc;border-radius:8px;background:#fff;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.14);}
+    .modelo-opcoes-entrega.show{display:block;}
+    .modelo-opcao-entrega{display:block;width:100%;background:#fff;border:0;border-bottom:1px solid #eee;padding:9px 10px;text-align:left;font-size:14px;}
+    .modelo-opcao-entrega:last-child{border-bottom:0;}
     .tipo-btn{background:#fff;border:1px solid #ccc;border-radius:8px;padding:10px 2px;font-size:14px;font-weight:700;color:#222;text-align:center;cursor:pointer;}
     .tipo-btn.active{background:#850001;color:#fff;border-color:#850001;}
     .cor-row{display:flex;gap:5px;flex-wrap:wrap;}
@@ -217,8 +222,8 @@
             </div>
 
             <div class="card">
-              <div class="card-title"><i class="bi bi-journal-text"></i> Observações</div>
-              <textarea name="observacoes" rows="2" placeholder="Algo importante sobre a entrega"></textarea>
+              <div class="card-title"><i class="bi bi-journal-text"></i> Observações *</div>
+              <textarea name="observacoes" rows="2" placeholder="Algo importante sobre a entrega" required></textarea>
             </div>
           </div>
 
@@ -280,7 +285,7 @@
                     <div class="info">
                       <div class="nome">{{e.tipo_suprimento}}</div>
                       <div class="acoes-mini">
-                        <button type="button" class="btn-mini" onclick="event.stopPropagation(); abrirAjuste('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}', {{e.quantidade}})">Ajustar</button>
+                        <button type="button" class="btn-mini" onclick="event.stopPropagation(); abrirAjuste('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}', {{e.quantidade}}, {{e.estoque_minimo or 1}})">Ajustar</button>
                         <button type="button" class="btn-mini" onclick="event.stopPropagation(); abrirMovimentacoes('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}')">Mov.</button>
                       </div>
                     </div>
@@ -335,34 +340,36 @@
               </div>
               <div class="mb-2" id="modelo-entrada-wrap">
                 <label>Modelo</label>
-                <input type="text" class="modelo-entrada" placeholder="Ex: C711" oninput="this.value = this.value.toUpperCase()">
-              </div>
-              <div class="mb-2 modelo-botoes" id="modelo-botoes-wrap">
-                <label>Modelos OKI</label>
-                <div class="modelo-grid">
-                  <button type="button" onclick="setModeloEntrada('C711')">C711</button>
-                  <button type="button" onclick="setModeloEntrada('ES5112')">ES5112</button>
-                  <button type="button" onclick="setModeloEntrada('ES4172')">ES4172</button>
-                  <button type="button" onclick="setModeloEntrada('ES8473')">ES8473</button>
-                  <button type="button" onclick="setModeloEntrada('MC573')">MC573</button>
-                  <button type="button" onclick="setModeloEntrada('C831')">C831</button>
-                  <button type="button" onclick="setModeloEntrada('C911')">C911</button>
+                <input type="hidden" id="modelo-entrada-selecionado" class="modelo-entrada">
+                <div class="selected-box" id="modeloSelectedBox" onclick="abrirListaModelos()">
+                  <span id="modeloSelectedText">Selecione o modelo...</span>
+                  <small><i class="bi bi-chevron-down"></i></small>
                 </div>
-              </div>
-              <div class="mb-2 modelo-botoes" id="modelo-hp-wrap">
-                <label>Modelos HP</label>
-                <div class="modelo-grid">
-                  <button type="button" onclick="setModeloEntrada('408')">408</button>
-                  <button type="button" onclick="setModeloEntrada('4103')">4103</button>
-                  <button type="button" onclick="setModeloEntrada('479')">479</button>
-                  <button type="button" onclick="setModeloEntrada('4303')">4303</button>
-                  <button type="button" onclick="setModeloEntrada('428')">428</button>
-                </div>
-              </div>
-              <div class="mb-2 modelo-botoes" id="modelo-outros-wrap">
-                <label>Outros</label>
-                <div class="modelo-grid">
-                  <button type="button" onclick="setModeloEntrada('PARA TRANSFORMAR')">PARA TRANSFORMAR</button>
+                <div class="select-list" id="modeloSelectList">
+                  <input type="text" class="search-input" id="buscaModelo" placeholder="Buscar modelo..." onkeyup="filtrarModelos()" onclick="event.stopPropagation()">
+                  <div id="listaModelos">
+                    <div class="select-item empresa">OKI</div>
+                    <div class="grupo-unidades">
+                      <div class="select-item unidade" data-texto="C711" data-modelo="C711" onclick="selecionarModelo(this)">C711</div>
+                      <div class="select-item unidade" data-texto="ES5112/4172" data-modelo="ES5112/4172" onclick="selecionarModelo(this)">ES5112/4172</div>
+                      <div class="select-item unidade" data-texto="ES8473" data-modelo="ES8473" onclick="selecionarModelo(this)">ES8473</div>
+                      <div class="select-item unidade" data-texto="MC573" data-modelo="MC573" onclick="selecionarModelo(this)">MC573</div>
+                      <div class="select-item unidade" data-texto="C831" data-modelo="C831" onclick="selecionarModelo(this)">C831</div>
+                      <div class="select-item unidade" data-texto="C911" data-modelo="C911" onclick="selecionarModelo(this)">C911</div>
+                    </div>
+                    <div class="select-item empresa">HP</div>
+                    <div class="grupo-unidades">
+                      <div class="select-item unidade" data-texto="408" data-modelo="408" onclick="selecionarModelo(this)">408</div>
+                      <div class="select-item unidade" data-texto="4103" data-modelo="4103" onclick="selecionarModelo(this)">4103</div>
+                      <div class="select-item unidade" data-texto="479" data-modelo="479" onclick="selecionarModelo(this)">479</div>
+                      <div class="select-item unidade" data-texto="4303" data-modelo="4303" onclick="selecionarModelo(this)">4303</div>
+                      <div class="select-item unidade" data-texto="428" data-modelo="428" onclick="selecionarModelo(this)">428</div>
+                    </div>
+                    <div class="select-item empresa">Outros</div>
+                    <div class="grupo-unidades">
+                      <div class="select-item unidade" data-texto="PARA TRANSFORMAR" data-modelo="PARA TRANSFORMAR" onclick="selecionarModelo(this)">PARA TRANSFORMAR</div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="row mb-2">
@@ -378,10 +385,6 @@
                     <option value="50">Pacote 50</option>
                     <option value="1600">Caixa 1600</option>
                   </select>
-                </div>
-                <div style="flex:1;">
-                  <label>Mínimo</label>
-                  <input type="number" class="minimo-entrada" value="1" min="0" required>
                 </div>
               </div>
               <div class="mb-2">
@@ -462,6 +465,11 @@
                 <label>Novo saldo *</label>
                 <input type="number" id="ajuste-qtd" value="0" min="0" required>
               </div>
+              <div class="mb-2 p-2 rounded" style="background:#ffe6e6;border:1px solid #dc3545;">
+                <label style="color:#850001;">Estoque mínimo *</label>
+                <input type="number" id="ajuste-minimo" value="1" min="0" required style="border-color:#dc3545;">
+                <small style="color:#850001;">Alerta quando estiver em falta ou abaixo deste número</small>
+              </div>
               <div class="mb-2">
                 <label>Motivo *</label>
                 <input type="text" id="ajuste-motivo" placeholder="Ex: inventário, correção" required>
@@ -538,7 +546,14 @@
       <div class="row mb-2">
         <div style="flex:1;" class="modelo-wrap">
           <label>Modelo</label>
-          <input type="text" name="modelo_impressora[]" class="modelo-input" placeholder="Ex: C711" oninput="this.value = this.value.toUpperCase(); atualizarSaldo(this.closest('.item-box'))">
+          <input type="hidden" name="modelo_impressora[]" class="modelo-input">
+          <div class="selected-box modelo-selected-box"><span>Selecione o modelo...</span><small><i class="bi bi-chevron-down"></i></small></div>
+          <div class="modelo-opcoes-entrega">
+            <input type="text" class="search-input modelo-busca" placeholder="Buscar modelo...">
+            {% for modelo in ['C711','ES5112/4172','ES8473','MC573','C831','C911','408','4103','479','4303','428','PARA TRANSFORMAR'] %}
+            <button type="button" class="modelo-opcao-entrega" data-modelo="{{modelo}}">{{modelo}}</button>
+            {% endfor %}
+          </div>
         </div>
         <div style="max-width:80px;" class="qtd-wrap">
           <label>Qtd</label>
@@ -590,6 +605,12 @@
       tipoInput.value = cor ? tipo + ' ' + cor : tipo;
       if(corInput) corInput.value = cor;
       atualizarSaldo(card);
+    }
+
+    function normalizarModelo(modelo){
+      const valor = (modelo || '').trim().toUpperCase();
+      if(['5112','ES5112','4172','ES4172','5112/4172'].includes(valor)) return 'ES5112/4172';
+      return valor;
     }
 
     async function atualizarSaldo(card){
@@ -644,6 +665,45 @@
     }
 
     function configurarItem(card){
+      const modeloInput = card.querySelector('.modelo-input');
+      const modeloBox = card.querySelector('.modelo-selected-box');
+      const modeloLista = card.querySelector('.modelo-opcoes-entrega');
+      const modeloBusca = card.querySelector('.modelo-busca');
+      modeloBox.addEventListener('click', function(event){
+        event.stopPropagation();
+        modeloLista.classList.toggle('show');
+        if(modeloLista.classList.contains('show')){
+          modeloBusca.value = '';
+          card.querySelectorAll('.modelo-opcao-entrega').forEach(opcao=>opcao.style.display='block');
+          modeloBusca.focus();
+        }
+      });
+      modeloBusca.addEventListener('click', event=>event.stopPropagation());
+      modeloBusca.addEventListener('input', function(){
+        const termo = this.value.toLowerCase();
+        card.querySelectorAll('.modelo-opcao-entrega').forEach(opcao=>{
+          opcao.style.display = opcao.dataset.modelo.toLowerCase().includes(termo) ? 'block' : 'none';
+        });
+      });
+      card.querySelectorAll('.modelo-opcao-entrega').forEach(opcao=>{
+        opcao.addEventListener('click', function(event){
+          event.stopPropagation();
+          const modelo = normalizarModelo(this.dataset.modelo);
+          modeloInput.value = modelo;
+          modeloBox.querySelector('span').textContent = modelo;
+          modeloLista.classList.remove('show');
+          if(modelo === 'ES5112/4172'){
+            card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
+            card.querySelector('.cor-btn[data-cor="Black"]').classList.add('active');
+            atualizarTipo(card);
+          } else {
+            atualizarSaldo(card);
+          }
+        });
+      });
+      document.addEventListener('click', function(event){
+        if(!card.contains(event.target)) modeloLista.classList.remove('show');
+      });
       card.querySelectorAll('.tipo-btn').forEach(btn=>{
         btn.addEventListener('click', function(){
           card.querySelectorAll('.tipo-btn').forEach(b=>b.classList.remove('active'));
@@ -658,7 +718,7 @@
             papelWrap.style.display = 'none';
             const modeloInput = card.querySelector('.modelo-input');
             const modelo = (modeloInput?.value || '').trim().toUpperCase();
-            if(['ES5112','ES4172'].includes(modelo)){
+            if(['ES5112','ES4172','ES5112/4172'].includes(modelo)){
               card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
               card.querySelector('.cor-btn[data-cor="Black"]').classList.add('active');
             }
@@ -667,6 +727,7 @@
             card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
             modeloWrap.style.display = 'none';
             card.querySelector('.modelo-input').value = '-';
+            card.querySelector('.modelo-selected-box span').textContent = '-';
             papelWrap.style.display = 'block';
           } else {
             corRow.style.display = 'none';
@@ -681,7 +742,7 @@
         btn.addEventListener('click', function(){
           const modeloInput = this.closest('.item-box').querySelector('.modelo-input');
           const modelo = (modeloInput?.value || '').trim().toUpperCase();
-          if(['ES5112','ES4172'].includes(modelo)){
+          if(['ES5112','ES4172','ES5112/4172'].includes(modelo)){
             // forca apenas Black para monocromaticas
             card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
             card.querySelector('.cor-btn[data-cor="Black"]').classList.add('active');
@@ -693,18 +754,6 @@
           if(!ja) this.classList.add('active');
           atualizarTipo(card);
         });
-      });
-      // Forca Black quando digitar ES5112/ES4172 no modelo
-      card.querySelector('.modelo-input').addEventListener('input', function(){
-        const modelo = (this.value || '').trim().toUpperCase();
-        if(['ES5112','ES4172'].includes(modelo)){
-          const corRow = card.querySelector('.cor-row').parentElement;
-          if(corRow.style.display !== 'none'){
-            card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
-            card.querySelector('.cor-btn[data-cor="Black"]').classList.add('active');
-            atualizarTipo(card);
-          }
-        }
       });
       card.querySelectorAll('.motivo-btn').forEach(btn=>{
         btn.addEventListener('click', function(){
@@ -726,8 +775,6 @@
         });
       });
 
-      card.querySelector('.modelo-input').addEventListener('blur', ()=>atualizarSaldo(card));
-      card.querySelector('.modelo-input').addEventListener('input', ()=>atualizarSaldo(card));
       card.querySelector('.qtd-input').addEventListener('input', ()=>atualizarSaldo(card));
     }
 
@@ -798,6 +845,7 @@
 
     function setModeloEntrada(modelo){
       document.querySelector('.modelo-entrada').value = modelo;
+      document.getElementById('modeloSelectedText').textContent = modelo;
     }
 
     function toggleModelo(header){
@@ -808,38 +856,65 @@
       seta.classList.toggle('girou');
     }
 
+    function abrirListaModelos(){
+      const list = document.getElementById('modeloSelectList');
+      list.classList.toggle('show');
+      if(list.classList.contains('show')){
+        document.getElementById('buscaModelo').value = '';
+        document.getElementById('buscaModelo').focus();
+        filtrarModelos();
+      }
+    }
+
+    function filtrarModelos(){
+      const termo = document.getElementById('buscaModelo').value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const empresas = document.querySelectorAll('#listaModelos .select-item.empresa');
+      const unidades = document.querySelectorAll('#listaModelos .select-item.unidade');
+      unidades.forEach(u => {
+        const texto = (u.dataset.texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        u.style.display = texto.includes(termo) ? 'block' : 'none';
+      });
+      empresas.forEach(e => {
+        const grupo = e.nextElementSibling;
+        const visiveis = grupo.querySelectorAll('.unidade:not([style*="none"])').length;
+        e.style.display = visiveis > 0 ? 'block' : 'none';
+      });
+    }
+
+    function selecionarModelo(el){
+      document.getElementById('modelo-entrada-selecionado').value = el.dataset.modelo;
+      document.getElementById('modeloSelectedText').textContent = el.dataset.texto;
+      document.getElementById('modeloSelectList').classList.remove('show');
+    }
+
+    document.addEventListener('click', function(e){
+      const box = document.getElementById('modeloSelectedBox');
+      const list = document.getElementById('modeloSelectList');
+      if(box && list && !box.contains(e.target) && !list.contains(e.target)){
+        list.classList.remove('show');
+      }
+    });
+
     function atualizarCorEntrada(){
       const tipo = document.querySelector('.tipo-entrada').value;
       const wrap = document.querySelector('.cor-entrada-wrap');
       const modeloWrap = document.getElementById('modelo-entrada-wrap');
-      const botoesWrap = document.getElementById('modelo-botoes-wrap');
-      const hpWrap = document.getElementById('modelo-hp-wrap');
-      const outrosWrap = document.getElementById('modelo-outros-wrap');
       const papelWrap = document.getElementById('unidade-papel-entrada-wrap');
       document.getElementById('qtd-entrada').value = '1';
       if(['Toner','Drum','Drum para Transformar'].includes(tipo)){
         wrap.style.display = 'block';
         modeloWrap.style.display = 'block';
-        botoesWrap.style.display = 'block';
-        hpWrap.style.display = 'block';
-        outrosWrap.style.display = 'block';
         papelWrap.classList.add('d-none');
       } else if(tipo === 'Papel Fotografico'){
         wrap.style.display = 'none';
         document.querySelector('.cor-entrada').value = '';
         modeloWrap.style.display = 'none';
-        document.querySelector('.modelo-entrada').value = '-';
-        botoesWrap.style.display = 'none';
-        hpWrap.style.display = 'none';
-        outrosWrap.style.display = 'none';
+        setModeloEntrada('-');
         papelWrap.classList.remove('d-none');
       } else {
         wrap.style.display = 'none';
         document.querySelector('.cor-entrada').value = '';
         modeloWrap.style.display = 'block';
-        botoesWrap.style.display = 'block';
-        hpWrap.style.display = 'block';
-        outrosWrap.style.display = 'block';
         papelWrap.classList.add('d-none');
       }
     }
@@ -871,12 +946,13 @@
       });
     }
 
-    function abrirAjuste(tipo, modelo, saldo){
+    function abrirAjuste(tipo, modelo, saldo, minimo){
       document.getElementById('ajuste-tipo').value = tipo;
       document.getElementById('ajuste-modelo').value = modelo;
       document.getElementById('ajuste-item-nome').textContent = tipo + (modelo ? ' - ' + modelo : '');
       document.getElementById('ajuste-saldo-atual').textContent = saldo;
       document.getElementById('ajuste-qtd').value = saldo;
+      document.getElementById('ajuste-minimo').value = minimo || 1;
       document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
       document.getElementById('modal-ajuste').classList.add('active');
@@ -1031,6 +1107,7 @@
       const tipo = document.getElementById('ajuste-tipo').value;
       const modelo = document.getElementById('ajuste-modelo').value;
       const qtd = document.getElementById('ajuste-qtd').value;
+      const minimo = document.getElementById('ajuste-minimo').value;
       const motivo = document.getElementById('ajuste-motivo').value;
       const resp = document.getElementById('ajuste-resp').value;
 
@@ -1038,6 +1115,7 @@
       fd.append('tipo_suprimento', tipo);
       fd.append('modelo_impressora', modelo);
       fd.append('quantidade', qtd);
+      fd.append('estoque_minimo', minimo);
       fd.append('motivo', motivo);
       fd.append('responsavel', resp);
 
@@ -1115,7 +1193,6 @@
       const cor = form.querySelector('.cor-entrada').value;
       const modelo = form.querySelector('.modelo-entrada').value;
       let qtd = parseInt(form.querySelector('.qtd-entrada').value || '1');
-      const minimo = form.querySelector('.minimo-entrada').value;
       const resp = form.querySelector('.resp-entrada').value;
       const motivo = form.querySelector('.motivo-entrada').value;
 
@@ -1130,7 +1207,6 @@
       fd.append('cor_selecionada', cor);
       fd.append('modelo_impressora', modelo);
       fd.append('quantidade', qtd);
-      fd.append('estoque_minimo', minimo);
       fd.append('responsavel', resp);
       fd.append('motivo', motivo);
 

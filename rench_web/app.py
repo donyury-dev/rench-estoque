@@ -165,8 +165,51 @@ def _executar_migrations():
             cur.execute(sql)
         except Exception as e:
             print(f"Migration warning: {e}")
+
     db.commit()
     cur.close()
+
+
+def _normalizar_modelos_estoque():
+    db = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            SELECT id, tipo_suprimento, modelo_impressora, quantidade, estoque_minimo
+            FROM estoque
+            WHERE modelo_impressora IN ('5112', 'ES5112', '4172', 'ES4172', '5112/4172', 'ES5112/4172')
+            ORDER BY id
+        """)
+        itens_modelo_compartilhado = cur.fetchall()
+        grupos = {}
+        for item in itens_modelo_compartilhado:
+            grupos.setdefault(item['tipo_suprimento'], []).append(item)
+        for itens in grupos.values():
+            destino = next((item for item in itens if item['modelo_impressora'] == 'ES5112/4172'), itens[0])
+            ids_origem = [item['id'] for item in itens if item['id'] != destino['id']]
+            quantidade_total = sum(int(item['quantidade'] or 0) for item in itens)
+            estoque_minimo = max(int(item['estoque_minimo'] or 0) for item in itens)
+            cur.execute(
+                "UPDATE estoque SET modelo_impressora='ES5112/4172', quantidade=%s, estoque_minimo=%s WHERE id=%s",
+                (quantidade_total, estoque_minimo, destino['id'])
+            )
+            for estoque_id in ids_origem:
+                cur.execute(
+                    "UPDATE estoque_movimentacoes SET estoque_id=%s WHERE estoque_id=%s",
+                    (destino['id'], estoque_id)
+                )
+                cur.execute("DELETE FROM estoque WHERE id=%s", (estoque_id,))
+        cur.execute("""
+            UPDATE suprimentos_itens
+            SET modelo_impressora='ES5112/4172'
+            WHERE modelo_impressora IN ('5112', 'ES5112', '4172', 'ES4172', '5112/4172')
+        """)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Migration warning: {e}")
+    finally:
+        cur.close()
 
 def init_db():
     db = get_db()
@@ -321,6 +364,7 @@ def init_db():
     cur.close()
 
     _executar_migrations()
+    _normalizar_modelos_estoque()
 
     db = get_db()
     cur = db.cursor()
@@ -430,6 +474,8 @@ def _chave_estoque(tipo_suprimento, modelo_impressora):
     if tipo == 'Papel Fotografico':
         return tipo, '-'
     modelo = (modelo_impressora or '').strip().upper()
+    if modelo in ('5112', 'ES5112', '4172', 'ES4172', '5112/4172'):
+        modelo = 'ES5112/4172'
     return tipo, modelo
 
 
@@ -1553,7 +1599,21 @@ def suprimento_mobile():
         unidade_id = request.form['unidade_id']
         data_entrega = request.form['data_entrega']
         responsavel = request.form.get('responsavel')
-        observacoes = request.form.get('observacoes')
+        observacoes = request.form.get('observacoes', '').strip()
+        if not observacoes:
+            flash('Informe a observação da entrega.', 'danger')
+            cur.execute("""
+                SELECT emp.id as empresa_id, emp.nome as empresa_nome,
+                       u.id as unidade_id, u.nome as unidade_nome
+                FROM empresas emp
+                LEFT JOIN unidades u ON u.empresa_id = emp.id AND u.ativo=1
+                WHERE emp.ativo=1
+                ORDER BY emp.tipo DESC, emp.nome, u.nome
+            """)
+            locais = cur.fetchall()
+            cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade, estoque_minimo FROM estoque ORDER BY tipo_suprimento, modelo_impressora")
+            estoque = cur.fetchall()
+            return render_template('suprimento_mobile.html', locais=locais, hoje=data_entrega, estoque=estoque, aba='entrega')
 
         cur.execute("""
             INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes)
@@ -1644,7 +1704,10 @@ def novo_suprimento():
         unidade_id = request.form['unidade_id']
         data_entrega = request.form['data_entrega']
         responsavel = request.form.get('responsavel')
-        observacoes = request.form.get('observacoes')
+        observacoes = request.form.get('observacoes', '').strip()
+        if not observacoes:
+            flash('Informe a observação da entrega.', 'danger')
+            return redirect(url_for('novo_suprimento'))
 
         cur.execute("""
             INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes)
@@ -1905,7 +1968,6 @@ def estoque_entrada():
         cor = request.form.get('cor_selecionada', '').strip()
         modelo = request.form.get('modelo_impressora', '').strip().upper()
         quantidade = int(request.form.get('quantidade') or 0)
-        estoque_minimo = int(request.form.get('estoque_minimo') or 1)
         motivo = request.form.get('motivo', '').strip() or None
         responsavel = request.form.get('responsavel', '').strip() or session.get('usuario')
 
@@ -1916,10 +1978,6 @@ def estoque_entrada():
         tipo_final = f"{tipo} {cor}".strip() if cor else tipo
         estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo_final, modelo)
 
-        cur.execute(
-            "UPDATE estoque SET estoque_minimo=%s WHERE id=%s",
-            (estoque_minimo, estoque_id)
-        )
         movimentar_estoque(
             cur, estoque_id, 'entrada', quantidade, saldo,
             motivo=motivo or 'Entrada manual de estoque',
@@ -2096,16 +2154,25 @@ def api_estoque_ajuste():
     cor = request.form.get('cor_selecionada', '').strip()
     modelo = request.form.get('modelo_impressora', '').strip().upper()
     nova_qtd = int(request.form.get('quantidade') or 0)
+    estoque_minimo = request.form.get('estoque_minimo')
     motivo = request.form.get('motivo', '').strip() or 'Ajuste via app mobile'
     responsavel = request.form.get('responsavel', '').strip() or session.get('usuario')
 
-    if not tipo or nova_qtd < 0:
-        return jsonify({'erro': 'Informe o tipo e uma quantidade válida.'}), 400
+    try:
+        minimo_valor = int(estoque_minimo) if estoque_minimo is not None else None
+    except (TypeError, ValueError):
+        return jsonify({'erro': 'Informe um estoque mínimo válido.'}), 400
+
+    if not tipo or nova_qtd < 0 or (minimo_valor is not None and minimo_valor < 0):
+        return jsonify({'erro': 'Informe o tipo e quantidades válidas.'}), 400
 
     tipo_final = f"{tipo} {cor}".strip() if cor else tipo
     db = get_db()
     cur = db.cursor()
     estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo_final, modelo)
+
+    if minimo_valor is not None:
+        cur.execute("UPDATE estoque SET estoque_minimo=%s WHERE id=%s", (minimo_valor, estoque_id))
 
     diferenca = nova_qtd - saldo
     tipo_movimento = 'ajuste'
@@ -2143,7 +2210,6 @@ def api_estoque_entrada():
     cor = request.form.get('cor_selecionada', '').strip()
     modelo = request.form.get('modelo_impressora', '').strip().upper()
     quantidade = int(request.form.get('quantidade') or 0)
-    estoque_minimo = int(request.form.get('estoque_minimo') or 1)
     motivo = request.form.get('motivo', '').strip() or None
     responsavel = request.form.get('responsavel', '').strip() or session.get('usuario')
 
@@ -2154,7 +2220,6 @@ def api_estoque_entrada():
     db = get_db()
     cur = db.cursor()
     estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo_final, modelo)
-    cur.execute("UPDATE estoque SET estoque_minimo=%s WHERE id=%s", (estoque_minimo, estoque_id))
     movimentar_estoque(
         cur, estoque_id, 'entrada', quantidade, saldo,
         motivo=motivo or 'Entrada via app mobile',

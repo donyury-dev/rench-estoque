@@ -43,7 +43,7 @@
         </div>
         <div class="mb-0">
           <label class="form-label fw-bold">Observações gerais</label>
-          <textarea class="form-control" name="observacoes" rows="4" placeholder="Ex: atendimento urgente, chamado #123..."></textarea>
+          <textarea class="form-control" name="observacoes" rows="4" placeholder="Ex: atendimento urgente, chamado #123..." required></textarea>
         </div>
       </div>
     </div>
@@ -76,7 +76,7 @@
             </div>
             <div class="col-md-2 cor-wrap">
               <label class="form-label small fw-bold">Cor</label>
-              <select class="form-select cor-select" name="cor_selecionada[]">
+              <select class="form-select cor-select" name="cor_selecionada[]" onchange="sincronizarCor(this)">
                 <option value="" selected>-</option>
                 <option value="Black">Black</option>
                 <option value="Ciano">Ciano</option>
@@ -86,7 +86,7 @@
             </div>
             <div class="col-md-2 modelo-wrap">
               <label class="form-label small fw-bold">Modelo</label>
-              <input type="text" class="form-control modelo-input" name="modelo_impressora[]" placeholder="Ex: C711" oninput="this.value = this.value.toUpperCase(); atualizarCorMonocromatica(this)">
+              <input type="text" class="form-control modelo-input" name="modelo_impressora[]" placeholder="Selecione..." list="modelos-suprimentos" onblur="normalizarCampoModelo(this)" oninput="atualizarCorMonocromatica(this)">
             </div>
             <div class="col-md-2 qtd-wrap">
               <label class="form-label small fw-bold">Qtd</label>
@@ -134,12 +134,32 @@
     </div>
   </div>
 </form>
+<datalist id="modelos-suprimentos">
+  {% for modelo in ['C711','ES5112/4172','ES8473','MC573','C831','C911','408','4103','479','4303','428','PARA TRANSFORMAR'] %}
+  <option value="{{modelo}}">
+  {% endfor %}
+</datalist>
 {% endblock %}
 
 {% block scripts %}
 <script>
 const container = document.getElementById('itens-container');
 const template = container.innerHTML.trim();
+
+function normalizarModelo(modelo){
+  const valor = (modelo || '').trim().toUpperCase();
+  if(['5112','ES5112','4172','ES4172','5112/4172'].includes(valor)) return 'ES5112/4172';
+  return valor;
+}
+
+function normalizarCampoModelo(input){
+  input.value = normalizarModelo(input.value);
+  atualizarCorMonocromatica(input);
+}
+
+function sincronizarCor(select){
+  select.disabled = false;
+}
 
 function toggleMotivoOutro(sel){
   const row = sel.closest('.item-row');
@@ -175,10 +195,11 @@ function adicionarItem(){
 
 function atualizarCorMonocromatica(input){
   const row = input.closest('.item-row');
-  const modelo = input.value.trim().toUpperCase();
+  const modelo = normalizarModelo(input.value);
+  input.value = modelo;
   const cor = row.querySelector('.cor-select');
   const tipo = row.querySelector('.tipo-select').value;
-  if(['Toner','Drum','Drum para Transformar'].includes(tipo) && ['ES5112','ES4172'].includes(modelo)){
+  if(['Toner','Drum','Drum para Transformar'].includes(tipo) && ['ES5112','ES4172','ES5112/4172'].includes(modelo)){
     cor.value = 'Black';
     cor.disabled = true;
   } else {
@@ -223,8 +244,11 @@ function atualizarLinha(sel){
 // ao enviar, combina tipo + cor se houver e converte papel para folhas
 document.getElementById('form-suprimento').addEventListener('submit', function(e){
   container.querySelectorAll('.item-row').forEach(row => {
+    normalizarCampoModelo(row.querySelector('.modelo-input'));
     const tipo = row.querySelector('[name="tipo_suprimento[]"]').value;
-    const cor = row.querySelector('[name="cor_selecionada[]"]').value;
+    const corSelect = row.querySelector('[name="cor_selecionada[]"]');
+    const cor = corSelect.value;
+    corSelect.disabled = false;
     const inputTipo = row.querySelector('[name="tipo_suprimento[]"]');
     if(cor && ['Toner','Drum','Drum para Transformar'].includes(tipo)) inputTipo.value = tipo + ' ' + cor;
 
