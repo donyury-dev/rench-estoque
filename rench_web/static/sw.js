@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rench-estoque-v3';
+const CACHE_NAME = 'rench-estoque-v4';
 const URLS_TO_CACHE = [
   '/suprimentos/mobile?v=3',
   '/static/manifest.json?v=3',

@@ -694,14 +694,20 @@
 
     async function atualizarSaldo(card){
       const tipoInput = card.querySelector('.tipo-input');
+      const corInput = card.querySelector('.cor-input');
       const modeloInput = card.querySelector('.modelo-input');
       const qtdInput = card.querySelector('.qtd-input');
       const saldoInfo = card.querySelector('.saldo-info');
       const saldoBadge = card.querySelector('.saldo-badge');
 
-      const tipo = (tipoInput?.value || '').trim();
+      let tipo = (tipoInput?.value || '').trim();
+      const cor = (corInput?.value || '').trim();
       const modelo = (modeloInput?.value || '').trim().toUpperCase();
       const qtd = parseInt(qtdInput?.value || 1);
+
+      if(cor && tipo !== 'Papel Fotografico'){
+        tipo = `${tipo} ${cor}`;
+      }
 
       if(!tipo){
         saldoInfo.style.display = 'none';
