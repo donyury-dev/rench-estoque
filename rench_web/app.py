@@ -2412,6 +2412,23 @@ def relatorio_mensal():
         entregas=resultado_entregas)
 
 
+@app.route('/debug/ultimas-entregas')
+@login_required
+def debug_ultimas_entregas():
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        SELECT se.id, se.data_entrega, u.nome as unidade_nome,
+               si.tipo_suprimento, si.quantidade, si.motivo_padrao, si.defeito, si.motivo
+        FROM suprimentos_entregas se
+        JOIN unidades u ON u.id = se.unidade_id
+        LEFT JOIN suprimentos_itens si ON si.entrega_id = se.id
+        ORDER BY se.id DESC LIMIT 10
+    """)
+    rows = cur.fetchall()
+    return jsonify({'ultimas': [dict(r) for r in rows]})
+
+
 @app.route('/debug/entrega/<int:entrega_id>')
 @login_required
 def debug_entrega(entrega_id):
