@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Auditoria de Estoque - RENCH{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Auditoria de Estoque</h1>
+    <p class="text-muted mb-0">Histórico de todas as alterações no estoque com responsável e motivo</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-primary">
+      <i class="bi bi-box-seam me-1"></i> Voltar ao Estoque
+    </a>
+  </div>
+</div>
+
+<ul class="nav nav-tabs mb-4" style="border-bottom:1px solid var(--primary-borda);">
+  <li class="nav-item">
+    <a class="nav-link" href="{{url_for('controle_estoque')}}" style="color:var(--primary);">
+      <i class="bi bi-box-seam me-1"></i> Saldos
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{{url_for('lista_suprimentos')}}" style="color:var(--primary);">
+      <i class="bi bi-arrow-up-right-circle me-1"></i> Entregas / Histórico de Saídas
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link active fw-bold" href="{{url_for('estoque_auditoria')}}" style="color:var(--primary);border-color:var(--primary-borda) var(--primary-borda) #fff;">
+      <i class="bi bi-shield-check me-1"></i> Auditoria
+    </a>
+  </li>
+</ul>
+
+<div class="card p-3 mb-4">
+  <form method="GET" class="row g-3 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label">Buscar</label>
+      <input type="text" class="form-control" name="busca" value="{{busca}}" placeholder="Tipo, modelo, responsável...">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Movimento</label>
+      <select class="form-select" name="tipo">
+        <option value="" {% if not tipo_movimento %}selected{% endif %}>Todos</option>
+        <option value="entrada" {% if tipo_movimento=='entrada' %}selected{% endif %}>Entrada</option>
+        <option value="saida" {% if tipo_movimento=='saida' %}selected{% endif %}>Saída</option>
+        <option value="ajuste" {% if tipo_movimento=='ajuste' %}selected{% endif %}>Ajuste</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-rench-primary w-100">
+        <i class="bi bi-search me-1"></i> Filtrar
+      </button>
+    </div>
+  </form>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Data / Hora</th>
+        <th>Movimento</th>
+        <th>Suprimento</th>
+        <th>Qtd</th>
+        <th>Saldo Antes</th>
+        <th>Saldo Depois</th>
+        <th>Motivo</th>
+        <th>Responsável</th>
+        <th>Unidade / Empresa</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in movimentacoes %}
+      <tr>
+        <td nowrap>{{m.data_movimento}}</td>
+        <td>
+          {% if m.tipo_movimento == 'entrada' %}
+            <span class="badge bg-success">Entrada</span>
+          {% elif m.tipo_movimento == 'saida' %}
+            <span class="badge bg-danger">Saída</span>
+          {% else %}
+            <span class="badge bg-warning text-dark">Ajuste</span>
+          {% endif %}
+        </td>
+        <td>
+          <strong>{{m.tipo_suprimento}}</strong>
+          {% if m.modelo_impressora %}<br><small class="text-muted">{{m.modelo_impressora}}</small>{% endif %}
+          {% if m.marca %}<br><small class="text-muted">{{m.marca}}</small>{% endif %}
+        </td>
+        <td class="fw-bold {{ 'text-success' if m.quantidade > 0 else 'text-danger' }}">
+          {{ '+' if m.quantidade > 0 else '' }}{{m.quantidade}}
+        </td>
+        <td>{{m.saldo_antes}}</td>
+        <td>{{m.saldo_depois}}</td>
+        <td>{{m.motivo or '-'}}</td>
+        <td>{{m.responsavel or '-'}}</td>
+        <td>
+          {% if m.unidade_nome %}
+            {{m.unidade_nome}}<br><small class="text-muted">{{m.empresa_nome}}</small>
+          {% else %}
+            -
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="9" class="text-center text-muted py-4">Nenhuma alteração encontrada.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

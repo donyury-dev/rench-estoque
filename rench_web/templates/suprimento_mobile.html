@@ -160,6 +160,9 @@
       <button type="button" class="nav-tab {{'active' if aba=='historico' else ''}}" onclick="mostrarAba('historico')">
         <i class="bi bi-clock-history"></i> Histórico
       </button>
+      <button type="button" class="nav-tab {{'active' if aba=='auditoria' else ''}}" onclick="mostrarAba('auditoria')">
+        <i class="bi bi-shield-check"></i> Auditoria
+      </button>
     </div>
 
     <main>
@@ -459,6 +462,34 @@
         </div>
       </div>
 
+      <!-- ABA AUDITORIA -->
+      <div id="aba-auditoria" class="tab-content {{'active' if aba=='auditoria' else ''}}">
+        <div class="scroll-area">
+          <div class="card">
+            <div class="card-title"><i class="bi bi-shield-check"></i> Auditoria de alterações</div>
+            <div class="mb-2">
+              <label>Buscar</label>
+              <input type="text" id="auditoria-busca" class="search-input" placeholder="Tipo, modelo, responsável..." onkeyup="carregarAuditoria()">
+            </div>
+            <div class="mb-2">
+              <label>Movimento</label>
+              <select id="auditoria-tipo" onchange="carregarAuditoria()">
+                <option value="">Todos</option>
+                <option value="entrada">Entrada</option>
+                <option value="saida">Saída</option>
+                <option value="ajuste">Ajuste</option>
+              </select>
+            </div>
+            <button type="button" class="btn-block mb-3" onclick="carregarAuditoria()">
+              <i class="bi bi-search"></i> Buscar
+            </button>
+            <div id="auditoria-resultado">
+              <div class="hist-empty">Clique em buscar para ver as alterações.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- MODAL DE AJUSTE -->
       <div id="modal-ajuste" class="tab-content">
         <form id="form-ajuste-mobile" onsubmit="return salvarAjuste(event)">
@@ -489,8 +520,8 @@
                 <input type="text" id="ajuste-motivo" placeholder="Ex: inventário, correção" required>
               </div>
               <div class="mb-0">
-                <label>Responsável</label>
-                <input type="text" id="ajuste-resp" placeholder="Seu nome">
+                <label>Responsável *</label>
+                <input type="text" id="ajuste-resp" placeholder="Seu nome" required>
               </div>
             </div>
           </div>
@@ -1174,9 +1205,10 @@
         data.entregas.forEach(ent => {
           let itensHtml = '';
           ent.itens.forEach(item => {
+            const motivoItem = item.motivo ? ` (${item.motivo})` : '';
             itensHtml += `
               <div class="item-row">
-                <span class="item-nome">${item.nome}</span>
+                <span class="item-nome">${item.nome}${motivoItem}</span>
                 <span class="item-qtd">${item.quantidade}x</span>
               </div>
             `;
@@ -1207,14 +1239,69 @@
       }
     }
 
+    async function carregarAuditoria(){
+      const busca = document.getElementById('auditoria-busca').value.trim();
+      const tipo = document.getElementById('auditoria-tipo').value;
+      const container = document.getElementById('auditoria-resultado');
+      container.innerHTML = '<div class="hist-empty">Carregando...</div>';
+
+      try{
+        let url = `/api/auditoria/estoque?limite=100&_=${Date.now()}`;
+        if(tipo) url += `&tipo_movimento=${encodeURIComponent(tipo)}`;
+        if(busca) url += `&busca=${encodeURIComponent(busca)}`;
+        const r = await fetch(url);
+        const data = await r.json();
+        if(!r.ok){
+          container.innerHTML = `<div class="hist-empty">${data.erro || 'Erro'}</div>`;
+          return;
+        }
+        if(!data.movimentacoes || data.movimentacoes.length === 0){
+          container.innerHTML = '<div class="hist-empty">Nenhuma alteração encontrada.</div>';
+          return;
+        }
+        let html = '';
+        data.movimentacoes.forEach(m => {
+          const sinal = m.quantidade > 0 ? '+' : '';
+          const classe = m.tipo_movimento === 'saida' ? 'saida' : (m.tipo_movimento === 'ajuste' ? 'ajuste' : 'entrada');
+          const nome = m.tipo_movimento === 'entrada' ? 'Entrada' : (m.tipo_movimento === 'saida' ? 'Saída' : 'Ajuste');
+          html += `
+            <div class="hist-item">
+              <div class="top">
+                <span class="tipo">${nome}</span>
+                <span class="qtd ${classe}">${sinal}${m.quantidade}</span>
+              </div>
+              <div class="info">
+                <strong>${m.tipo_suprimento}</strong>${m.modelo_impressora ? ' - ' + m.modelo_impressora : ''}${m.marca ? ' (' + m.marca + ')' : ''}<br>
+                Saldo: ${m.saldo_antes} → ${m.saldo_depois}<br>
+                <strong>Motivo:</strong> ${m.motivo || '-'}<br>
+                <span style="color:#999;">${m.data_movimento}${m.responsavel ? ' | Resp: ' + m.responsavel : ''}</span>
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      } catch(err){
+        container.innerHTML = '<div class="hist-empty">Erro de conexão.</div>';
+      }
+    }
+
     async function salvarAjuste(e){
       e.preventDefault();
       const tipo = document.getElementById('ajuste-tipo').value;
       const modelo = document.getElementById('ajuste-modelo').value;
       const qtd = document.getElementById('ajuste-qtd').value;
       const minimo = document.getElementById('ajuste-minimo').value;
-      const motivo = document.getElementById('ajuste-motivo').value;
-      const resp = document.getElementById('ajuste-resp').value;
+      const motivo = document.getElementById('ajuste-motivo').value.trim();
+      const resp = document.getElementById('ajuste-resp').value.trim();
+
+      if(!motivo){
+        alert('Informe o motivo do ajuste.');
+        return;
+      }
+      if(!resp){
+        alert('Informe o responsável pelo ajuste.');
+        return;
+      }
 
       const fd = new FormData();
       fd.append('tipo_suprimento', tipo);

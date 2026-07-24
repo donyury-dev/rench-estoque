@@ -116,7 +116,7 @@
     <a class="nav-link {{'active' if request.endpoint=='acesso_remoto' else ''}}" href="{{url_for('acesso_remoto')}}">
       <i class="bi bi-laptop"></i> Acesso Remoto
     </a>
-    <a class="nav-link {{'active' if request.endpoint in ('lista_suprimentos','novo_suprimento','suprimento_mobile','controle_estoque','estoque_entrada','estoque_ajuste','estoque_historico','lista_modelos_impressora','novo_modelo_impressora','editar_modelo_impressora') else ''}}" href="{{url_for('controle_estoque')}}">
+    <a class="nav-link {{'active' if request.endpoint in ('lista_suprimentos','novo_suprimento','suprimento_mobile','controle_estoque','estoque_entrada','estoque_ajuste','estoque_historico','estoque_auditoria','lista_modelos_impressora','novo_modelo_impressora','editar_modelo_impressora') else ''}}" href="{{url_for('controle_estoque')}}">
       <i class="bi bi-box-seam"></i> Estoque
     </a>
     <a class="nav-link {{'active' if request.endpoint in ('lista_modelos_impressora','novo_modelo_impressora','editar_modelo_impressora') else ''}}" href="{{url_for('lista_modelos_impressora')}}">

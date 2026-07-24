@@ -2278,11 +2278,19 @@ def estoque_entrada():
         modelo = request.form.get('modelo_impressora', '').strip().upper()
         marca = request.form.get('marca', '').strip() or None
         quantidade = int(request.form.get('quantidade') or 0)
-        motivo = request.form.get('motivo', '').strip() or None
-        responsavel = request.form.get('responsavel', '').strip() or session.get('usuario')
+        motivo = request.form.get('motivo', '').strip()
+        responsavel = request.form.get('responsavel', '').strip()
 
         if not tipo or quantidade <= 0:
             flash('Informe o tipo e a quantidade.', 'danger')
+            return redirect(url_for('estoque_entrada'))
+
+        if not motivo:
+            flash('Informe o motivo da entrada.', 'danger')
+            return redirect(url_for('estoque_entrada'))
+
+        if not responsavel:
+            flash('Informe o responsável pela entrada.', 'danger')
             return redirect(url_for('estoque_entrada'))
 
         tipo_final = f"{tipo} {cor}".strip() if cor else tipo
@@ -2328,8 +2336,16 @@ def estoque_ajuste(estoque_id):
     if request.method == 'POST':
         nova_qtd = int(request.form.get('quantidade') or 0)
         estoque_minimo = int(request.form.get('estoque_minimo') or item['estoque_minimo'])
-        motivo = request.form.get('motivo', '').strip() or 'Ajuste manual'
-        responsavel = request.form.get('responsavel', '').strip() or session.get('usuario')
+        motivo = request.form.get('motivo', '').strip()
+        responsavel = request.form.get('responsavel', '').strip()
+
+        if not motivo:
+            flash('Informe o motivo do ajuste.', 'danger')
+            return redirect(url_for('estoque_ajuste', estoque_id=estoque_id))
+
+        if not responsavel:
+            flash('Informe o responsável pelo ajuste.', 'danger')
+            return redirect(url_for('estoque_ajuste', estoque_id=estoque_id))
 
         if nova_qtd < 0:
             flash('Quantidade nao pode ser negativa.', 'danger')
@@ -2353,6 +2369,70 @@ def estoque_ajuste(estoque_id):
         return redirect(url_for('controle_estoque'))
 
     return render_template('estoque_ajuste.html', item=item)
+
+
+@app.route('/estoque/auditoria')
+@login_required
+def estoque_auditoria():
+    db = get_db()
+    cur = db.cursor()
+
+    tipo_movimento = request.args.get('tipo', '').strip()
+    busca = request.args.get('busca', '').strip()
+
+    sql = """
+        SELECT em.id, em.tipo_movimento, em.quantidade, em.saldo_antes, em.saldo_depois,
+               em.motivo, em.responsavel, em.data_movimento,
+               e.tipo_suprimento, e.modelo_impressora, e.marca,
+               u.nome as unidade_nome, emp.nome as empresa_nome
+        FROM estoque_movimentacoes em
+        JOIN estoque e ON e.id = em.estoque_id
+        LEFT JOIN suprimentos_entregas se ON se.id = em.entrega_id
+        LEFT JOIN unidades u ON u.id = se.unidade_id
+        LEFT JOIN empresas emp ON emp.id = u.empresa_id
+        WHERE 1=1
+    """
+    params = []
+
+    if tipo_movimento:
+        sql += " AND em.tipo_movimento=%s"
+        params.append(tipo_movimento)
+
+    if busca:
+        termo = f"%{busca}%"
+        sql += """ AND (
+            e.tipo_suprimento ILIKE %s
+            OR e.modelo_impressora ILIKE %s
+            OR em.responsavel ILIKE %s
+            OR em.motivo ILIKE %s
+        )"""
+        params.extend([termo, termo, termo, termo])
+
+    sql += " ORDER BY em.data_movimento DESC, em.id DESC LIMIT 200"
+
+    cur.execute(sql, params)
+    rows = cur.fetchall()
+
+    movimentacoes = []
+    for r in rows:
+        movimentacoes.append({
+            'id': r['id'],
+            'tipo_movimento': r['tipo_movimento'],
+            'quantidade': r['quantidade'],
+            'saldo_antes': r['saldo_antes'],
+            'saldo_depois': r['saldo_depois'],
+            'motivo': r['motivo'],
+            'responsavel': r['responsavel'],
+            'tipo_suprimento': r['tipo_suprimento'],
+            'modelo_impressora': r['modelo_impressora'],
+            'marca': r['marca'],
+            'unidade_nome': r['unidade_nome'],
+            'empresa_nome': r['empresa_nome'],
+            'data_movimento': r['data_movimento'].strftime('%d/%m/%Y %H:%M') if r['data_movimento'] else None
+        })
+
+    return render_template('estoque_auditoria.html', movimentacoes=movimentacoes,
+                           tipo_movimento=tipo_movimento, busca=busca)
 
 
 @app.route('/estoque/historico/<int:estoque_id>')
@@ -2509,6 +2589,71 @@ def api_suprimentos_historico():
     return jsonify({'entregas': resultado})
 
 
+@app.route('/api/auditoria/estoque')
+@login_required
+def api_auditoria_estoque():
+    db = get_db()
+    cur = db.cursor()
+
+    limite = request.args.get('limite', 100, type=int)
+    tipo_movimento = request.args.get('tipo_movimento', '').strip()
+    busca = request.args.get('busca', '').strip()
+
+    sql = """
+        SELECT em.id, em.tipo_movimento, em.quantidade, em.saldo_antes, em.saldo_depois,
+               em.motivo, em.responsavel, em.data_movimento,
+               e.tipo_suprimento, e.modelo_impressora, e.marca,
+               u.nome as unidade_nome, emp.nome as empresa_nome
+        FROM estoque_movimentacoes em
+        JOIN estoque e ON e.id = em.estoque_id
+        LEFT JOIN suprimentos_entregas se ON se.id = em.entrega_id
+        LEFT JOIN unidades u ON u.id = se.unidade_id
+        LEFT JOIN empresas emp ON emp.id = u.empresa_id
+        WHERE 1=1
+    """
+    params = []
+
+    if tipo_movimento:
+        sql += " AND em.tipo_movimento=%s"
+        params.append(tipo_movimento)
+
+    if busca:
+        termo = f"%{busca}%"
+        sql += """ AND (
+            e.tipo_suprimento ILIKE %s
+            OR e.modelo_impressora ILIKE %s
+            OR em.responsavel ILIKE %s
+            OR em.motivo ILIKE %s
+        )"""
+        params.extend([termo, termo, termo, termo])
+
+    sql += " ORDER BY em.data_movimento DESC, em.id DESC LIMIT %s"
+    params.append(limite)
+
+    cur.execute(sql, params)
+    rows = cur.fetchall()
+
+    movimentacoes = []
+    for r in rows:
+        movimentacoes.append({
+            'id': r['id'],
+            'tipo_movimento': r['tipo_movimento'],
+            'quantidade': r['quantidade'],
+            'saldo_antes': r['saldo_antes'],
+            'saldo_depois': r['saldo_depois'],
+            'motivo': r['motivo'],
+            'responsavel': r['responsavel'],
+            'tipo_suprimento': r['tipo_suprimento'],
+            'modelo_impressora': r['modelo_impressora'],
+            'marca': r['marca'],
+            'unidade_nome': r['unidade_nome'],
+            'empresa_nome': r['empresa_nome'],
+            'data_movimento': r['data_movimento'].strftime('%d/%m/%Y %H:%M') if r['data_movimento'] else None
+        })
+
+    return jsonify({'movimentacoes': movimentacoes})
+
+
 @app.route('/api/estoque/ajuste', methods=['POST'])
 @login_required
 def api_estoque_ajuste():
@@ -2518,8 +2663,8 @@ def api_estoque_ajuste():
     marca = request.form.get('marca', '').strip() or None
     nova_qtd = int(request.form.get('quantidade') or 0)
     estoque_minimo = request.form.get('estoque_minimo')
-    motivo = request.form.get('motivo', '').strip() or 'Ajuste via app mobile'
-    responsavel = request.form.get('responsavel', '').strip() or session.get('usuario')
+    motivo = request.form.get('motivo', '').strip()
+    responsavel = request.form.get('responsavel', '').strip()
 
     try:
         minimo_valor = int(estoque_minimo) if estoque_minimo is not None else None
@@ -2528,6 +2673,12 @@ def api_estoque_ajuste():
 
     if not tipo or nova_qtd < 0 or (minimo_valor is not None and minimo_valor < 0):
         return jsonify({'erro': 'Informe o tipo e quantidades válidas.'}), 400
+
+    if not motivo:
+        return jsonify({'erro': 'Informe o motivo do ajuste.'}), 400
+
+    if not responsavel:
+        return jsonify({'erro': 'Informe o responsável pelo ajuste.'}), 400
 
     tipo_final = f"{tipo} {cor}".strip() if cor else tipo
     db = get_db()
@@ -2739,8 +2890,8 @@ def api_estoque_entrada():
     modelo = request.form.get('modelo_impressora', '').strip().upper()
     marca = request.form.get('marca', '').strip() or None
     quantidade = int(request.form.get('quantidade') or 0)
-    motivo = request.form.get('motivo', '').strip() or None
-    responsavel = request.form.get('responsavel', '').strip() or session.get('usuario')
+    motivo = request.form.get('motivo', '').strip()
+    responsavel = request.form.get('responsavel', '').strip()
 
     if not tipo or quantidade <= 0:
         return jsonify({'erro': 'Informe o tipo e a quantidade.'}), 400
@@ -2749,6 +2900,12 @@ def api_estoque_entrada():
     tipo_base = _remover_acentos(tipo_final.upper())
     if tipo_base != 'PAPEL FOTOGRAFICO' and not modelo:
         return jsonify({'erro': 'Informe o modelo da impressora.'}), 400
+
+    if not motivo:
+        return jsonify({'erro': 'Informe o motivo da entrada.'}), 400
+
+    if not responsavel:
+        return jsonify({'erro': 'Informe o responsável pela entrada.'}), 400
     db = get_db()
     cur = db.cursor()
     estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo_final, modelo, marca)
