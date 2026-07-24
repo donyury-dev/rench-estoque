@@ -2334,7 +2334,7 @@ def controle_estoque():
             continue
         resultado.append({**item, 'status': st})
 
-    # Agrupar por modelo e, quando houver marca, separar
+    # Agrupar por modelo (sem separar por marca)
     grupos = {}
     for r in resultado:
         modelo = (r['modelo_impressora'] or '').strip()
@@ -2342,15 +2342,11 @@ def controle_estoque():
             continue
         if modelo == '-':
             modelo = 'Papel Fotográfico'
-        if r.get('marca'):
-            chave = f"{modelo} - {r['marca']}"
-        else:
-            chave = modelo
-        grupos.setdefault(chave, []).append(r)
+        grupos.setdefault(modelo, []).append(r)
 
-    # Ordenar por modelo, depois por tipo
+    # Ordenar por modelo, depois por tipo e marca
     for chave in grupos:
-        grupos[chave].sort(key=lambda x: (x['modelo_impressora'] or '', x['tipo_suprimento']))
+        grupos[chave].sort(key=lambda x: (x['modelo_impressora'] or '', x['tipo_suprimento'], x['marca'] or ''))
 
     resumo = {'ok': 0, 'baixo': 0, 'zerado': 0}
     for r in resultado:

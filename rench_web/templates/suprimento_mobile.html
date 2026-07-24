@@ -249,11 +249,10 @@
                 {% set modelo_raw = (e.modelo_impressora or '').strip() %}
                 {% if modelo_raw %}
                   {% set modelo = 'Papel Fotográfico' if modelo_raw == '-' else modelo_raw %}
-                  {% set chave = modelo + (' - ' + e.marca if e.marca else '') %}
-                  {% if chave not in modelos %}
-                    {% set _ = modelos.update({chave: []}) %}
+                  {% if modelo not in modelos %}
+                    {% set _ = modelos.update({modelo: []}) %}
                   {% endif %}
-                  {% set _ = modelos[chave].append(e) %}
+                  {% set _ = modelos[modelo].append(e) %}
                 {% endif %}
               {% endfor %}
 
