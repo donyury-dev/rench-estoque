@@ -604,12 +604,12 @@ def _modelo_com_marca(tipo_suprimento, modelo_impressora):
 def _remover_acentos(texto):
     if texto is None:
         return ''
+    import unicodedata
     texto = str(texto)
-    mapa = str.maketrans(
-        'ÁÀÂÃÄáàâãäÉÈÊËéèêëÍÌÎÏíìîïÓÒÔÕÖóòôõöÚÙÛÜúùûüÇçÑñ',
-        'AAAAAaaaaaEEEEEeeeeeIIIIIiiiiiOOOOOoooooUUUUUuuuuuCcNn'
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', texto)
+        if unicodedata.category(c) != 'Mn'
     )
-    return texto.translate(mapa)
 
 
 def _chave_estoque(tipo_suprimento, modelo_impressora, marca=None):
