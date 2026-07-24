@@ -2669,6 +2669,9 @@ def api_estoque_entrada():
         return jsonify({'erro': 'Informe o tipo e a quantidade.'}), 400
 
     tipo_final = f"{tipo} {cor}".strip() if cor else tipo
+    tipo_base = _remover_acentos(tipo_final.upper())
+    if tipo_base != 'PAPEL FOTOGRAFICO' and not modelo:
+        return jsonify({'erro': 'Informe o modelo da impressora.'}), 400
     db = get_db()
     cur = db.cursor()
     estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo_final, modelo, marca)
