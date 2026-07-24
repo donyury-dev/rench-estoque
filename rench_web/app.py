@@ -462,6 +462,51 @@ def _separar_drum_5112_por_marca():
         cur.close()
 
 
+def _separar_drum_para_transformar():
+    db = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            SELECT id, quantidade FROM estoque
+            WHERE tipo_suprimento = 'Drum para Transformar' AND modelo_impressora = 'PARA TRANSFORMAR' AND COALESCE(marca,'') = ''
+        """)
+        row = cur.fetchone()
+        if not row:
+            return
+
+        estoque_id = row['id']
+        qtd_total = int(row['quantidade'] or 0)
+        if qtd_total != 13:
+            return
+
+        cores = [
+            ('Ciano', 3),
+            ('Amarelo', 4),
+            ('Magenta', 2),
+            ('Preto', 4),
+        ]
+
+        for cor, qtd in cores:
+            tipo = f'Drum {cor} para Transformar'
+            cur.execute("""
+                INSERT INTO estoque (tipo_suprimento, modelo_impressora, marca, quantidade, estoque_minimo)
+                VALUES (%s, 'PARA TRANSFORMAR', '', %s, 0) RETURNING id
+            """, (tipo, qtd))
+            novo_id = cur.fetchone()['id']
+            cur.execute("""
+                INSERT INTO estoque_movimentacoes (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, data_movimento)
+                VALUES (%s, 'ajuste', %s, 0, %s, 'Separacao por cor do Drum para Transformar', 'sistema', CURRENT_TIMESTAMP)
+            """, (novo_id, qtd, qtd))
+
+        cur.execute("DELETE FROM estoque WHERE id = %s", (estoque_id,))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Migration warning: {e}")
+    finally:
+        cur.close()
+
+
 def _popular_modelos_padrao():
     db = get_db()
     cur = db.cursor()
@@ -699,6 +744,7 @@ def init_db():
     _normalizar_papel_fotografico_estoque()
     _converter_esteira_para_transfer()
     _separar_drum_5112_por_marca()
+    _separar_drum_para_transformar()
     _popular_modelos_padrao()
 
     db = get_db()
@@ -827,8 +873,19 @@ def _normalizar_tipo_suprimento(tipo):
     tipo = _remover_acentos(str(tipo).strip().lower())
     if tipo == 'papel fotografico':
         return 'Papel Fotografico'
-    if 'drum para transformar' in tipo:
-        return 'Drum para Transformar'
+    # Mantem a cor em "Drum para Transformar": drum ciano para transformar
+    if 'drum' in tipo and 'transformar' in tipo:
+        partes = tipo.split()
+        cor = ''
+        for p in partes:
+            if p in ('ciano','amarelo','amarela','magenta','preto','preta','black','cyan','yellow','magenta'):
+                cor = p.capitalize()
+                if cor == 'Amarela':
+                    cor = 'Amarelo'
+                if cor == 'Preta':
+                    cor = 'Preto'
+                break
+        return f"Drum {cor} para Transformar".strip() if cor else 'Drum para Transformar'
     partes = tipo.split(' ', 1)
     base = partes[0].capitalize()
     cor = partes[1].capitalize() if len(partes) > 1 else ''
