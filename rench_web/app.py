@@ -2412,6 +2412,34 @@ def relatorio_mensal():
         entregas=resultado_entregas)
 
 
+@app.route('/debug/verificar-estoque')
+@login_required
+def debug_verificar_estoque():
+    db = get_db()
+    cur = db.cursor()
+    tipo = request.args.get('tipo', 'Drum Black')
+    modelo = request.args.get('modelo', 'ES5112/4172')
+    marca = request.args.get('marca', 'OKIData')
+    qtd = int(request.args.get('qtd', 1))
+
+    tipo_norm, modelo_norm, marca_norm = _chave_estoque(tipo, modelo, marca)
+    ok, saldo = verificar_saldo(cur, tipo_norm, modelo_norm, qtd, marca_norm)
+
+    cur.execute(
+        "SELECT id, tipo_suprimento, modelo_impressora, marca, quantidade FROM estoque WHERE tipo_suprimento=%s AND modelo_impressora=%s AND COALESCE(marca,'')=%s",
+        (tipo_norm, modelo_norm, marca_norm or '')
+    )
+    row = cur.fetchone()
+
+    return jsonify({
+        'recebido': {'tipo': tipo, 'modelo': modelo, 'marca': marca, 'qtd': qtd},
+        'normalizado': {'tipo': tipo_norm, 'modelo': modelo_norm, 'marca': marca_norm},
+        'saldo_encontrado': saldo,
+        'suficiente': ok,
+        'registro_banco': dict(row) if row else None
+    })
+
+
 @app.route('/debug/ultimas-entregas')
 @login_required
 def debug_ultimas_entregas():
