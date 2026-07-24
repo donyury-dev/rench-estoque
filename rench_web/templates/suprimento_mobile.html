@@ -570,7 +570,7 @@
             <div class="select-item empresa">OKI</div>
             <div class="grupo-unidades">
               {% for mdl in modelos_oki %}
-              <button type="button" class="modelo-opcao-entrega" data-modelo="{{mdl.nome}}">{{mdl.nome}}</button>
+              <button type="button" class="modelo-opcao-entrega" data-modelo="{{mdl['nome']}}">{{mdl['nome']}}</button>
               {% endfor %}
             </div>
             {% endif %}
@@ -579,7 +579,7 @@
             <div class="select-item empresa">HP</div>
             <div class="grupo-unidades">
               {% for mdl in modelos_hp %}
-              <button type="button" class="modelo-opcao-entrega" data-modelo="{{mdl.nome}}">{{mdl.nome}}</button>
+              <button type="button" class="modelo-opcao-entrega" data-modelo="{{mdl['nome']}}">{{mdl['nome']}}</button>
               {% endfor %}
             </div>
             {% endif %}
@@ -588,7 +588,7 @@
             <div class="select-item empresa">Outros</div>
             <div class="grupo-unidades">
               {% for mdl in modelos_outros %}
-              <button type="button" class="modelo-opcao-entrega" data-modelo="{{mdl.nome}}">{{mdl.nome}}</button>
+              <button type="button" class="modelo-opcao-entrega" data-modelo="{{mdl['nome']}}">{{mdl['nome']}}</button>
               {% endfor %}
             </div>
             {% endif %}
