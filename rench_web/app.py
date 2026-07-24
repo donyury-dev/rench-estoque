@@ -333,6 +333,10 @@ def _converter_esteira_para_transfer():
             WHERE LOWER(tipo_suprimento) = 'esteira'
         """)
         cur.execute("""
+            DELETE FROM estoque
+            WHERE modelo_impressora IS NULL OR TRIM(modelo_impressora) = ''
+        """)
+        cur.execute("""
             SELECT modelo_impressora, COALESCE(marca,'') as marca
             FROM estoque
             WHERE tipo_suprimento = 'Transfer'
@@ -2295,7 +2299,11 @@ def controle_estoque():
     # Agrupar por modelo e, quando houver marca, separar
     grupos = {}
     for r in resultado:
-        modelo = r['modelo_impressora'] or 'Sem modelo'
+        modelo = (r['modelo_impressora'] or '').strip()
+        if not modelo:
+            continue
+        if modelo == '-':
+            modelo = 'Papel Fotográfico'
         if r.get('marca'):
             chave = f"{modelo} - {r['marca']}"
         else:

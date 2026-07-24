@@ -246,11 +246,15 @@
             {% if estoque %}
               {% set modelos = {} %}
               {% for e in estoque %}
-                {% set modelo = (e.modelo_impressora or 'Sem modelo') %}
-                {% if modelo not in modelos %}
-                  {% set _ = modelos.update({modelo: []}) %}
+                {% set modelo_raw = (e.modelo_impressora or '').strip() %}
+                {% if modelo_raw %}
+                  {% set modelo = 'Papel Fotográfico' if modelo_raw == '-' else modelo_raw %}
+                  {% set chave = modelo + (' - ' + e.marca if e.marca else '') %}
+                  {% if chave not in modelos %}
+                    {% set _ = modelos.update({chave: []}) %}
+                  {% endif %}
+                  {% set _ = modelos[chave].append(e) %}
                 {% endif %}
-                {% set _ = modelos[modelo].append(e) %}
               {% endfor %}
 
               {% for modelo in modelos|sort %}
@@ -286,7 +290,7 @@
                   {% for e in itens_modelo|sort(attribute='tipo_suprimento') %}
                   <div class="modelo-item">
                     <div class="info">
-                      <div class="nome">{{e.tipo_suprimento}}</div>
+                      <div class="nome">{{e.tipo_suprimento}}{% if e.marca %} <span style="font-size:11px;color:#850001;">({{e.marca}})</span>{% endif %}</div>
                       <div class="acoes-mini">
                         <button type="button" class="btn-mini" onclick="event.stopPropagation(); abrirAjuste('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}', {{e.quantidade}}, {{e.estoque_minimo or 1}})">Ajustar</button>
                         <button type="button" class="btn-mini" onclick="event.stopPropagation(); abrirMovimentacoes('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}', '{{e.marca or ''}}')">Mov.</button>

@@ -5,7 +5,7 @@
 <div class="page-header">
   <div>
     <h1>Histórico do Estoque</h1>
-    <p class="text-muted mb-0">{{item.tipo_suprimento}} {{item.modelo_impressora or ''}}{% if item.marca %} ({{item.marca}}){% endif %} — Saldo atual: <strong class="text-primary">{{item.quantidade}}</strong></p>
+    <p class="text-muted mb-0">{{item.tipo_suprimento}} {{ 'Papel Fotográfico' if item.modelo_impressora == '-' else (item.modelo_impressora or '')}}{% if item.marca %} ({{item.marca}}){% endif %} — Saldo atual: <strong class="text-primary">{{item.quantidade}}</strong></p>
   </div>
   <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-secondary">Voltar</a>
 </div>
