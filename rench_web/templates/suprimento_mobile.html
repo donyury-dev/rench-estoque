@@ -348,27 +348,33 @@
                 <div class="select-list" id="modeloSelectList">
                   <input type="text" class="search-input" id="buscaModelo" placeholder="Buscar modelo..." onkeyup="filtrarModelos()" onclick="event.stopPropagation()">
                   <div id="listaModelos">
+                    {% set modelos_oki = modelos|selectattr('marca','equalto','OKI')|list %}
+                    {% if modelos_oki %}
                     <div class="select-item empresa">OKI</div>
                     <div class="grupo-unidades">
-                      <div class="select-item unidade" data-texto="C711" data-modelo="C711" onclick="selecionarModelo(this)">C711</div>
-                      <div class="select-item unidade" data-texto="ES5112/4172" data-modelo="ES5112/4172" onclick="selecionarModelo(this)">ES5112/4172</div>
-                      <div class="select-item unidade" data-texto="ES8473" data-modelo="ES8473" onclick="selecionarModelo(this)">ES8473</div>
-                      <div class="select-item unidade" data-texto="MC573" data-modelo="MC573" onclick="selecionarModelo(this)">MC573</div>
-                      <div class="select-item unidade" data-texto="C831" data-modelo="C831" onclick="selecionarModelo(this)">C831</div>
-                      <div class="select-item unidade" data-texto="C911" data-modelo="C911" onclick="selecionarModelo(this)">C911</div>
+                      {% for m in modelos_oki %}
+                      <div class="select-item unidade" data-texto="{{m.nome}}" data-modelo="{{m.nome}}" onclick="selecionarModelo(this)">{{m.nome}}</div>
+                      {% endfor %}
                     </div>
+                    {% endif %}
+                    {% set modelos_hp = modelos|selectattr('marca','equalto','HP')|list %}
+                    {% if modelos_hp %}
                     <div class="select-item empresa">HP</div>
                     <div class="grupo-unidades">
-                      <div class="select-item unidade" data-texto="408" data-modelo="408" onclick="selecionarModelo(this)">408</div>
-                      <div class="select-item unidade" data-texto="4103" data-modelo="4103" onclick="selecionarModelo(this)">4103</div>
-                      <div class="select-item unidade" data-texto="479" data-modelo="479" onclick="selecionarModelo(this)">479</div>
-                      <div class="select-item unidade" data-texto="4303" data-modelo="4303" onclick="selecionarModelo(this)">4303</div>
-                      <div class="select-item unidade" data-texto="428" data-modelo="428" onclick="selecionarModelo(this)">428</div>
+                      {% for m in modelos_hp %}
+                      <div class="select-item unidade" data-texto="{{m.nome}}" data-modelo="{{m.nome}}" onclick="selecionarModelo(this)">{{m.nome}}</div>
+                      {% endfor %}
                     </div>
+                    {% endif %}
+                    {% set modelos_outros = modelos|rejectattr('marca','equalto','OKI')|rejectattr('marca','equalto','HP')|list %}
+                    {% if modelos_outros %}
                     <div class="select-item empresa">Outros</div>
                     <div class="grupo-unidades">
-                      <div class="select-item unidade" data-texto="PARA TRANSFORMAR" data-modelo="PARA TRANSFORMAR" onclick="selecionarModelo(this)">PARA TRANSFORMAR</div>
+                      {% for m in modelos_outros %}
+                      <div class="select-item unidade" data-texto="{{m.nome}}" data-modelo="{{m.nome}}" onclick="selecionarModelo(this)">{{m.nome}}</div>
+                      {% endfor %}
                     </div>
+                    {% endif %}
                   </div>
                 </div>
               </div>
@@ -558,9 +564,33 @@
           <div class="selected-box modelo-selected-box"><span>Selecione o modelo...</span><small><i class="bi bi-chevron-down"></i></small></div>
           <div class="modelo-opcoes-entrega">
             <input type="text" class="search-input modelo-busca" placeholder="Buscar modelo...">
-            {% for modelo in ['C711','ES5112/4172','ES8473','MC573','C831','C911','408','4103','479','4303','428','PARA TRANSFORMAR'] %}
-            <button type="button" class="modelo-opcao-entrega" data-modelo="{{modelo}}">{{modelo}}</button>
-            {% endfor %}
+            {% set modelos_oki = modelos|selectattr('marca','equalto','OKI')|list %}
+            {% if modelos_oki %}
+            <div class="select-item empresa">OKI</div>
+            <div class="grupo-unidades">
+              {% for m in modelos_oki %}
+              <button type="button" class="modelo-opcao-entrega" data-modelo="{{m.nome}}">{{m.nome}}</button>
+              {% endfor %}
+            </div>
+            {% endif %}
+            {% set modelos_hp = modelos|selectattr('marca','equalto','HP')|list %}
+            {% if modelos_hp %}
+            <div class="select-item empresa">HP</div>
+            <div class="grupo-unidades">
+              {% for m in modelos_hp %}
+              <button type="button" class="modelo-opcao-entrega" data-modelo="{{m.nome}}">{{m.nome}}</button>
+              {% endfor %}
+            </div>
+            {% endif %}
+            {% set modelos_outros = modelos|rejectattr('marca','equalto','OKI')|rejectattr('marca','equalto','HP')|list %}
+            {% if modelos_outros %}
+            <div class="select-item empresa">Outros</div>
+            <div class="grupo-unidades">
+              {% for m in modelos_outros %}
+              <button type="button" class="modelo-opcao-entrega" data-modelo="{{m.nome}}">{{m.nome}}</button>
+              {% endfor %}
+            </div>
+            {% endif %}
           </div>
         </div>
         <div style="flex:1;" class="marca-wrap" style="display:none;">

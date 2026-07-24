@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if modelo else 'Novo' }} Modelo - RENCH{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ 'Editar' if modelo else 'Novo' }} Modelo de Impressora</h1>
+    <p class="text-muted mb-0">Defina o modelo e quais insumos ele utiliza</p>
+  </div>
+  <a href="{{url_for('lista_modelos_impressora')}}" class="btn btn-outline-secondary">Voltar</a>
+</div>
+
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card card-dashboard p-4">
+      <form method="POST" id="form-modelo">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Nome do modelo *</label>
+          <input type="text" class="form-control" name="nome" value="{{modelo.nome if modelo else ''}}" placeholder="Ex: C711, ES5112/4172" required>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Marca</label>
+            <input type="text" class="form-control" name="marca" value="{{modelo.marca if modelo else ''}}" placeholder="Ex: OKI, HP">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Tipo de impressão *</label>
+            <select class="form-select" name="tipo_impressao" id="tipo_impressao" required onchange="atualizarCoresPadrao()">
+              <option value="color" {{'selected' if modelo and modelo.tipo_impressao=='color' else ''}}>Colorida</option>
+              <option value="mono" {{'selected' if modelo and modelo.tipo_impressao=='mono' else ''}}>Monocromática</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-bold">Ordem de exibição</label>
+          <input type="number" class="form-control" name="ordem" value="{{modelo.ordem if modelo else '0'}}" min="0">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-bold">Insumos compatíveis</label>
+          <div class="card bg-light border-0 p-3">
+            {% set tipos_insumo = ['Toner', 'Drum', 'Drum para Transformar', 'Fusor', 'Transfer', 'Coletor', 'Esteira'] %}
+            {% set insumos_existentes = {} %}
+            {% if insumos %}
+              {% for i in insumos %}
+                {% set _ = insumos_existentes.update({i.tipo_suprimento: i.cores}) %}
+              {% endfor %}
+            {% endif %}
+
+            {% for tipo in tipos_insumo %}
+            <div class="form-check mb-2">
+              <input class="form-check-input insumo-check" type="checkbox" value="{{tipo}}" id="insumo_{{tipo|replace(' ', '_')}}" data-tipo="{{tipo}}" {{'checked' if tipo in insumos_existentes else ''}}>
+              <label class="form-check-label fw-bold" for="insumo_{{tipo|replace(' ', '_')}}">{{tipo}}</label>
+              <div class="cores-wrap ms-4 mt-1 {{'' if tipo in insumos_existentes else 'd-none'}}">
+                <small class="text-muted">Cores disponíveis (separadas por vírgula):</small>
+                <input type="text" class="form-control form-control-sm cores-input" data-tipo="{{tipo}}" value="{{insumos_existentes.get(tipo, '')}}" placeholder="Black,Ciano,Magenta,Amarelo">
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div id="hidden-insumos"></div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <a href="{{url_for('lista_modelos_impressora')}}" class="btn btn-outline-secondary">Cancelar</a>
+          <button type="submit" class="btn btn-rench-primary px-4"><i class="bi bi-check-lg me-1"></i> Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="alert alert-info">
+      <h6 class="fw-bold"><i class="bi bi-lightbulb me-1"></i> Como funciona</h6>
+      <p class="mb-1">Cadastre o modelo da impressora e marque quais insumos ela utiliza.</p>
+      <p class="mb-1">Para <strong>Toner</strong> e <strong>Drum</strong>, informe as cores disponíveis.</p>
+      <p class="mb-1">Modelos <strong>monocromáticos</strong> usam apenas <strong>Black</strong>.</p>
+      <p class="mb-0">Exemplo: C711 é colorida, então utiliza Toner Black, Ciano, Magenta, Amarelo e Drum das mesmas cores.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  function atualizarCoresPadrao(){
+    const tipo = document.getElementById('tipo_impressao').value;
+    document.querySelectorAll('.cores-input').forEach(input => {
+      const check = document.querySelector('.insumo-check[data-tipo="' + input.dataset.tipo + '"]');
+      if(!check.checked) return;
+      if(tipo === 'mono'){
+        input.value = 'Black';
+      } else if(!input.value || input.value === 'Black'){
+        input.value = 'Black,Ciano,Magenta,Amarelo';
+      }
+    });
+  }
+
+  document.querySelectorAll('.insumo-check').forEach(check => {
+    check.addEventListener('change', function(){
+      const wrap = this.closest('.form-check').querySelector('.cores-wrap');
+      const input = wrap.querySelector('.cores-input');
+      if(this.checked){
+        wrap.classList.remove('d-none');
+        if(!input.value){
+          const tipo = document.getElementById('tipo_impressao').value;
+          input.value = tipo === 'mono' ? 'Black' : 'Black,Ciano,Magenta,Amarelo';
+        }
+      } else {
+        wrap.classList.add('d-none');
+        input.value = '';
+      }
+    });
+  });
+
+  document.getElementById('form-modelo').addEventListener('submit', function(e){
+    const container = document.getElementById('hidden-insumos');
+    container.innerHTML = '';
+    document.querySelectorAll('.insumo-check:checked').forEach(check => {
+      const tipo = check.dataset.tipo;
+      const input = document.querySelector('.cores-input[data-tipo="' + tipo + '"]');
+      const cores = input ? input.value.trim() : '';
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = 'insumos[]';
+      hidden.value = cores ? tipo + '|' + cores : tipo;
+      container.appendChild(hidden);
+    });
+  });
+</script>
+{% endblock %}

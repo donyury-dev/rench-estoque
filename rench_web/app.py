@@ -212,6 +212,64 @@ def _normalizar_modelos_estoque():
     finally:
         cur.close()
 
+
+def _popular_modelos_padrao():
+    db = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute("SELECT COUNT(*) as total FROM modelos_impressora")
+        if cur.fetchone()['total'] > 0:
+            return
+
+        modelos = [
+            ('C711', 'OKI', 'color', 1),
+            ('ES5112/4172', 'OKI', 'mono', 2),
+            ('ES8473', 'OKI', 'color', 3),
+            ('MC573', 'OKI', 'color', 4),
+            ('C831', 'OKI', 'color', 5),
+            ('C911', 'OKI', 'color', 6),
+            ('408', 'HP', 'mono', 7),
+            ('4103', 'HP', 'mono', 8),
+            ('479', 'HP', 'color', 9),
+            ('4303', 'HP', 'color', 10),
+            ('428', 'HP', 'mono', 11),
+            ('PARA TRANSFORMAR', 'OUTROS', 'color', 12),
+        ]
+        cur.executemany("""
+            INSERT INTO modelos_impressora (nome, marca, tipo_impressao, ordem)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (nome) DO NOTHING
+        """, modelos)
+
+        cur.execute("SELECT id, nome FROM modelos_impressora")
+        modelo_ids = {row['nome']: row['id'] for row in cur.fetchall()}
+
+        insumos = []
+        cores_color = 'Black,Ciano,Magenta,Amarelo'
+        cores_mono = 'Black'
+        for nome, _, tipo_impressao, _ in modelos:
+            modelo_id = modelo_ids.get(nome)
+            if not modelo_id:
+                continue
+            cores = cores_mono if tipo_impressao == 'mono' else cores_color
+            insumos.append((modelo_id, 'Toner', cores))
+            insumos.append((modelo_id, 'Drum', cores))
+            if nome in ('ES5112/4172', 'C711'):
+                insumos.append((modelo_id, 'Drum para Transformar', cores))
+
+        cur.executemany("""
+            INSERT INTO modelo_insumos (modelo_id, tipo_suprimento, cores)
+            VALUES (%s, %s, %s)
+        """, insumos)
+
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Popula modelos warning: {e}")
+    finally:
+        cur.close()
+
+
 def init_db():
     db = get_db()
     cur = db.cursor()
@@ -362,11 +420,33 @@ def init_db():
         )
     """)
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS modelos_impressora (
+            id SERIAL PRIMARY KEY,
+            nome VARCHAR(100) NOT NULL UNIQUE,
+            marca VARCHAR(100),
+            tipo_impressao VARCHAR(20) DEFAULT 'color',
+            ordem INTEGER DEFAULT 0,
+            ativo INTEGER DEFAULT 1
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS modelo_insumos (
+            id SERIAL PRIMARY KEY,
+            modelo_id INTEGER NOT NULL REFERENCES modelos_impressora(id) ON DELETE CASCADE,
+            tipo_suprimento VARCHAR(100) NOT NULL,
+            cores VARCHAR(255),
+            ativo INTEGER DEFAULT 1
+        )
+    """)
+
     db.commit()
     cur.close()
 
     _executar_migrations()
     _normalizar_modelos_estoque()
+    _popular_modelos_padrao()
 
     db = get_db()
     cur = db.cursor()
@@ -1622,7 +1702,13 @@ def suprimento_mobile():
             locais = cur.fetchall()
             cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade, estoque_minimo FROM estoque ORDER BY tipo_suprimento, modelo_impressora")
             estoque = cur.fetchall()
-            return render_template('suprimento_mobile.html', locais=locais, hoje=data_entrega, estoque=estoque, aba='entrega')
+            cur.execute("""
+                SELECT m.* FROM modelos_impressora m
+                WHERE m.ativo = 1
+                ORDER BY m.ordem, m.nome
+            """)
+            modelos = cur.fetchall()
+            return render_template('suprimento_mobile.html', locais=locais, modelos=modelos, hoje=data_entrega, estoque=estoque, aba='entrega')
 
         cur.execute("""
             INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes)
@@ -1674,7 +1760,13 @@ def suprimento_mobile():
                 locais = cur.fetchall()
                 cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade, estoque_minimo FROM estoque ORDER BY tipo_suprimento, modelo_impressora")
                 estoque = cur.fetchall()
-                return render_template('suprimento_mobile.html', locais=locais, hoje=data_entrega, estoque=estoque, aba='entrega')
+                cur.execute("""
+                    SELECT m.* FROM modelos_impressora m
+                    WHERE m.ativo = 1
+                    ORDER BY m.ordem, m.nome
+                """)
+                modelos = cur.fetchall()
+                return render_template('suprimento_mobile.html', locais=locais, modelos=modelos, hoje=data_entrega, estoque=estoque, aba='entrega')
 
         for item in itens:
             mp = item['motivo_padrao']
@@ -1707,8 +1799,15 @@ def suprimento_mobile():
     cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade FROM estoque ORDER BY tipo_suprimento, modelo_impressora")
     estoque = cur.fetchall()
 
+    cur.execute("""
+        SELECT m.* FROM modelos_impressora m
+        WHERE m.ativo = 1
+        ORDER BY m.ordem, m.nome
+    """)
+    modelos = cur.fetchall()
+
     hoje = datetime.now().strftime('%Y-%m-%d')
-    return render_template('suprimento_mobile.html', locais=locais, hoje=hoje, estoque=estoque, aba=request.args.get('aba', 'entrega'))
+    return render_template('suprimento_mobile.html', locais=locais, modelos=modelos, hoje=hoje, estoque=estoque, aba=request.args.get('aba', 'entrega'))
 
 @app.route('/suprimentos/novo', methods=['GET', 'POST'])
 @login_required
@@ -1773,7 +1872,13 @@ def novo_suprimento():
                     ORDER BY emp.tipo DESC, emp.nome, u.nome
                 """)
                 locais = cur.fetchall()
-                return render_template('suprimento_form.html', locais=locais, hoje=data_entrega)
+                cur.execute("""
+                    SELECT m.* FROM modelos_impressora m
+                    WHERE m.ativo = 1
+                    ORDER BY m.ordem, m.nome
+                """)
+                modelos = cur.fetchall()
+                return render_template('suprimento_form.html', locais=locais, modelos=modelos, hoje=data_entrega)
 
         for item in itens:
             mp = item['motivo_padrao']
@@ -1803,8 +1908,15 @@ def novo_suprimento():
     """)
     locais = cur.fetchall()
 
+    cur.execute("""
+        SELECT m.* FROM modelos_impressora m
+        WHERE m.ativo = 1
+        ORDER BY m.ordem, m.nome
+    """)
+    modelos = cur.fetchall()
+
     hoje = datetime.now().strftime('%Y-%m-%d')
-    return render_template('suprimento_form.html', locais=locais, hoje=hoje)
+    return render_template('suprimento_form.html', locais=locais, modelos=modelos, hoje=hoje)
 
 @app.route('/suprimentos/excluir/<int:entrega_id>', methods=['POST'])
 @login_required
@@ -2018,7 +2130,19 @@ def estoque_entrada():
         flash(f'Entrada registrada: {descricao} (+{quantidade})', 'success')
         return redirect(url_for('controle_estoque'))
 
-    return render_template('estoque_entrada.html')
+    cur.execute("""
+        SELECT m.*, (
+            SELECT STRING_AGG(mi.tipo_suprimento, ', ' ORDER BY mi.tipo_suprimento)
+            FROM modelo_insumos mi
+            WHERE mi.modelo_id = m.id AND mi.ativo = 1
+        ) as insumos
+        FROM modelos_impressora m
+        WHERE m.ativo = 1
+        ORDER BY m.ordem, m.nome
+    """)
+    modelos = cur.fetchall()
+
+    return render_template('estoque_entrada.html', modelos=modelos)
 
 
 @app.route('/estoque/ajuste/<int:estoque_id>', methods=['GET', 'POST'])
@@ -2221,6 +2345,170 @@ def api_estoque_ajuste():
         )
     db.commit()
     return jsonify({'ok': True, 'mensagem': f'{tipo_final} {modelo}: saldo ajustado para {nova_qtd}'})
+
+
+@app.route('/modelos-impressora')
+@login_required
+def lista_modelos_impressora():
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        SELECT m.*, (
+            SELECT STRING_AGG(mi.tipo_suprimento, ', ' ORDER BY mi.tipo_suprimento)
+            FROM modelo_insumos mi
+            WHERE mi.modelo_id = m.id AND mi.ativo = 1
+        ) as insumos
+        FROM modelos_impressora m
+        WHERE m.ativo = 1
+        ORDER BY m.ordem, m.nome
+    """)
+    modelos = cur.fetchall()
+    return render_template('modelos_impressora.html', modelos=modelos)
+
+
+@app.route('/modelos-impressora/novo', methods=['GET', 'POST'])
+@login_required
+def novo_modelo_impressora():
+    if request.method == 'POST':
+        nome = request.form.get('nome', '').strip().upper()
+        marca = request.form.get('marca', '').strip() or None
+        tipo_impressao = request.form.get('tipo_impressao', 'color').strip()
+        ordem = request.form.get('ordem', '0').strip()
+        insumos = request.form.getlist('insumos[]')
+
+        if not nome:
+            flash('Informe o nome do modelo.', 'danger')
+            return redirect(url_for('novo_modelo_impressora'))
+
+        db = get_db()
+        cur = db.cursor()
+        try:
+            cur.execute("""
+                INSERT INTO modelos_impressora (nome, marca, tipo_impressao, ordem)
+                VALUES (%s, %s, %s, %s) RETURNING id
+            """, (nome, marca, tipo_impressao, int(ordem or 0)))
+            modelo_id = cur.fetchone()['id']
+
+            for item in insumos:
+                partes = item.split('|')
+                tipo = partes[0]
+                cores = partes[1] if len(partes) > 1 else None
+                cur.execute("""
+                    INSERT INTO modelo_insumos (modelo_id, tipo_suprimento, cores)
+                    VALUES (%s, %s, %s)
+                """, (modelo_id, tipo, cores))
+
+            db.commit()
+            flash('Modelo cadastrado com sucesso!', 'success')
+            return redirect(url_for('lista_modelos_impressora'))
+        except psycopg2.IntegrityError:
+            db.rollback()
+            flash('Já existe um modelo com este nome.', 'danger')
+            return redirect(url_for('novo_modelo_impressora'))
+
+    return render_template('modelo_impressora_form.html', modelo=None)
+
+
+@app.route('/modelos-impressora/editar/<int:modelo_id>', methods=['GET', 'POST'])
+@login_required
+def editar_modelo_impressora(modelo_id):
+    db = get_db()
+    cur = db.cursor()
+
+    cur.execute("SELECT * FROM modelos_impressora WHERE id=%s", (modelo_id,))
+    modelo = cur.fetchone()
+    if not modelo:
+        flash('Modelo nao encontrado.', 'danger')
+        return redirect(url_for('lista_modelos_impressora'))
+
+    if request.method == 'POST':
+        nome = request.form.get('nome', '').strip().upper()
+        marca = request.form.get('marca', '').strip() or None
+        tipo_impressao = request.form.get('tipo_impressao', 'color').strip()
+        ordem = request.form.get('ordem', '0').strip()
+        insumos = request.form.getlist('insumos[]')
+
+        if not nome:
+            flash('Informe o nome do modelo.', 'danger')
+            return redirect(url_for('editar_modelo_impressora', modelo_id=modelo_id))
+
+        try:
+            cur.execute("""
+                UPDATE modelos_impressora
+                SET nome=%s, marca=%s, tipo_impressao=%s, ordem=%s
+                WHERE id=%s
+            """, (nome, marca, tipo_impressao, int(ordem or 0), modelo_id))
+
+            cur.execute("DELETE FROM modelo_insumos WHERE modelo_id=%s", (modelo_id,))
+            for item in insumos:
+                partes = item.split('|')
+                tipo = partes[0]
+                cores = partes[1] if len(partes) > 1 else None
+                cur.execute("""
+                    INSERT INTO modelo_insumos (modelo_id, tipo_suprimento, cores)
+                    VALUES (%s, %s, %s)
+                """, (modelo_id, tipo, cores))
+
+            db.commit()
+            flash('Modelo atualizado com sucesso!', 'success')
+            return redirect(url_for('lista_modelos_impressora'))
+        except psycopg2.IntegrityError:
+            db.rollback()
+            flash('Ja existe outro modelo com este nome.', 'danger')
+            return redirect(url_for('editar_modelo_impressora', modelo_id=modelo_id))
+
+    cur.execute("""
+        SELECT tipo_suprimento, cores FROM modelo_insumos
+        WHERE modelo_id=%s AND ativo=1
+        ORDER BY tipo_suprimento
+    """, (modelo_id,))
+    insumos = cur.fetchall()
+    return render_template('modelo_impressora_form.html', modelo=modelo, insumos=insumos)
+
+
+@app.route('/modelos-impressora/excluir/<int:modelo_id>', methods=['POST'])
+@login_required
+def excluir_modelo_impressora(modelo_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("UPDATE modelos_impressora SET ativo=0 WHERE id=%s", (modelo_id,))
+    db.commit()
+    flash('Modelo removido com sucesso!', 'success')
+    return redirect(url_for('lista_modelos_impressora'))
+
+
+@app.route('/api/modelos-impressora')
+@login_required
+def api_modelos_impressora():
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        SELECT m.*, (
+            SELECT STRING_AGG(mi.tipo_suprimento, ', ' ORDER BY mi.tipo_suprimento)
+            FROM modelo_insumos mi
+            WHERE mi.modelo_id = m.id AND mi.ativo = 1
+        ) as insumos
+        FROM modelos_impressora m
+        WHERE m.ativo = 1
+        ORDER BY m.ordem, m.nome
+    """)
+    modelos = cur.fetchall()
+    resultado = []
+    for m in modelos:
+        cur.execute("""
+            SELECT tipo_suprimento, cores FROM modelo_insumos
+            WHERE modelo_id=%s AND ativo=1
+            ORDER BY tipo_suprimento
+        """, (m['id'],))
+        insumos = [{'tipo': row['tipo_suprimento'], 'cores': row['cores']} for row in cur.fetchall()]
+        resultado.append({
+            'id': m['id'],
+            'nome': m['nome'],
+            'marca': m['marca'],
+            'tipo_impressao': m['tipo_impressao'],
+            'insumos': insumos
+        })
+    return jsonify({'modelos': resultado})
 
 
 @app.route('/api/estoque/saldo')

@@ -143,8 +143,8 @@
   </div>
 </form>
 <datalist id="modelos-suprimentos">
-  {% for modelo in ['C711','ES5112/4172','ES8473','MC573','C831','C911','408','4103','479','4303','428','PARA TRANSFORMAR'] %}
-  <option value="{{modelo}}">
+  {% for m in modelos %}
+  <option value="{{m.nome}}">
   {% endfor %}
 </datalist>
 {% endblock %}

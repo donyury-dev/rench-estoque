@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Modelos de Impressora - RENCH{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Modelos de Impressora</h1>
+    <p class="text-muted mb-0">Cadastre novos modelos e os insumos compatíveis</p>
+  </div>
+  <a href="{{url_for('novo_modelo_impressora')}}" class="btn btn-rench-primary">
+    <i class="bi bi-plus-lg me-1"></i> Novo Modelo
+  </a>
+</div>
+
+<div class="card card-dashboard">
+  <div class="table-responsive">
+    <table class="table table-rench mb-0">
+      <thead>
+        <tr>
+          <th>Modelo</th>
+          <th>Marca</th>
+          <th>Tipo</th>
+          <th>Insumos</th>
+          <th class="text-center" style="width:120px;">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in modelos %}
+        <tr>
+          <td class="fw-bold">{{m.nome}}</td>
+          <td>{{m.marca or '-'}}</td>
+          <td>
+            {% if m.tipo_impressao == 'mono' %}
+              <span class="badge bg-secondary">Monocromática</span>
+            {% else %}
+              <span class="badge bg-info text-dark">Colorida</span>
+            {% endif %}
+          </td>
+          <td>{{m.insumos or '-'}}</td>
+          <td class="text-center">
+            <a href="{{url_for('editar_modelo_impressora', modelo_id=m.id)}}" class="btn btn-sm btn-outline-primary me-1" title="Editar"><i class="bi bi-pencil"></i></a>
+            <form method="POST" action="{{url_for('excluir_modelo_impressora', modelo_id=m.id)}}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja remover este modelo?')">
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4">Nenhum modelo cadastrado.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -63,27 +63,38 @@
               <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
               <input type="text" class="form-control" name="modelo_impressora" placeholder="Pesquise ou selecione um modelo" id="modelo" list="modelos-entrada" onblur="normalizarCampoModelo()" oninput="atualizarCorMonocromatica()" autocomplete="off" required>
               <datalist id="modelos-entrada">
-                {% for m in ['C711','ES5112/4172','ES8473','MC573','C831','C911','408','4103','479','4303','428','PARA TRANSFORMAR'] %}
-                <option value="{{m}}">
+                {% for m in modelos %}
+                <option value="{{m.nome}}">
                 {% endfor %}
               </datalist>
             </div>
             <div class="card bg-light border-0 p-3">
               <div class="mb-2">
+                {% set modelos_oki = modelos|selectattr('marca','equalto','OKI')|list %}
+                {% if modelos_oki %}
                 <span class="badge bg-white text-dark border">OKI</span>
-                {% for m in ['C711','ES5112/4172','ES8473','MC573','C831','C911'] %}
-                <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="setModelo('{{m}}')">{{m}}</button>
+                {% for m in modelos_oki %}
+                <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="setModelo('{{m.nome}}')">{{m.nome}}</button>
                 {% endfor %}
+                {% endif %}
               </div>
               <div class="mb-2">
+                {% set modelos_hp = modelos|selectattr('marca','equalto','HP')|list %}
+                {% if modelos_hp %}
                 <span class="badge bg-white text-dark border">HP</span>
-                {% for m in ['408','4103','479','4303','428'] %}
-                <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="setModelo('{{m}}')">{{m}}</button>
+                {% for m in modelos_hp %}
+                <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="setModelo('{{m.nome}}')">{{m.nome}}</button>
                 {% endfor %}
+                {% endif %}
               </div>
               <div class="mb-0">
+                {% set modelos_outros = modelos|rejectattr('marca','equalto','OKI')|rejectattr('marca','equalto','HP')|list %}
+                {% if modelos_outros %}
                 <span class="badge bg-white text-dark border">Outros</span>
-                <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="setModelo('PARA TRANSFORMAR')">PARA TRANSFORMAR</button>
+                {% for m in modelos_outros %}
+                <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="setModelo('{{m.nome}}')">{{m.nome}}</button>
+                {% endfor %}
+                {% endif %}
               </div>
             </div>
           </div>
