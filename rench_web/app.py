@@ -905,8 +905,8 @@ def _chave_estoque(tipo_suprimento, modelo_impressora, marca=None):
 def buscar_ou_criar_estoque(cur, tipo_suprimento, modelo_impressora, marca=None):
     tipo, modelo, marca = _chave_estoque(tipo_suprimento, modelo_impressora, marca)
     cur.execute(
-        "SELECT id, quantidade FROM estoque WHERE tipo_suprimento=%s AND modelo_impressora=%s AND COALESCE(marca,'')=%s",
-        (tipo, modelo, marca or '')
+        "SELECT id, quantidade FROM estoque WHERE tipo_suprimento=%s AND modelo_impressora=%s AND COALESCE(LOWER(marca),'')=%s",
+        (tipo, modelo, (marca or '').lower())
     )
     row = cur.fetchone()
     if row:
@@ -934,8 +934,8 @@ def movimentar_estoque(cur, estoque_id, tipo_movimento, quantidade, saldo_antes,
 def verificar_saldo(cur, tipo_suprimento, modelo_impressora, quantidade, marca=None):
     tipo, modelo, marca = _chave_estoque(tipo_suprimento, modelo_impressora, marca)
     cur.execute(
-        "SELECT quantidade FROM estoque WHERE tipo_suprimento=%s AND modelo_impressora=%s AND COALESCE(marca,'')=%s",
-        (tipo, modelo, marca or '')
+        "SELECT quantidade FROM estoque WHERE tipo_suprimento=%s AND modelo_impressora=%s AND COALESCE(LOWER(marca),'')=%s",
+        (tipo, modelo, (marca or '').lower())
     )
     row = cur.fetchone()
     saldo = row['quantidade'] if row else 0
