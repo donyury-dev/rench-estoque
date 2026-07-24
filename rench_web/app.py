@@ -2335,6 +2335,9 @@ def relatorio_mensal():
 @app.route('/estoque', methods=['GET'])
 @login_required
 def controle_estoque():
+    # Garante migracao de separacao por marca para Drum 5112/4172
+    _separar_drum_5112_por_marca()
+
     db = get_db()
     cur = db.cursor()
 
