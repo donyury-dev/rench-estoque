@@ -1795,7 +1795,7 @@ def suprimento_mobile():
                 ORDER BY m.ordem, m.nome
             """)
             modelos = cur.fetchall()
-            return render_template('suprimento_mobile.html', locais=locais, modelos=modelos, hoje=data_entrega, estoque=estoque, aba='entrega')
+            return render_template('suprimento_mobile.html', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega')
 
         cur.execute("""
             INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes)
@@ -1855,7 +1855,7 @@ def suprimento_mobile():
                     ORDER BY m.ordem, m.nome
                 """)
                 modelos = cur.fetchall()
-                return render_template('suprimento_mobile.html', locais=locais, modelos=modelos, hoje=data_entrega, estoque=estoque, aba='entrega')
+                return render_template('suprimento_mobile.html', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega')
 
         for item in itens:
             mp = item['motivo_padrao']
@@ -1896,7 +1896,7 @@ def suprimento_mobile():
     modelos = cur.fetchall()
 
     hoje = datetime.now().strftime('%Y-%m-%d')
-    return render_template('suprimento_mobile.html', locais=locais, modelos=modelos, hoje=hoje, estoque=estoque, aba=request.args.get('aba', 'entrega'))
+    return render_template('suprimento_mobile.html', locais=locais, modelos_impressora=modelos, hoje=hoje, estoque=estoque, aba=request.args.get('aba', 'entrega'))
 
 @app.route('/suprimentos/novo', methods=['GET', 'POST'])
 @login_required

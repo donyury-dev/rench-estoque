@@ -348,7 +348,7 @@
                 <div class="select-list" id="modeloSelectList">
                   <input type="text" class="search-input" id="buscaModelo" placeholder="Buscar modelo..." onkeyup="filtrarModelos()" onclick="event.stopPropagation()">
                   <div id="listaModelos">
-                    {% set modelos_oki = modelos|selectattr('marca','equalto','OKI')|list %}
+                    {% set modelos_oki = modelos_impressora|selectattr('marca','equalto','OKI')|list %}
                     {% if modelos_oki %}
                     <div class="select-item empresa">OKI</div>
                     <div class="grupo-unidades">
@@ -357,7 +357,7 @@
                       {% endfor %}
                     </div>
                     {% endif %}
-                    {% set modelos_hp = modelos|selectattr('marca','equalto','HP')|list %}
+                    {% set modelos_hp = modelos_impressora|selectattr('marca','equalto','HP')|list %}
                     {% if modelos_hp %}
                     <div class="select-item empresa">HP</div>
                     <div class="grupo-unidades">
@@ -366,7 +366,7 @@
                       {% endfor %}
                     </div>
                     {% endif %}
-                    {% set modelos_outros = modelos|rejectattr('marca','equalto','OKI')|rejectattr('marca','equalto','HP')|list %}
+                    {% set modelos_outros = modelos_impressora|rejectattr('marca','equalto','OKI')|rejectattr('marca','equalto','HP')|list %}
                     {% if modelos_outros %}
                     <div class="select-item empresa">Outros</div>
                     <div class="grupo-unidades">
@@ -617,7 +617,7 @@
   <script>
     const container = document.getElementById('itens-container');
     const template = document.getElementById('item-template');
-    const MODELOS = {{ modelos|tojson }};
+    const MODELOS = {{ modelos_impressora|tojson }};
 
     function preencherModelos(card){
       const conteudo = card.querySelector('.modelo-opcoes-conteudo');
