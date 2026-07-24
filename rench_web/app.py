@@ -318,6 +318,52 @@ def _normalizar_papel_fotografico_estoque():
         cur.close()
 
 
+def _converter_esteira_para_transfer():
+    db = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            UPDATE estoque
+            SET tipo_suprimento = 'Transfer'
+            WHERE LOWER(tipo_suprimento) = 'esteira'
+        """)
+        cur.execute("""
+            UPDATE suprimentos_itens
+            SET tipo_suprimento = 'Transfer'
+            WHERE LOWER(tipo_suprimento) = 'esteira'
+        """)
+        cur.execute("""
+            SELECT modelo_impressora, COALESCE(marca,'') as marca
+            FROM estoque
+            WHERE tipo_suprimento = 'Transfer'
+            GROUP BY modelo_impressora, COALESCE(marca,'')
+            HAVING COUNT(*) > 1
+        """)
+        for dup in cur.fetchall():
+            cur.execute("""
+                SELECT id, quantidade, estoque_minimo FROM estoque
+                WHERE tipo_suprimento = 'Transfer' AND modelo_impressora = %s AND COALESCE(marca,'') = %s
+                ORDER BY id
+            """, (dup['modelo_impressora'], dup['marca']))
+            itens = cur.fetchall()
+            destino = itens[0]
+            qtd_total = sum(int(i['quantidade'] or 0) for i in itens)
+            minimo_max = max(int(i['estoque_minimo'] or 0) for i in itens)
+            cur.execute(
+                "UPDATE estoque SET quantidade = %s, estoque_minimo = %s WHERE id = %s",
+                (qtd_total, minimo_max, destino['id'])
+            )
+            for item in itens[1:]:
+                cur.execute("UPDATE estoque_movimentacoes SET estoque_id = %s WHERE estoque_id = %s", (destino['id'], item['id']))
+                cur.execute("DELETE FROM estoque WHERE id = %s", (item['id'],))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Migration warning: {e}")
+    finally:
+        cur.close()
+
+
 def _popular_modelos_padrao():
     db = get_db()
     cur = db.cursor()
@@ -553,6 +599,7 @@ def init_db():
     _normalizar_tipos_estoque()
     _normalizar_modelos_estoque()
     _normalizar_papel_fotografico_estoque()
+    _converter_esteira_para_transfer()
     _popular_modelos_padrao()
 
     db = get_db()
