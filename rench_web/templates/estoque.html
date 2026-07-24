@@ -147,7 +147,7 @@
       <tbody>
         {% for item in grupo %}
         <tr>
-          <td><span class="badge bg-soft-primary">{{item.tipo_suprimento}}</span></td>
+          <td><span class="badge bg-soft-primary">{{item.tipo_suprimento}}</span>{% if item.marca %} <span class="badge bg-light text-dark border">{{item.marca}}</span>{% endif %}</td>
           <td class="text-center fw-bold">{{item.quantidade}}</td>
           <td class="text-center">{{item.estoque_minimo}}</td>
           <td class="text-center">

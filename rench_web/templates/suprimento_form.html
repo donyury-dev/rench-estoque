@@ -88,6 +88,14 @@
               <label class="form-label small fw-bold">Modelo</label>
               <input type="text" class="form-control modelo-input" name="modelo_impressora[]" placeholder="Selecione..." list="modelos-suprimentos" onblur="normalizarCampoModelo(this)" oninput="atualizarCorMonocromatica(this)">
             </div>
+            <div class="col-md-2 marca-wrap" style="display:none;">
+              <label class="form-label small fw-bold">Marca</label>
+              <select class="form-select marca-select" name="marca[]">
+                <option value="" selected>-</option>
+                <option value="OKIData">OKIData</option>
+                <option value="R10">R10</option>
+              </select>
+            </div>
             <div class="col-md-2 qtd-wrap">
               <label class="form-label small fw-bold">Qtd</label>
               <input type="number" class="form-control qtd-input" name="quantidade[]" value="1" min="1" required>
@@ -199,11 +207,21 @@ function atualizarCorMonocromatica(input){
   input.value = modelo;
   const cor = row.querySelector('.cor-select');
   const tipo = row.querySelector('.tipo-select').value;
+  const marcaWrap = row.querySelector('.marca-wrap');
+  const marcaSelect = row.querySelector('.marca-select');
   if(['Toner','Drum','Drum para Transformar'].includes(tipo) && ['ES5112','ES4172','ES5112/4172'].includes(modelo)){
     cor.value = 'Black';
     cor.disabled = true;
   } else {
     cor.disabled = false;
+  }
+  if(tipo === 'Drum' && ['ES5112/4172','C711'].includes(modelo)){
+    marcaWrap.style.display = 'block';
+    marcaSelect.setAttribute('required','required');
+  } else {
+    marcaWrap.style.display = 'none';
+    marcaSelect.removeAttribute('required');
+    marcaSelect.value = '';
   }
 }
 

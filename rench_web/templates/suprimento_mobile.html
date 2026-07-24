@@ -372,6 +372,14 @@
                   </div>
                 </div>
               </div>
+              <div class="mb-2" id="marca-entrada-wrap" style="display:none;">
+                <label>Marca</label>
+                <select id="marca-entrada" class="form-select">
+                  <option value="" selected>-</option>
+                  <option value="OKIData">OKIData</option>
+                  <option value="R10">R10</option>
+                </select>
+              </div>
               <div class="row mb-2">
                 <div style="flex:1;">
                   <label>Quantidade</label>
@@ -555,6 +563,14 @@
             {% endfor %}
           </div>
         </div>
+        <div style="flex:1;" class="marca-wrap" style="display:none;">
+          <label>Marca</label>
+          <select class="form-select marca-select" name="marca[]">
+            <option value="" selected>-</option>
+            <option value="OKIData">OKIData</option>
+            <option value="R10">R10</option>
+          </select>
+        </div>
         <div style="max-width:80px;" class="qtd-wrap">
           <label>Qtd</label>
           <input type="number" name="quantidade[]" value="1" min="1" required class="qtd-input" onchange="atualizarSaldo(this.closest('.item-box'))">
@@ -640,8 +656,10 @@
 
       saldoBadge.textContent = 'Consultando estoque...';
 
+      const marca = obterMarcaItem(card);
       try{
-        const url = `/api/estoque/saldo?tipo=${encodeURIComponent(tipo)}&modelo=${encodeURIComponent(modelo)}&_=${Date.now()}`;
+        let url = `/api/estoque/saldo?tipo=${encodeURIComponent(tipo)}&modelo=${encodeURIComponent(modelo)}&_=${Date.now()}`;
+        if(marca) url += `&marca=${encodeURIComponent(marca)}`;
         const resp = await fetch(url);
         const data = await resp.json();
         const saldo = data.saldo || 0;
@@ -661,6 +679,33 @@
         console.error(e);
         saldoBadge.className = 'saldo-badge';
         saldoBadge.textContent = 'Não foi possível consultar o estoque';
+      }
+    }
+
+    function obterMarcaItem(card){
+      const tipoBtn = card.querySelector('.tipo-btn.active');
+      const tipo = tipoBtn?.dataset.val || '';
+      const modelo = (card.querySelector('.modelo-input')?.value || '').trim().toUpperCase();
+      const marcaWrap = card.querySelector('.marca-wrap');
+      if(tipo === 'Drum' && ['ES5112/4172','C711'].includes(modelo) && marcaWrap.style.display !== 'none'){
+        return card.querySelector('.marca-select')?.value || '';
+      }
+      return '';
+    }
+
+    function atualizarMarcaItem(card){
+      const tipoBtn = card.querySelector('.tipo-btn.active');
+      const tipo = tipoBtn?.dataset.val || '';
+      const modelo = (card.querySelector('.modelo-input')?.value || '').trim().toUpperCase();
+      const marcaWrap = card.querySelector('.marca-wrap');
+      const marcaSelect = card.querySelector('.marca-select');
+      if(tipo === 'Drum' && ['ES5112/4172','C711'].includes(modelo)){
+        marcaWrap.style.display = 'block';
+        marcaSelect.setAttribute('required','required');
+      } else {
+        marcaWrap.style.display = 'none';
+        marcaSelect.removeAttribute('required');
+        marcaSelect.value = '';
       }
     }
 
@@ -692,6 +737,7 @@
           modeloInput.value = modelo;
           modeloBox.querySelector('span').textContent = modelo;
           modeloLista.classList.remove('show');
+          atualizarMarcaItem(card);
           if(modelo === 'ES5112/4172'){
             card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
             card.querySelector('.cor-btn[data-cor="Black"]').classList.add('active');
@@ -735,6 +781,7 @@
             modeloWrap.style.display = 'block';
             papelWrap.style.display = 'none';
           }
+          atualizarMarcaItem(card);
           atualizarTipo(card);
         });
       });
@@ -753,6 +800,7 @@
           card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
           if(!ja) this.classList.add('active');
           atualizarTipo(card);
+          atualizarMarcaItem(card);
         });
       });
       card.querySelectorAll('.motivo-btn').forEach(btn=>{
@@ -882,9 +930,11 @@
     }
 
     function selecionarModelo(el){
-      document.getElementById('modelo-entrada-selecionado').value = el.dataset.modelo;
+      const modelo = el.dataset.modelo;
+      document.getElementById('modelo-entrada-selecionado').value = modelo;
       document.getElementById('modeloSelectedText').textContent = el.dataset.texto;
       document.getElementById('modeloSelectList').classList.remove('show');
+      atualizarMarcaEntrada();
     }
 
     document.addEventListener('click', function(e){
@@ -894,6 +944,21 @@
         list.classList.remove('show');
       }
     });
+
+    function atualizarMarcaEntrada(){
+      const tipo = document.querySelector('.tipo-entrada').value;
+      const modelo = (document.getElementById('modelo-entrada-selecionado')?.value || '').trim().toUpperCase();
+      const wrap = document.getElementById('marca-entrada-wrap');
+      const marca = document.getElementById('marca-entrada');
+      if(tipo === 'Drum' && ['ES5112/4172','C711'].includes(modelo)){
+        wrap.style.display = 'block';
+        marca.setAttribute('required','required');
+      } else {
+        wrap.style.display = 'none';
+        marca.removeAttribute('required');
+        marca.value = '';
+      }
+    }
 
     function atualizarCorEntrada(){
       const tipo = document.querySelector('.tipo-entrada').value;
@@ -917,6 +982,7 @@
         modeloWrap.style.display = 'block';
         papelWrap.classList.add('d-none');
       }
+      atualizarMarcaEntrada();
     }
 
     function converterPapelEntrada(){
@@ -1195,6 +1261,7 @@
       let qtd = parseInt(form.querySelector('.qtd-entrada').value || '1');
       const resp = form.querySelector('.resp-entrada').value;
       const motivo = form.querySelector('.motivo-entrada').value;
+      const marca = document.getElementById('marca-entrada')?.value || '';
 
       if(tipo === 'Papel Fotografico'){
         const unidade = parseInt(document.getElementById('unidade-papel-entrada').value || '1');
@@ -1206,6 +1273,7 @@
       fd.append('tipo_suprimento', tipo);
       fd.append('cor_selecionada', cor);
       fd.append('modelo_impressora', modelo);
+      fd.append('marca', marca);
       fd.append('quantidade', qtd);
       fd.append('responsavel', resp);
       fd.append('motivo', motivo);

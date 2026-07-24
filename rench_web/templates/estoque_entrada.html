@@ -87,7 +87,15 @@
               </div>
             </div>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-6" id="marca-wrap" style="display:none;">
+            <label class="form-label fw-bold">Marca / Fornecedor</label>
+            <select class="form-select" name="marca" id="marca">
+              <option value="" selected>-</option>
+              <option value="OKIData">OKIData</option>
+              <option value="R10">R10</option>
+            </select>
+          </div>
+          <div class="col-md-4" id="qtd-wrap">
             <label class="form-label fw-bold">Quantidade *</label>
             <input type="number" class="form-control" name="quantidade" id="qtd" value="1" min="1" required>
           </div>
@@ -153,6 +161,22 @@
     } else {
       cor.disabled = false;
     }
+    atualizarMarca();
+  }
+
+  function atualizarMarca(){
+    const tipo = document.getElementById('tipo').value;
+    const modelo = document.getElementById('modelo').value.trim().toUpperCase();
+    const marcaWrap = document.getElementById('marca-wrap');
+    const marca = document.getElementById('marca');
+    if(tipo === 'Drum' && ['ES5112/4172','C711'].includes(modelo)){
+      marcaWrap.style.display = 'block';
+      marca.setAttribute('required','required');
+    } else {
+      marcaWrap.style.display = 'none';
+      marca.removeAttribute('required');
+      marca.value = '';
+    }
   }
 
   function toggleCor(){
@@ -178,6 +202,7 @@
       papelWrap.style.display = 'none';
       document.getElementById('cor').value = '';
     }
+    atualizarMarca();
   }
 
   // antes de enviar, converte quantidade para folhas se for papel fotografico
