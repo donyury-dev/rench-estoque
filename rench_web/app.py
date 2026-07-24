@@ -215,6 +215,68 @@ def _normalizar_modelos_estoque():
         cur.close()
 
 
+def _normalizar_tipos_estoque():
+    db = get_db()
+    cur = db.cursor()
+    try:
+        # Normaliza estoque
+        cur.execute("SELECT id, tipo_suprimento, modelo_impressora, marca FROM estoque ORDER BY id")
+        for row in cur.fetchall():
+            tipo_norm = _normalizar_tipo_suprimento(row['tipo_suprimento'])
+            modelo_norm = (row['modelo_impressora'] or '').strip().upper()
+            if modelo_norm in ('5112', 'ES5112', '4172', 'ES4172', '5112/4172'):
+                modelo_norm = 'ES5112/4172'
+            cur.execute(
+                "UPDATE estoque SET tipo_suprimento=%s, modelo_impressora=%s WHERE id=%s",
+                (tipo_norm, modelo_norm, row['id'])
+            )
+        # Unifica duplicatas de estoque
+        cur.execute("""
+            SELECT tipo_suprimento, modelo_impressora, COALESCE(marca,'') as marca
+            FROM estoque
+            GROUP BY tipo_suprimento, modelo_impressora, COALESCE(marca,'')
+            HAVING COUNT(*) > 1
+        """)
+        for dup in cur.fetchall():
+            cur.execute("""
+                SELECT id, quantidade, estoque_minimo FROM estoque
+                WHERE tipo_suprimento=%s AND modelo_impressora=%s AND COALESCE(marca,'')=%s
+                ORDER BY id
+            """, (dup['tipo_suprimento'], dup['modelo_impressora'], dup['marca']))
+            itens = cur.fetchall()
+            destino = itens[0]
+            qtd_total = sum(int(i['quantidade'] or 0) for i in itens)
+            minimo_max = max(int(i['estoque_minimo'] or 0) for i in itens)
+            cur.execute(
+                "UPDATE estoque SET quantidade=%s, estoque_minimo=%s WHERE id=%s",
+                (qtd_total, minimo_max, destino['id'])
+            )
+            for item in itens[1:]:
+                cur.execute("UPDATE estoque_movimentacoes SET estoque_id=%s WHERE estoque_id=%s", (destino['id'], item['id']))
+                cur.execute("DELETE FROM estoque WHERE id=%s", (item['id'],))
+        # Normaliza suprimentos_itens
+        cur.execute("""
+            SELECT id, tipo_suprimento, modelo_impressora
+            FROM suprimentos_itens
+            ORDER BY id
+        """)
+        for row in cur.fetchall():
+            tipo_norm = _normalizar_tipo_suprimento(row['tipo_suprimento'])
+            modelo_norm = (row['modelo_impressora'] or '').strip().upper()
+            if modelo_norm in ('5112', 'ES5112', '4172', 'ES4172', '5112/4172'):
+                modelo_norm = 'ES5112/4172'
+            cur.execute(
+                "UPDATE suprimentos_itens SET tipo_suprimento=%s, modelo_impressora=%s WHERE id=%s",
+                (tipo_norm, modelo_norm, row['id'])
+            )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Migration warning: {e}")
+    finally:
+        cur.close()
+
+
 def _normalizar_papel_fotografico_estoque():
     db = get_db()
     cur = db.cursor()
@@ -488,6 +550,7 @@ def init_db():
     cur.close()
 
     _executar_migrations()
+    _normalizar_tipos_estoque()
     _normalizar_modelos_estoque()
     _normalizar_papel_fotografico_estoque()
     _popular_modelos_padrao()
@@ -612,10 +675,24 @@ def _remover_acentos(texto):
     )
 
 
+def _normalizar_tipo_suprimento(tipo):
+    if not tipo:
+        return ''
+    tipo = _remover_acentos(str(tipo).strip().lower())
+    if tipo == 'papel fotografico':
+        return 'Papel Fotografico'
+    if 'drum para transformar' in tipo:
+        return 'Drum para Transformar'
+    partes = tipo.split(' ', 1)
+    base = partes[0].capitalize()
+    cor = partes[1].capitalize() if len(partes) > 1 else ''
+    return f"{base} {cor}".strip()
+
+
 def _chave_estoque(tipo_suprimento, modelo_impressora, marca=None):
-    tipo = _remover_acentos((tipo_suprimento or '').strip().upper())
-    if tipo == 'PAPEL FOTOGRAFICO':
-        return 'PAPEL FOTOGRAFICO', '-', None
+    tipo = _normalizar_tipo_suprimento(tipo_suprimento)
+    if tipo == 'Papel Fotografico':
+        return 'Papel Fotografico', '-', None
     modelo = (modelo_impressora or '').strip().upper()
     if modelo in ('5112', 'ES5112', '4172', 'ES4172', '5112/4172'):
         modelo = 'ES5112/4172'
