@@ -368,6 +368,43 @@ def _converter_esteira_para_transfer():
         cur.close()
 
 
+def _separar_drum_5112_por_marca():
+    db = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            SELECT id, quantidade FROM estoque
+            WHERE tipo_suprimento = 'Drum Black' AND modelo_impressora = 'ES5112/4172' AND COALESCE(marca, '') = ''
+        """)
+        row = cur.fetchone()
+        if row and int(row['quantidade'] or 0) == 5:
+            estoque_id = row['id']
+            cur.execute("""
+                INSERT INTO estoque (tipo_suprimento, modelo_impressora, marca, quantidade, estoque_minimo)
+                VALUES ('Drum Black', 'ES5112/4172', 'OKIData', 3, 1)
+                RETURNING id
+            """)
+            oki_id = cur.fetchone()['id']
+            cur.execute("""
+                INSERT INTO estoque (tipo_suprimento, modelo_impressora, marca, quantidade, estoque_minimo)
+                VALUES ('Drum Black', 'ES5112/4172', 'R10', 2, 1)
+                RETURNING id
+            """)
+            r10_id = cur.fetchone()['id']
+            cur.execute("UPDATE estoque_movimentacoes SET estoque_id = %s WHERE estoque_id = %s", (oki_id, estoque_id))
+            cur.execute("""
+                INSERT INTO estoque_movimentacoes (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, data_movimento)
+                VALUES (%s, 'ajuste', 2, 0, 2, 'Separacao de marca R10 a partir do saldo existente', 'sistema', CURRENT_TIMESTAMP)
+            """, (r10_id,))
+            cur.execute("DELETE FROM estoque WHERE id = %s", (estoque_id,))
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Migration warning: {e}")
+    finally:
+        cur.close()
+
+
 def _popular_modelos_padrao():
     db = get_db()
     cur = db.cursor()
@@ -604,6 +641,7 @@ def init_db():
     _normalizar_modelos_estoque()
     _normalizar_papel_fotografico_estoque()
     _converter_esteira_para_transfer()
+    _separar_drum_5112_por_marca()
     _popular_modelos_padrao()
 
     db = get_db()
