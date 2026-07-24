@@ -2412,6 +2412,21 @@ def relatorio_mensal():
         entregas=resultado_entregas)
 
 
+@app.route('/debug/entrega/<int:entrega_id>')
+@login_required
+def debug_entrega(entrega_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT * FROM suprimentos_entregas WHERE id=%s", (entrega_id,))
+    entrega = cur.fetchone()
+    cur.execute("SELECT * FROM suprimentos_itens WHERE entrega_id=%s", (entrega_id,))
+    itens = cur.fetchall()
+    return jsonify({
+        'entrega': dict(entrega) if entrega else None,
+        'itens': [dict(i) for i in itens]
+    })
+
+
 @app.route('/debug/estoque')
 @login_required
 def debug_estoque():
