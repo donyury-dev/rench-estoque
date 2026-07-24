@@ -565,33 +565,7 @@
           <div class="selected-box modelo-selected-box"><span>Selecione o modelo...</span><small><i class="bi bi-chevron-down"></i></small></div>
           <div class="modelo-opcoes-entrega">
             <input type="text" class="search-input modelo-busca" placeholder="Buscar modelo...">
-            {% set modelos_oki = modelos|selectattr('marca','equalto','OKI')|list %}
-            {% if modelos_oki %}
-            <div class="select-item empresa">OKI</div>
-            <div class="grupo-unidades">
-              {% for mdl in modelos_oki %}
-              <button type="button" class="modelo-opcao-entrega" data-modelo="{{mdl['nome']}}">{{mdl['nome']}}</button>
-              {% endfor %}
-            </div>
-            {% endif %}
-            {% set modelos_hp = modelos|selectattr('marca','equalto','HP')|list %}
-            {% if modelos_hp %}
-            <div class="select-item empresa">HP</div>
-            <div class="grupo-unidades">
-              {% for mdl in modelos_hp %}
-              <button type="button" class="modelo-opcao-entrega" data-modelo="{{mdl['nome']}}">{{mdl['nome']}}</button>
-              {% endfor %}
-            </div>
-            {% endif %}
-            {% set modelos_outros = modelos|rejectattr('marca','equalto','OKI')|rejectattr('marca','equalto','HP')|list %}
-            {% if modelos_outros %}
-            <div class="select-item empresa">Outros</div>
-            <div class="grupo-unidades">
-              {% for mdl in modelos_outros %}
-              <button type="button" class="modelo-opcao-entrega" data-modelo="{{mdl['nome']}}">{{mdl['nome']}}</button>
-              {% endfor %}
-            </div>
-            {% endif %}
+            <div class="modelo-opcoes-conteudo"></div>
           </div>
         </div>
         <div style="flex:1;" class="marca-wrap" style="display:none;">
@@ -643,6 +617,32 @@
   <script>
     const container = document.getElementById('itens-container');
     const template = document.getElementById('item-template');
+    const MODELOS = {{ modelos|tojson }};
+
+    function preencherModelos(card){
+      const conteudo = card.querySelector('.modelo-opcoes-conteudo');
+      if(!conteudo || !MODELOS || MODELOS.length === 0) return;
+      const oki = MODELOS.filter(m=>(m.marca||'').toUpperCase() === 'OKI');
+      const hp = MODELOS.filter(m=>(m.marca||'').toUpperCase() === 'HP');
+      const outros = MODELOS.filter(m=>!['OKI','HP'].includes((m.marca||'').toUpperCase()));
+      let html = '';
+      if(oki.length){
+        html += '<div class="select-item empresa">OKI</div><div class="grupo-unidades">';
+        oki.forEach(m=>{ html += `<button type="button" class="modelo-opcao-entrega" data-modelo="${m.nome}">${m.nome}</button>`; });
+        html += '</div>';
+      }
+      if(hp.length){
+        html += '<div class="select-item empresa">HP</div><div class="grupo-unidades">';
+        hp.forEach(m=>{ html += `<button type="button" class="modelo-opcao-entrega" data-modelo="${m.nome}">${m.nome}</button>`; });
+        html += '</div>';
+      }
+      if(outros.length){
+        html += '<div class="select-item empresa">Outros</div><div class="grupo-unidades">';
+        outros.forEach(m=>{ html += `<button type="button" class="modelo-opcao-entrega" data-modelo="${m.nome}">${m.nome}</button>`; });
+        html += '</div>';
+      }
+      conteudo.innerHTML = html;
+    }
 
     function atualizarTipo(card){
       const tipo = card.querySelector('.tipo-btn.active')?.dataset.val || '';
@@ -860,6 +860,7 @@
     function adicionarItem(){
       const clone = template.content.cloneNode(true);
       const card = clone.querySelector('.item-box');
+      preencherModelos(card);
       configurarItem(card);
       container.appendChild(card);
       atualizarSaldo(card);
