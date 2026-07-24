@@ -156,6 +156,8 @@ def _executar_migrations():
         ('suprimentos_itens', 'motivo_padrao', 'VARCHAR(50)'),
         ('suprimentos_itens', 'defeito', 'TEXT'),
         ('suprimentos_itens', 'estorno_estoque', 'INTEGER DEFAULT 0'),
+        ('suprimentos_itens', 'cor_selecionada', 'VARCHAR(50)'),
+        ('suprimentos_itens', 'marca', 'VARCHAR(100) DEFAULT NULL'),
         ('estoque', 'marca', 'VARCHAR(100) DEFAULT NULL'),
     ]:
         if not coluna_existe(tabela, coluna):
@@ -1752,12 +1754,13 @@ def suprimento_mobile():
         modelos = request.form.getlist('modelo_impressora[]')
         quantidades = request.form.getlist('quantidade[]')
         marcas = request.form.getlist('marca[]')
+        cores = request.form.getlist('cor_selecionada[]')
         motivos_padrao = request.form.getlist('motivo_padrao[]')
         defeitos = request.form.getlist('defeito[]')
         motivos_outros = request.form.getlist('motivo[]')
 
         itens = []
-        for tipo, modelo, qtd, marca, mp, defeito, outro in zip(tipos, modelos, quantidades, marcas, motivos_padrao, defeitos, motivos_outros):
+        for tipo, modelo, qtd, marca, cor, mp, defeito, outro in zip(tipos, modelos, quantidades, marcas, cores, motivos_padrao, defeitos, motivos_outros):
             tipo = (tipo or '').strip()
             if tipo:
                 itens.append({
@@ -1765,6 +1768,7 @@ def suprimento_mobile():
                     'modelo_impressora': modelo,
                     'quantidade': int(qtd or 1),
                     'marca': (marca or '').strip() or None,
+                    'cor_selecionada': (cor or '').strip() or None,
                     'motivo_padrao': mp,
                     'defeito': defeito,
                     'outro': outro
@@ -1810,9 +1814,9 @@ def suprimento_mobile():
             elif mp:
                 motivo_texto = mp
             cur.execute("""
-                INSERT INTO suprimentos_itens (entrega_id, tipo_suprimento, modelo_impressora, marca, quantidade, motivo_padrao, defeito, motivo)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, (entrega_id, item['tipo_suprimento'], item['modelo_impressora'].strip() or None, item.get('marca'), item['quantidade'], mp or None, defeito.strip() or None, motivo_texto))
+                INSERT INTO suprimentos_itens (entrega_id, tipo_suprimento, modelo_impressora, cor_selecionada, marca, quantidade, motivo_padrao, defeito, motivo)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (entrega_id, item['tipo_suprimento'], item['modelo_impressora'].strip() or None, item.get('cor_selecionada'), item.get('marca'), item['quantidade'], mp or None, defeito.strip() or None, motivo_texto))
 
         db.commit()
         flash('Entrega salva com sucesso!', 'success')
@@ -1866,12 +1870,13 @@ def novo_suprimento():
         modelos = request.form.getlist('modelo_impressora[]')
         quantidades = request.form.getlist('quantidade[]')
         marcas = request.form.getlist('marca[]')
+        cores = request.form.getlist('cor_selecionada[]')
         motivos_padrao = request.form.getlist('motivo_padrao[]')
         defeitos = request.form.getlist('defeito[]')
         motivos_outros = request.form.getlist('motivo[]')
 
         itens = []
-        for tipo, modelo, qtd, marca, mp, defeito, outro in zip(tipos, modelos, quantidades, marcas, motivos_padrao, defeitos, motivos_outros):
+        for tipo, modelo, qtd, marca, cor, mp, defeito, outro in zip(tipos, modelos, quantidades, marcas, cores, motivos_padrao, defeitos, motivos_outros):
             tipo = (tipo or '').strip()
             if tipo:
                 itens.append({
@@ -1879,6 +1884,7 @@ def novo_suprimento():
                     'modelo_impressora': modelo,
                     'quantidade': int(qtd or 1),
                     'marca': (marca or '').strip() or None,
+                    'cor_selecionada': (cor or '').strip() or None,
                     'motivo_padrao': mp,
                     'defeito': defeito,
                     'outro': outro
@@ -1922,9 +1928,9 @@ def novo_suprimento():
             elif mp:
                 motivo_texto = mp
             cur.execute("""
-                INSERT INTO suprimentos_itens (entrega_id, tipo_suprimento, modelo_impressora, marca, quantidade, motivo_padrao, defeito, motivo)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, (entrega_id, item['tipo_suprimento'], item['modelo_impressora'].strip() or None, item.get('marca'), item['quantidade'], mp or None, defeito.strip() or None, motivo_texto))
+                INSERT INTO suprimentos_itens (entrega_id, tipo_suprimento, modelo_impressora, cor_selecionada, marca, quantidade, motivo_padrao, defeito, motivo)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (entrega_id, item['tipo_suprimento'], item['modelo_impressora'].strip() or None, item.get('cor_selecionada'), item.get('marca'), item['quantidade'], mp or None, defeito.strip() or None, motivo_texto))
 
         db.commit()
         flash('Entrega de suprimentos registrada com sucesso!', 'success')
