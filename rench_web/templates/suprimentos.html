@@ -108,13 +108,12 @@
                 <td>{{item.modelo or '-'}}</td>
                 <td><strong>{{item.quantidade}}</strong></td>
                 <td class="text-muted small">
-                  {% if item.motivo %}
-                    {{item.motivo}}
-                  {% elif item.motivo_padrao %}
-                    {% if item.motivo_padrao == 'deixar_estoque' %}Deixar para estoque local
-                    {% elif item.motivo_padrao == 'acabou_impressora' %}Acabou na impressora
-                    {% elif item.motivo_padrao == 'defeito_peca' %}Defeito na peça{% if item.defeito %} - {{item.defeito}}{% endif %}
-                    {% else %}{{item.motivo_padrao}}
+                  {% set mp = item.motivo_padrao or item.motivo or '' %}
+                  {% if mp %}
+                    {% if mp == 'deixar_estoque' %}Deixar para estoque local
+                    {% elif mp == 'acabou_impressora' %}Acabou na impressora
+                    {% elif mp == 'defeito_peca' %}Defeito na peça{% if item.defeito %} - {{item.defeito}}{% endif %}
+                    {% else %}{{mp}}
                     {% endif %}
                   {% else %}
                     -
