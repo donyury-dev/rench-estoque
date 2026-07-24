@@ -215,6 +215,52 @@ def _normalizar_modelos_estoque():
         cur.close()
 
 
+def _normalizar_papel_fotografico_estoque():
+    db = get_db()
+    cur = db.cursor()
+    try:
+        # Papel fotografico deve sempre ter modelo='-' (chave unica)
+        cur.execute("""
+            SELECT id, tipo_suprimento, modelo_impressora, marca, quantidade, estoque_minimo
+            FROM estoque
+            WHERE UPPER(tipo_suprimento) = 'PAPEL FOTOGRAFICO'
+            ORDER BY id
+        """)
+        itens = cur.fetchall()
+        if len(itens) > 1:
+            destino = next((i for i in itens if i['modelo_impressora'] == '-'), itens[0])
+            ids_origem = [i['id'] for i in itens if i['id'] != destino['id']]
+            quantidade_total = sum(int(i['quantidade'] or 0) for i in itens)
+            estoque_minimo = max(int(i['estoque_minimo'] or 0) for i in itens)
+            cur.execute(
+                "UPDATE estoque SET modelo_impressora='-', quantidade=%s, estoque_minimo=%s WHERE id=%s",
+                (quantidade_total, estoque_minimo, destino['id'])
+            )
+            for estoque_id in ids_origem:
+                cur.execute(
+                    "UPDATE estoque_movimentacoes SET estoque_id=%s WHERE estoque_id=%s",
+                    (destino['id'], estoque_id)
+                )
+                cur.execute("DELETE FROM estoque WHERE id=%s", (estoque_id,))
+        elif len(itens) == 1 and itens[0]['modelo_impressora'] != '-':
+            cur.execute(
+                "UPDATE estoque SET modelo_impressora='-' WHERE id=%s",
+                (itens[0]['id'],)
+            )
+        cur.execute("""
+            UPDATE suprimentos_itens
+            SET modelo_impressora='-'
+            WHERE UPPER(tipo_suprimento) = 'PAPEL FOTOGRAFICO'
+              AND (modelo_impressora IS NULL OR modelo_impressora = '')
+        """)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Migration warning: {e}")
+    finally:
+        cur.close()
+
+
 def _popular_modelos_padrao():
     db = get_db()
     cur = db.cursor()
@@ -448,6 +494,7 @@ def init_db():
 
     _executar_migrations()
     _normalizar_modelos_estoque()
+    _normalizar_papel_fotografico_estoque()
     _popular_modelos_padrao()
 
     db = get_db()
