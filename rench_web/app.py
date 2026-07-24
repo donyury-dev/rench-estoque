@@ -372,65 +372,89 @@ def _separar_drum_5112_por_marca():
     db = get_db()
     cur = db.cursor()
     try:
+        # Caso 1: ainda existe Drum Black sem marca -> separa em OKIData (3) e R10 (2)
         cur.execute("""
             SELECT id, quantidade FROM estoque
             WHERE tipo_suprimento = 'Drum Black' AND modelo_impressora = 'ES5112/4172' AND COALESCE(marca, '') = ''
         """)
         row = cur.fetchone()
-        if not row:
+        if row:
+            estoque_id = row['id']
+            qtd_oki = 3
+            qtd_r10 = 2
+
+            cur.execute("""
+                SELECT id FROM estoque
+                WHERE tipo_suprimento = 'Drum Black' AND modelo_impressora = 'ES5112/4172' AND marca = 'OKIData'
+            """)
+            oki = cur.fetchone()
+            if oki:
+                cur.execute("UPDATE estoque SET quantidade = quantidade + %s WHERE id = %s", (qtd_oki, oki['id']))
+                oki_id = oki['id']
+            else:
+                cur.execute("""
+                    INSERT INTO estoque (tipo_suprimento, modelo_impressora, marca, quantidade, estoque_minimo)
+                    VALUES ('Drum Black', 'ES5112/4172', 'OKIData', %s, 1) RETURNING id
+                """, (qtd_oki,))
+                oki_id = cur.fetchone()['id']
+
+            cur.execute("""
+                SELECT id FROM estoque
+                WHERE tipo_suprimento = 'Drum Black' AND modelo_impressora = 'ES5112/4172' AND marca = 'R10'
+            """)
+            r10 = cur.fetchone()
+            if r10:
+                cur.execute("UPDATE estoque SET quantidade = quantidade + %s WHERE id = %s", (qtd_r10, r10['id']))
+                r10_id = r10['id']
+            else:
+                cur.execute("""
+                    INSERT INTO estoque (tipo_suprimento, modelo_impressora, marca, quantidade, estoque_minimo)
+                    VALUES ('Drum Black', 'ES5112/4172', 'R10', %s, 1) RETURNING id
+                """, (qtd_r10,))
+                r10_id = cur.fetchone()['id']
+
+            cur.execute("UPDATE estoque_movimentacoes SET estoque_id = %s WHERE estoque_id = %s", (oki_id, estoque_id))
+            cur.execute("""
+                INSERT INTO estoque_movimentacoes (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, data_movimento)
+                VALUES (%s, 'ajuste', %s, 0, %s, 'Separacao de marca R10 a partir do saldo existente', 'sistema', CURRENT_TIMESTAMP)
+            """, (r10_id, qtd_r10, qtd_r10))
+            cur.execute("DELETE FROM estoque WHERE id = %s", (estoque_id,))
+            db.commit()
             return
 
-        estoque_id = row['id']
-        qtd = int(row['quantidade'] or 0)
-
-        # Define as quantidades desejadas
-        qtd_oki = 3
-        qtd_r10 = 2
-
-        # OKIData
+        # Caso 2: ja foi convertido para OKIData 5 e nao existe R10 -> separa 2 unidades para R10
         cur.execute("""
             SELECT id, quantidade FROM estoque
             WHERE tipo_suprimento = 'Drum Black' AND modelo_impressora = 'ES5112/4172' AND marca = 'OKIData'
         """)
         oki = cur.fetchone()
-        if oki:
-            cur.execute("UPDATE estoque SET quantidade = %s WHERE id = %s", (qtd_oki, oki['id']))
-            oki_id = oki['id']
-        else:
-            cur.execute("""
-                INSERT INTO estoque (tipo_suprimento, modelo_impressora, marca, quantidade, estoque_minimo)
-                VALUES ('Drum Black', 'ES5112/4172', 'OKIData', %s, 1) RETURNING id
-            """, (qtd_oki,))
-            oki_id = cur.fetchone()['id']
-
-        # R10
         cur.execute("""
-            SELECT id, quantidade FROM estoque
+            SELECT id FROM estoque
             WHERE tipo_suprimento = 'Drum Black' AND modelo_impressora = 'ES5112/4172' AND marca = 'R10'
         """)
         r10 = cur.fetchone()
-        if r10:
-            cur.execute("UPDATE estoque SET quantidade = %s WHERE id = %s", (qtd_r10, r10['id']))
-            r10_id = r10['id']
-        else:
+
+        if oki and not r10 and int(oki['quantidade'] or 0) >= 2:
+            oki_id = oki['id']
+            qtd_r10 = 2
+            novo_oki = int(oki['quantidade'] or 0) - qtd_r10
+
+            cur.execute("UPDATE estoque SET quantidade = %s WHERE id = %s", (novo_oki, oki_id))
             cur.execute("""
                 INSERT INTO estoque (tipo_suprimento, modelo_impressora, marca, quantidade, estoque_minimo)
                 VALUES ('Drum Black', 'ES5112/4172', 'R10', %s, 1) RETURNING id
             """, (qtd_r10,))
             r10_id = cur.fetchone()['id']
 
-        # Move movimentacoes do sem marca para OKIData
-        cur.execute("UPDATE estoque_movimentacoes SET estoque_id = %s WHERE estoque_id = %s", (oki_id, estoque_id))
-
-        # Registra ajuste de separacao no R10
-        cur.execute("""
-            INSERT INTO estoque_movimentacoes (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, data_movimento)
-            VALUES (%s, 'ajuste', %s, 0, %s, 'Separacao de marca R10 a partir do saldo existente', 'sistema', CURRENT_TIMESTAMP)
-        """, (r10_id, qtd_r10, qtd_r10))
-
-        # Remove o registro sem marca
-        cur.execute("DELETE FROM estoque WHERE id = %s", (estoque_id,))
-        db.commit()
+            cur.execute("""
+                INSERT INTO estoque_movimentacoes (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, data_movimento)
+                VALUES (%s, 'ajuste', %s, %s, %s, 'Separacao de 2 unidades OKIData para R10', 'sistema', CURRENT_TIMESTAMP)
+            """, (oki_id, -qtd_r10, int(oki['quantidade'] or 0), novo_oki))
+            cur.execute("""
+                INSERT INTO estoque_movimentacoes (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, data_movimento)
+                VALUES (%s, 'ajuste', %s, 0, %s, 'Recebido 2 unidades da separacao OKIData', 'sistema', CURRENT_TIMESTAMP)
+            """, (r10_id, qtd_r10, qtd_r10))
+            db.commit()
     except Exception as e:
         db.rollback()
         print(f"Migration warning: {e}")
