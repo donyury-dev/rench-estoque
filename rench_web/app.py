@@ -2231,6 +2231,11 @@ def estoque_historico(estoque_id):
         flash('Item nao encontrado.', 'danger')
         return redirect(url_for('controle_estoque'))
 
+    # Separa tipo base e cor (ex: "Toner Black" -> "Toner", "Black")
+    partes_tipo = (item['tipo_suprimento'] or '').split(' ', 1)
+    tipo_base = partes_tipo[0]
+    cor = partes_tipo[1] if len(partes_tipo) > 1 else None
+
     cur.execute("""
         SELECT em.*, si.motivo_padrao, si.defeito, si.motivo as motivo_item,
                se.unidade_id, u.nome as unidade_nome, emp.nome as empresa_nome, se.observacoes
@@ -2240,11 +2245,12 @@ def estoque_historico(estoque_id):
         LEFT JOIN empresas emp ON emp.id = u.empresa_id
         LEFT JOIN suprimentos_itens si ON si.entrega_id = em.entrega_id
             AND si.tipo_suprimento = %s
+            AND COALESCE(si.cor_selecionada, '') = COALESCE(%s, '')
             AND COALESCE(si.modelo_impressora, '') = COALESCE(%s, '')
             AND COALESCE(si.marca, '') = COALESCE(%s, '')
         WHERE em.estoque_id=%s
         ORDER BY em.data_movimento DESC, em.id DESC
-    """, (item['tipo_suprimento'], item['modelo_impressora'] or '', item['marca'] or '', estoque_id))
+    """, (tipo_base, cor or '', item['modelo_impressora'] or '', item['marca'] or '', estoque_id))
     movimentacoes = cur.fetchall()
 
     return render_template('estoque_historico.html', item=item, movimentacoes=movimentacoes)
@@ -2261,6 +2267,12 @@ def api_estoque_historico():
     db = get_db()
     cur = db.cursor()
     estoque_id, _ = buscar_ou_criar_estoque(cur, tipo, modelo, marca)
+
+    # Separa tipo base e cor (ex: "Toner Black" -> "Toner", "Black")
+    partes_tipo = tipo.split(' ', 1)
+    tipo_base = partes_tipo[0]
+    cor = partes_tipo[1] if len(partes_tipo) > 1 else None
+
     cur.execute("""
         SELECT em.id, em.tipo_movimento, em.quantidade, em.saldo_antes, em.saldo_depois,
                em.motivo, em.responsavel, em.data_movimento, em.entrega_id,
@@ -2272,12 +2284,13 @@ def api_estoque_historico():
         LEFT JOIN empresas emp ON emp.id = u.empresa_id
         LEFT JOIN suprimentos_itens si ON si.entrega_id = em.entrega_id
             AND si.tipo_suprimento = %s
+            AND COALESCE(si.cor_selecionada, '') = COALESCE(%s, '')
             AND COALESCE(si.modelo_impressora, '') = COALESCE(%s, '')
             AND COALESCE(si.marca, '') = COALESCE(%s, '')
         WHERE em.estoque_id=%s
         ORDER BY em.data_movimento DESC, em.id DESC
         LIMIT 100
-    """, (tipo, modelo, marca or '', estoque_id))
+    """, (tipo_base, cor or '', modelo, marca or '', estoque_id))
     rows = cur.fetchall()
     movimentacoes = []
     for r in rows:
