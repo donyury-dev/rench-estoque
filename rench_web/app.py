@@ -2332,6 +2332,16 @@ def relatorio_mensal():
         entregas=resultado_entregas)
 
 
+@app.route('/debug/estoque')
+@login_required
+def debug_estoque():
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT id, tipo_suprimento, modelo_impressora, marca, quantidade FROM estoque WHERE modelo_impressora = 'ES5112/4172' ORDER BY tipo_suprimento, marca")
+    rows = cur.fetchall()
+    return jsonify({'itens': [dict(r) for r in rows]})
+
+
 @app.route('/estoque', methods=['GET'])
 @login_required
 def controle_estoque():
