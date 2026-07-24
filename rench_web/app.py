@@ -290,7 +290,7 @@ def _normalizar_papel_fotografico_estoque():
             quantidade_total = sum(int(i['quantidade'] or 0) for i in itens)
             estoque_minimo = max(int(i['estoque_minimo'] or 0) for i in itens)
             cur.execute(
-                "UPDATE estoque SET tipo_suprimento='PAPEL FOTOGRAFICO', modelo_impressora='-', quantidade=%s, estoque_minimo=%s WHERE id=%s",
+                "UPDATE estoque SET tipo_suprimento='Papel Fotografico', modelo_impressora='-', quantidade=%s, estoque_minimo=%s WHERE id=%s",
                 (quantidade_total, estoque_minimo, destino['id'])
             )
             for estoque_id in ids_origem:
@@ -301,14 +301,13 @@ def _normalizar_papel_fotografico_estoque():
                 cur.execute("DELETE FROM estoque WHERE id=%s", (estoque_id,))
         elif len(itens) == 1:
             cur.execute(
-                "UPDATE estoque SET tipo_suprimento='PAPEL FOTOGRAFICO', modelo_impressora='-' WHERE id=%s",
+                "UPDATE estoque SET tipo_suprimento='Papel Fotografico', modelo_impressora='-' WHERE id=%s",
                 (itens[0]['id'],)
             )
         cur.execute("""
             UPDATE suprimentos_itens
-            SET modelo_impressora='-'
+            SET tipo_suprimento='Papel Fotografico', modelo_impressora='-'
             WHERE UPPER(tipo_suprimento) LIKE 'PAPEL FOTOGRAFICO%'
-              AND (modelo_impressora IS NULL OR modelo_impressora = '')
         """)
         db.commit()
     except Exception as e:
