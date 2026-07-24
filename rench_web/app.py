@@ -219,21 +219,16 @@ def _normalizar_papel_fotografico_estoque():
     db = get_db()
     cur = db.cursor()
     try:
-        # Papel fotografico deve sempre ter modelo='-' (chave unica)
-        cur.execute("""
-            SELECT id, tipo_suprimento, modelo_impressora, marca, quantidade, estoque_minimo
-            FROM estoque
-            WHERE UPPER(tipo_suprimento) = 'PAPEL FOTOGRAFICO'
-            ORDER BY id
-        """)
-        itens = cur.fetchall()
+        cur.execute("SELECT id, tipo_suprimento, modelo_impressora, marca, quantidade, estoque_minimo FROM estoque ORDER BY id")
+        todos = cur.fetchall()
+        itens = [i for i in todos if _remover_acentos((i['tipo_suprimento'] or '').upper()) == 'PAPEL FOTOGRAFICO']
         if len(itens) > 1:
             destino = next((i for i in itens if i['modelo_impressora'] == '-'), itens[0])
             ids_origem = [i['id'] for i in itens if i['id'] != destino['id']]
             quantidade_total = sum(int(i['quantidade'] or 0) for i in itens)
             estoque_minimo = max(int(i['estoque_minimo'] or 0) for i in itens)
             cur.execute(
-                "UPDATE estoque SET modelo_impressora='-', quantidade=%s, estoque_minimo=%s WHERE id=%s",
+                "UPDATE estoque SET tipo_suprimento='PAPEL FOTOGRAFICO', modelo_impressora='-', quantidade=%s, estoque_minimo=%s WHERE id=%s",
                 (quantidade_total, estoque_minimo, destino['id'])
             )
             for estoque_id in ids_origem:
@@ -242,15 +237,15 @@ def _normalizar_papel_fotografico_estoque():
                     (destino['id'], estoque_id)
                 )
                 cur.execute("DELETE FROM estoque WHERE id=%s", (estoque_id,))
-        elif len(itens) == 1 and itens[0]['modelo_impressora'] != '-':
+        elif len(itens) == 1:
             cur.execute(
-                "UPDATE estoque SET modelo_impressora='-' WHERE id=%s",
+                "UPDATE estoque SET tipo_suprimento='PAPEL FOTOGRAFICO', modelo_impressora='-' WHERE id=%s",
                 (itens[0]['id'],)
             )
         cur.execute("""
             UPDATE suprimentos_itens
             SET modelo_impressora='-'
-            WHERE UPPER(tipo_suprimento) = 'PAPEL FOTOGRAFICO'
+            WHERE UPPER(tipo_suprimento) LIKE 'PAPEL FOTOGRAFICO%'
               AND (modelo_impressora IS NULL OR modelo_impressora = '')
         """)
         db.commit()
@@ -606,10 +601,21 @@ def _modelo_com_marca(tipo_suprimento, modelo_impressora):
     return tipo == 'DRUM' and modelo in ('ES5112/4172', 'C711')
 
 
+def _remover_acentos(texto):
+    if texto is None:
+        return ''
+    texto = str(texto)
+    mapa = str.maketrans(
+        'ÁÀÂÃÄáàâãäÉÈÊËéèêëÍÌÎÏíìîïÓÒÔÕÖóòôõöÚÙÛÜúùûüÇçÑñ',
+        'AAAAAaaaaaEEEEEeeeeeIIIIIiiiiiOOOOOoooooUUUUUuuuuuCcNn'
+    )
+    return texto.translate(mapa)
+
+
 def _chave_estoque(tipo_suprimento, modelo_impressora, marca=None):
-    tipo = (tipo_suprimento or '').strip().upper()
+    tipo = _remover_acentos((tipo_suprimento or '').strip().upper())
     if tipo == 'PAPEL FOTOGRAFICO':
-        return tipo, '-', None
+        return 'PAPEL FOTOGRAFICO', '-', None
     modelo = (modelo_impressora or '').strip().upper()
     if modelo in ('5112', 'ES5112', '4172', 'ES4172', '5112/4172'):
         modelo = 'ES5112/4172'
