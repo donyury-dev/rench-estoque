@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Detalhes da Entrega - RENCH{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Detalhes da Entrega</h1>
+    <p class="text-muted mb-0">{{entrega.empresa_nome}} — {{entrega.unidade_nome}} — {{entrega.data_entrega.strftime('%d/%m/%Y')}}</p>
+  </div>
+  <a href="{{url_for('lista_suprimentos')}}" class="btn btn-outline-secondary">Voltar</a>
+</div>
+
+<div class="card card-dashboard p-4 mb-4">
+  <div class="row g-3">
+    <div class="col-md-4">
+      <label class="text-muted small">Unidade</label>
+      <div class="fw-bold">{{entrega.unidade_nome}}</div>
+    </div>
+    <div class="col-md-4">
+      <label class="text-muted small">Empresa</label>
+      <div class="fw-bold">{{entrega.empresa_nome}}</div>
+    </div>
+    <div class="col-md-4">
+      <label class="text-muted small">Responsável</label>
+      <div class="fw-bold">{{entrega.responsavel or '-'}}</div>
+    </div>
+    <div class="col-12">
+      <label class="text-muted small">Observações</label>
+      <div>{{entrega.observacoes or '-'}}</div>
+    </div>
+  </div>
+</div>
+
+<h5 class="mb-3">Itens entregues</h5>
+
+<div class="table-rench">
+  <table class="table table-rench mb-0">
+    <thead>
+      <tr>
+        <th>Tipo</th>
+        <th>Modelo</th>
+        <th>Cor/Marca</th>
+        <th class="text-center">Qtd</th>
+        <th>Motivo</th>
+        <th>Defeito</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in itens %}
+      <tr>
+        <td><span class="badge bg-soft-primary">{{i.tipo_suprimento}}</span></td>
+        <td>{{i.modelo_impressora or '-'}}</td>
+        <td>
+          {{i.cor_selecionada or '-'}}
+          {% if i.marca %} / {{i.marca}}{% endif %}
+        </td>
+        <td class="text-center fw-bold">{{i.quantidade}}</td>
+        <td>{{i.motivo_padrao or i.motivo or '-'}}</td>
+        <td>{{i.defeito or '-'}}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" class="text-center text-muted py-4">Nenhum item nesta entrega.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

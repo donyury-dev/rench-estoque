@@ -57,12 +57,36 @@
   .mov-card i{font-size:22px;}
   .mov-info p{margin:0;}
   .mov-data{font-size:13px;color:#888;}
+
+  /* Mobile: menu lateral retrátil */
+  @media (max-width: 991.98px) {
+    :root{--sidebar-width:0px;}
+    .sidebar{transform:translateX(-100%);width:260px;transition:transform .25s ease;box-shadow:4px 0 24px rgba(0,0,0,.18);}
+    .sidebar.show{transform:translateX(0);}
+    .main-content{margin-left:0;padding:70px 16px 25px;}
+    .mobile-header{position:fixed;top:0;left:0;right:0;height:56px;background:#fff;border-bottom:1px solid var(--primary-borda);z-index:999;display:flex;align-items:center;justify-content:space-between;padding:0 16px;}
+    .mobile-header .mobile-logo{max-height:34px;}
+    .mobile-header .btn-menu{background:transparent;border:0;color:var(--primary);font-size:26px;padding:4px;}
+    .sidebar-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;opacity:0;visibility:hidden;transition:.2s;}
+    .sidebar-backdrop.show{opacity:1;visibility:visible;}
+  }
+  @media (min-width: 992px) {
+    .mobile-header{display:none;}
+    .sidebar-backdrop{display:none;}
+  }
 </style>
 {% block head %}{% endblock %}
 </head>
 <body>
 
-<div class="sidebar">
+<div class="mobile-header">
+  <button class="btn-menu" onclick="toggleMenu()"><i class="bi bi-list"></i></button>
+  <img src="{{url_for('static', filename='logo_rench.png')}}" alt="Rench" class="mobile-logo">
+  <div style="width:34px;"></div>
+</div>
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleMenu()"></div>
+
+<div class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <img src="{{url_for('static', filename='logo_rench.png')}}" alt="Rench" class="sidebar-logo">
     <p>Controle de Equipamentos</p>
@@ -123,6 +147,19 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  function toggleMenu(){
+    document.getElementById('sidebar').classList.toggle('show');
+    document.getElementById('sidebarBackdrop').classList.toggle('show');
+  }
+  document.querySelectorAll('.sidebar .nav-link').forEach(link=>{
+    link.addEventListener('click', ()=>{
+      if(window.innerWidth < 992){
+        toggleMenu();
+      }
+    });
+  });
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

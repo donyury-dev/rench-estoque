@@ -1678,6 +1678,38 @@ def lista_suprimentos():
         entregas=list(entregas.values()), locais=locais, tipos=tipos,
         busca=busca, filtro_unidade=unidade_id, filtro_tipo=tipo)
 
+
+@app.route('/suprimentos/entrega/<int:entrega_id>')
+@login_required
+def detalhes_entrega(entrega_id):
+    db = get_db()
+    cur = db.cursor()
+
+    cur.execute("""
+        SELECT se.*, u.nome as unidade_nome, emp.nome as empresa_nome
+        FROM suprimentos_entregas se
+        JOIN unidades u ON u.id = se.unidade_id
+        JOIN empresas emp ON emp.id = u.empresa_id
+        WHERE se.id = %s
+    """, (entrega_id,))
+    entrega = cur.fetchone()
+    if not entrega:
+        flash('Entrega nao encontrada.', 'danger')
+        return redirect(url_for('lista_suprimentos'))
+
+    cur.execute("""
+        SELECT si.*, e.quantidade as estoque_atual
+        FROM suprimentos_itens si
+        LEFT JOIN estoque e ON e.tipo_suprimento = (si.tipo_suprimento || ' ' || COALESCE(si.cor_selecionada, ''))
+            AND e.modelo_impressora = si.modelo_impressora
+            AND COALESCE(e.marca, '') = COALESCE(si.marca, '')
+        WHERE si.entrega_id = %s
+    """, (entrega_id,))
+    itens = cur.fetchall()
+
+    return render_template('suprimento_detalhes.html', entrega=entrega, itens=itens)
+
+
 @app.route('/suprimentos/mobile', methods=['GET', 'POST'])
 @login_required
 def suprimento_mobile():
@@ -2200,10 +2232,19 @@ def estoque_historico(estoque_id):
         return redirect(url_for('controle_estoque'))
 
     cur.execute("""
-        SELECT * FROM estoque_movimentacoes
-        WHERE estoque_id=%s
-        ORDER BY data_movimento DESC, id DESC
-    """, (estoque_id,))
+        SELECT em.*, si.motivo_padrao, si.defeito, si.motivo as motivo_item,
+               se.unidade_id, u.nome as unidade_nome, emp.nome as empresa_nome, se.observacoes
+        FROM estoque_movimentacoes em
+        LEFT JOIN suprimentos_entregas se ON se.id = em.entrega_id
+        LEFT JOIN unidades u ON u.id = se.unidade_id
+        LEFT JOIN empresas emp ON emp.id = u.empresa_id
+        LEFT JOIN suprimentos_itens si ON si.entrega_id = em.entrega_id
+            AND si.tipo_suprimento = %s
+            AND COALESCE(si.modelo_impressora, '') = COALESCE(%s, '')
+            AND COALESCE(si.marca, '') = COALESCE(%s, '')
+        WHERE em.estoque_id=%s
+        ORDER BY em.data_movimento DESC, em.id DESC
+    """, (item['tipo_suprimento'], item['modelo_impressora'] or '', item['marca'] or '', estoque_id))
     movimentacoes = cur.fetchall()
 
     return render_template('estoque_historico.html', item=item, movimentacoes=movimentacoes)
@@ -2221,12 +2262,22 @@ def api_estoque_historico():
     cur = db.cursor()
     estoque_id, _ = buscar_ou_criar_estoque(cur, tipo, modelo, marca)
     cur.execute("""
-        SELECT id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, data_movimento
-        FROM estoque_movimentacoes
-        WHERE estoque_id=%s
-        ORDER BY data_movimento DESC, id DESC
+        SELECT em.id, em.tipo_movimento, em.quantidade, em.saldo_antes, em.saldo_depois,
+               em.motivo, em.responsavel, em.data_movimento, em.entrega_id,
+               si.motivo_padrao, si.defeito, si.motivo as motivo_item,
+               u.nome as unidade_nome, emp.nome as empresa_nome
+        FROM estoque_movimentacoes em
+        LEFT JOIN suprimentos_entregas se ON se.id = em.entrega_id
+        LEFT JOIN unidades u ON u.id = se.unidade_id
+        LEFT JOIN empresas emp ON emp.id = u.empresa_id
+        LEFT JOIN suprimentos_itens si ON si.entrega_id = em.entrega_id
+            AND si.tipo_suprimento = %s
+            AND COALESCE(si.modelo_impressora, '') = COALESCE(%s, '')
+            AND COALESCE(si.marca, '') = COALESCE(%s, '')
+        WHERE em.estoque_id=%s
+        ORDER BY em.data_movimento DESC, em.id DESC
         LIMIT 100
-    """, (estoque_id,))
+    """, (tipo, modelo, marca or '', estoque_id))
     rows = cur.fetchall()
     movimentacoes = []
     for r in rows:
@@ -2237,7 +2288,13 @@ def api_estoque_historico():
             'saldo_antes': r['saldo_antes'],
             'saldo_depois': r['saldo_depois'],
             'motivo': r['motivo'],
+            'motivo_padrao': r['motivo_padrao'],
+            'motivo_item': r['motivo_item'],
+            'defeito': r['defeito'],
             'responsavel': r['responsavel'],
+            'entrega_id': r['entrega_id'],
+            'unidade_nome': r['unidade_nome'],
+            'empresa_nome': r['empresa_nome'],
             'data_movimento': r['data_movimento'].strftime('%d/%m/%Y %H:%M') if r['data_movimento'] else None
         })
     return jsonify({'movimentacoes': movimentacoes})

@@ -5,7 +5,7 @@
 <div class="page-header">
   <div>
     <h1>Histórico do Estoque</h1>
-    <p class="text-muted mb-0">{{item.tipo_suprimento}} {{item.modelo_impressora or ''}} — Saldo atual: <strong class="text-primary">{{item.quantidade}}</strong></p>
+    <p class="text-muted mb-0">{{item.tipo_suprimento}} {{item.modelo_impressora or ''}}{% if item.marca %} ({{item.marca}}){% endif %} — Saldo atual: <strong class="text-primary">{{item.quantidade}}</strong></p>
   </div>
   <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-secondary">Voltar</a>
 </div>
@@ -35,15 +35,16 @@
         <th>Data</th>
         <th>Movimento</th>
         <th class="text-center">Qtd</th>
-        <th class="text-center">Saldo antes</th>
-        <th class="text-center">Saldo depois</th>
-        <th>Motivo</th>
+        <th class="text-center">Saldo</th>
+        <th>Motivo / Destino</th>
         <th>Responsável</th>
+        <th class="text-center" style="width:60px;"></th>
       </tr>
     </thead>
     <tbody>
       {% for m in movimentacoes %}
-      <tr>
+      {% set motivo_real = m.motivo_item or m.motivo_padrao or m.motivo %}
+      <tr class="align-middle">
         <td class="text-muted small">{{m.data_movimento.strftime('%d/%m/%Y %H:%M')}}</td>
         <td>
           {% if m.tipo_movimento == 'entrada' %}
@@ -55,10 +56,35 @@
           {% endif %}
         </td>
         <td class="text-center fw-bold">{{'+' if m.quantidade > 0 else ''}}{{m.quantidade}}</td>
-        <td class="text-center">{{m.saldo_antes}}</td>
         <td class="text-center">{{m.saldo_depois}}</td>
-        <td>{{m.motivo or '-'}}</td>
+        <td>
+          {% if m.unidade_nome %}
+            <div class="fw-bold">{{m.unidade_nome}}</div>
+            {% if m.empresa_nome %}
+            <div class="small text-muted">{{m.empresa_nome}}</div>
+            {% endif %}
+          {% endif %}
+          {% if motivo_real %}
+            <div class="small"><strong>Motivo:</strong> {{motivo_real}}</div>
+            {% if m.defeito %}
+            <div class="small text-danger"><strong>Defeito:</strong> {{m.defeito}}</div>
+            {% endif %}
+          {% else %}
+            <span class="text-muted">-</span>
+          {% endif %}
+        </td>
         <td>{{m.responsavel or '-'}}</td>
+        <td class="text-center">
+          {% if m.entrega_id %}
+          <a href="{{url_for('detalhes_entrega', entrega_id=m.entrega_id)}}" class="btn btn-sm btn-outline-primary" title="Ver detalhes da entrega">
+            <i class="bi bi-eye"></i>
+          </a>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" class="text-center text-muted py-4">Nenhuma movimentação encontrada.</td>
       </tr>
       {% endfor %}
     </tbody>

@@ -286,7 +286,7 @@
                       <div class="nome">{{e.tipo_suprimento}}</div>
                       <div class="acoes-mini">
                         <button type="button" class="btn-mini" onclick="event.stopPropagation(); abrirAjuste('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}', {{e.quantidade}}, {{e.estoque_minimo or 1}})">Ajustar</button>
-                        <button type="button" class="btn-mini" onclick="event.stopPropagation(); abrirMovimentacoes('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}')">Mov.</button>
+                        <button type="button" class="btn-mini" onclick="event.stopPropagation(); abrirMovimentacoes('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}', '{{e.marca or ''}}')">Mov.</button>
                       </div>
                     </div>
                     <div class="qtd {{'zerado' if e.quantidade==0 else ('baixo' if e.quantidade <= 1 else 'ok')}}">
@@ -510,6 +510,7 @@
             <div class="card-title"><i class="bi bi-clock-history"></i> Movimentações do item</div>
             <input type="hidden" id="mov-tipo">
             <input type="hidden" id="mov-modelo">
+            <input type="hidden" id="mov-marca">
             <div class="mb-2">
               <label>Item</label>
               <div id="mov-item-nome" class="fs-6 fw-bold"></div>
@@ -1055,10 +1056,11 @@
       window.scrollTo(0,0);
     }
 
-    function abrirMovimentacoes(tipo, modelo){
+    function abrirMovimentacoes(tipo, modelo, marca){
       document.getElementById('mov-tipo').value = tipo;
       document.getElementById('mov-modelo').value = modelo;
-      document.getElementById('mov-item-nome').textContent = tipo + (modelo ? ' - ' + modelo : '');
+      document.getElementById('mov-marca').value = marca || '';
+      document.getElementById('mov-item-nome').textContent = tipo + (modelo ? ' - ' + modelo : '') + (marca ? ' (' + marca + ')' : '');
       document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
       document.getElementById('modal-movimentacoes').classList.add('active');
@@ -1108,11 +1110,13 @@
     async function carregarMovimentacoes(){
       const tipo = document.getElementById('mov-tipo').value;
       const modelo = document.getElementById('mov-modelo').value;
+      const marca = document.getElementById('mov-marca')?.value || '';
       const container = document.getElementById('movimentacoes-resultado');
       container.innerHTML = '<div class="hist-empty">Carregando...</div>';
 
       try{
-        const url = `/api/estoque/historico?tipo=${encodeURIComponent(tipo)}&modelo=${encodeURIComponent(modelo)}&_=${Date.now()}`;
+        let url = `/api/estoque/historico?tipo=${encodeURIComponent(tipo)}&modelo=${encodeURIComponent(modelo)}&_=${Date.now()}`;
+        if(marca) url += `&marca=${encodeURIComponent(marca)}`;
         const r = await fetch(url);
         const data = await r.json();
         if(!r.ok){
@@ -1128,15 +1132,19 @@
           const sinal = m.quantidade > 0 ? '+' : '';
           const classe = m.tipo_movimento === 'saida' ? 'saida' : 'entrada';
           const nome = m.tipo_movimento === 'entrada' ? 'Entrada' : (m.tipo_movimento === 'saida' ? 'Saída' : 'Ajuste');
+          const motivo = m.motivo_padrao || m.motivo_item || m.motivo || '-';
+          const defeito = m.defeito ? `<br><span style="color:#850001;">Defeito: ${m.defeito}</span>` : '';
+          const unidade = m.unidade_nome ? `<br><strong>${m.unidade_nome}</strong>${m.empresa_nome ? ' ('+m.empresa_nome+')' : ''}` : '';
           html += `
-            <div class="hist-item">
+            <div class="hist-item" onclick="${m.entrega_id ? `window.location.href='/suprimentos/entrega/${m.entrega_id}'` : ''}" style="${m.entrega_id ? 'cursor:pointer;' : ''}">
               <div class="top">
                 <span class="tipo">${nome}</span>
                 <span class="qtd ${classe}">${sinal}${m.quantidade}</span>
               </div>
               <div class="info">
-                Saldo: ${m.saldo_antes} → ${m.saldo_depois}<br>
-                ${m.motivo || '-'} <span style="color:#999;">| ${m.data_movimento}${m.responsavel ? ' | ' + m.responsavel : ''}</span>
+                Saldo: ${m.saldo_antes} → ${m.saldo_depois}${unidade}<br>
+                <strong>Motivo:</strong> ${motivo}${defeito}
+                <br><span style="color:#999;">${m.data_movimento}${m.responsavel ? ' | ' + m.responsavel : ''}</span>
               </div>
             </div>
           `;
