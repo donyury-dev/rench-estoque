@@ -877,12 +877,14 @@ def _normalizar_tipo_suprimento(tipo):
         partes = tipo.split()
         cor = ''
         for p in partes:
-            if p in ('ciano','amarelo','amarela','magenta','preto','preta','black','cyan','yellow','magenta'):
+            if p in ('ciano','amarelo','amarela','magenta','preto','preta','black','cyan','yellow'):
                 cor = p.capitalize()
                 if cor == 'Amarela':
                     cor = 'Amarelo'
                 if cor == 'Preta':
                     cor = 'Preto'
+                if cor in ('Black', 'Cyan', 'Yellow'):
+                    cor = {'Black':'Preto', 'Cyan':'Ciano', 'Yellow':'Amarelo'}[cor]
                 break
         return f"Drum {cor} para Transformar".strip() if cor else 'Drum para Transformar'
     partes = tipo.split(' ', 1)
@@ -892,10 +894,14 @@ def _normalizar_tipo_suprimento(tipo):
 
 
 def _chave_estoque(tipo_suprimento, modelo_impressora, marca=None):
-    tipo = _normalizar_tipo_suprimento(tipo_suprimento)
+    tipo = (tipo_suprimento or '').strip()
+    modelo = (modelo_impressora or '').strip().upper()
+    # Modelo especial "PARA TRANSFORMAR" armazena a cor no tipo
+    if modelo == 'PARA TRANSFORMAR' and 'transformar' not in tipo.lower():
+        tipo = f"{tipo} para Transformar"
+    tipo = _normalizar_tipo_suprimento(tipo)
     if tipo == 'Papel Fotografico':
         return 'Papel Fotografico', '-', None
-    modelo = (modelo_impressora or '').strip().upper()
     if modelo in ('5112', 'ES5112', '4172', 'ES4172', '5112/4172'):
         modelo = 'ES5112/4172'
     marca = (marca or '').strip() if _modelo_com_marca(tipo, modelo) else None
