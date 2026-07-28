@@ -456,6 +456,26 @@
                 </div>
               </div>
             </div>
+            <div class="mb-2">
+              <label>Período</label>
+              <select id="hist-periodo" class="form-select" onchange="limparDatasHistorico()">
+                <option value="">Personalizado</option>
+                <option value="hoje">Hoje</option>
+                <option value="7dias">Últimos 7 dias</option>
+                <option value="mes">Este mês</option>
+                <option value="mes_passado">Mês passado</option>
+              </select>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label>Data início</label>
+                <input type="date" id="hist-data-inicio" class="form-control" oninput="limparPeriodoHistorico()">
+              </div>
+              <div class="col-6">
+                <label>Data fim</label>
+                <input type="date" id="hist-data-fim" class="form-control" oninput="limparPeriodoHistorico()">
+              </div>
+            </div>
             <button type="button" class="btn-block mb-3" onclick="carregarHistoricoEntregas()">
               <i class="bi bi-search"></i> Buscar Entregas
             </button>
@@ -1190,12 +1210,18 @@
 
     async function carregarHistoricoEntregas(){
       const unidadeId = document.getElementById('hist-unidade-id').value;
+      const periodo = document.getElementById('hist-periodo').value;
+      const dataInicio = document.getElementById('hist-data-inicio').value;
+      const dataFim = document.getElementById('hist-data-fim').value;
       const container = document.getElementById('historico-entregas-resultado');
       container.innerHTML = '<div class="hist-empty">Carregando...</div>';
 
       try{
         let url = `/api/suprimentos/historico?limite=50&_=${Date.now()}`;
         if(unidadeId) url += `&unidade_id=${unidadeId}`;
+        if(periodo) url += `&periodo=${encodeURIComponent(periodo)}`;
+        if(dataInicio) url += `&data_inicio=${encodeURIComponent(dataInicio)}`;
+        if(dataFim) url += `&data_fim=${encodeURIComponent(dataFim)}`;
         const r = await fetch(url);
         const data = await r.json();
         if(!data.entregas || data.entregas.length === 0){
@@ -1237,6 +1263,22 @@
         container.innerHTML = html;
       } catch(err){
         container.innerHTML = '<div class="hist-empty">Erro de conexão.</div>';
+      }
+    }
+
+    function limparDatasHistorico(){
+      const periodo = document.getElementById('hist-periodo').value;
+      if(periodo){
+        document.getElementById('hist-data-inicio').value = '';
+        document.getElementById('hist-data-fim').value = '';
+      }
+    }
+
+    function limparPeriodoHistorico(){
+      const dataInicio = document.getElementById('hist-data-inicio').value;
+      const dataFim = document.getElementById('hist-data-fim').value;
+      if(dataInicio || dataFim){
+        document.getElementById('hist-periodo').value = '';
       }
     }
 

@@ -1940,6 +1940,27 @@ def lista_suprimentos():
     busca = request.args.get('q', '').strip()
     unidade_id = request.args.get('unidade_id', '').strip()
     tipo = request.args.get('tipo', '').strip()
+    data_inicio = request.args.get('data_inicio', '').strip()
+    data_fim = request.args.get('data_fim', '').strip()
+    periodo = request.args.get('periodo', '').strip()
+
+    # Normaliza datas a partir do periodo pre-definido
+    if periodo:
+        hoje = date.today()
+        if periodo == 'hoje':
+            data_inicio = data_fim = hoje.isoformat()
+        elif periodo == '7dias':
+            data_inicio = (hoje - timedelta(days=6)).isoformat()
+            data_fim = hoje.isoformat()
+        elif periodo == 'mes':
+            data_inicio = hoje.replace(day=1).isoformat()
+            data_fim = hoje.isoformat()
+        elif periodo == 'mes_passado':
+            primeiro_dia_mes = hoje.replace(day=1)
+            ultimo_dia_mes_passado = primeiro_dia_mes - timedelta(days=1)
+            primeiro_dia_mes_passado = ultimo_dia_mes_passado.replace(day=1)
+            data_inicio = primeiro_dia_mes_passado.isoformat()
+            data_fim = ultimo_dia_mes_passado.isoformat()
 
     sql = """
         SELECT se.id, se.data_entrega, se.responsavel, se.observacoes,
@@ -1960,6 +1981,12 @@ def lista_suprimentos():
     if tipo:
         sql += " AND si.tipo_suprimento = %s"
         params.append(tipo)
+    if data_inicio:
+        sql += " AND se.data_entrega >= %s"
+        params.append(data_inicio)
+    if data_fim:
+        sql += " AND se.data_entrega <= %s"
+        params.append(data_fim)
     if busca:
         sql += """ AND (
             unaccent(lower(u.nome)) LIKE unaccent(lower(%s))
@@ -2010,7 +2037,8 @@ def lista_suprimentos():
 
     return render_template('suprimentos.html',
         entregas=list(entregas.values()), locais=locais, tipos=tipos,
-        busca=busca, filtro_unidade=unidade_id, filtro_tipo=tipo)
+        busca=busca, filtro_unidade=unidade_id, filtro_tipo=tipo,
+        filtro_data_inicio=data_inicio, filtro_data_fim=data_fim, filtro_periodo=periodo)
 
 
 @app.route('/suprimentos/entrega/<int:entrega_id>')
@@ -2870,6 +2898,27 @@ def api_suprimentos_historico():
 
     limite = request.args.get('limite', 50, type=int)
     unidade_id = request.args.get('unidade_id', type=int)
+    data_inicio = request.args.get('data_inicio', '').strip()
+    data_fim = request.args.get('data_fim', '').strip()
+    periodo = request.args.get('periodo', '').strip()
+
+    # Normaliza datas a partir do periodo pre-definido
+    if periodo:
+        hoje = date.today()
+        if periodo == 'hoje':
+            data_inicio = data_fim = hoje.isoformat()
+        elif periodo == '7dias':
+            data_inicio = (hoje - timedelta(days=6)).isoformat()
+            data_fim = hoje.isoformat()
+        elif periodo == 'mes':
+            data_inicio = hoje.replace(day=1).isoformat()
+            data_fim = hoje.isoformat()
+        elif periodo == 'mes_passado':
+            primeiro_dia_mes = hoje.replace(day=1)
+            ultimo_dia_mes_passado = primeiro_dia_mes - timedelta(days=1)
+            primeiro_dia_mes_passado = ultimo_dia_mes_passado.replace(day=1)
+            data_inicio = primeiro_dia_mes_passado.isoformat()
+            data_fim = ultimo_dia_mes_passado.isoformat()
 
     params = []
     sql = """
@@ -2883,6 +2932,12 @@ def api_suprimentos_historico():
     if unidade_id:
         sql += " AND se.unidade_id=%s"
         params.append(unidade_id)
+    if data_inicio:
+        sql += " AND se.data_entrega >= %s"
+        params.append(data_inicio)
+    if data_fim:
+        sql += " AND se.data_entrega <= %s"
+        params.append(data_fim)
     sql += " ORDER BY se.data_registro DESC LIMIT %s"
     params.append(limite)
 

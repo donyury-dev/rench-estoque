@@ -65,6 +65,15 @@
       <option value="{{t}}" {{'selected' if filtro_tipo==t else ''}}>{{t}}</option>
       {% endfor %}
     </select>
+    <select name="periodo" class="form-select" style="max-width:180px;" id="periodoSelect">
+      <option value="" {{'selected' if not filtro_periodo else ''}}>Período</option>
+      <option value="hoje" {{'selected' if filtro_periodo=='hoje' else ''}}>Hoje</option>
+      <option value="7dias" {{'selected' if filtro_periodo=='7dias' else ''}}>Últimos 7 dias</option>
+      <option value="mes" {{'selected' if filtro_periodo=='mes' else ''}}>Este mês</option>
+      <option value="mes_passado" {{'selected' if filtro_periodo=='mes_passado' else ''}}>Mês passado</option>
+    </select>
+    <input type="date" name="data_inicio" class="form-control" value="{{filtro_data_inicio or ''}}" style="max-width:160px;" id="dataInicio" title="Data início">
+    <input type="date" name="data_fim" class="form-control" value="{{filtro_data_fim or ''}}" style="max-width:160px;" id="dataFim" title="Data fim">
     <button type="submit" class="btn btn-outline-primary"><i class="bi bi-funnel"></i> Filtrar</button>
     <a href="{{url_for('lista_suprimentos')}}" class="btn btn-outline-secondary">Limpar</a>
   </form>
@@ -135,4 +144,27 @@
     <a href="{{url_for('novo_suprimento')}}" class="btn btn-rench-primary mt-3">Registrar primeira entrega</a>
   </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const periodoSelect = document.getElementById('periodoSelect');
+  const dataInicio = document.getElementById('dataInicio');
+  const dataFim = document.getElementById('dataFim');
+
+  periodoSelect?.addEventListener('change', function(){
+    if(this.value){
+      dataInicio.value = '';
+      dataFim.value = '';
+    }
+  });
+
+  [dataInicio, dataFim].forEach(el => {
+    el?.addEventListener('input', function(){
+      if(dataInicio.value || dataFim.value){
+        periodoSelect.value = '';
+      }
+    });
+  });
+</script>
 {% endblock %}
