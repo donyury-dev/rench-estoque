@@ -4,7 +4,7 @@ import psycopg2.extras
 import hashlib
 import difflib
 import unicodedata
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, g, session
 from functools import wraps
 from urllib.parse import urlparse
@@ -2727,12 +2727,36 @@ def estoque_historico(estoque_id):
         flash('Item nao encontrado.', 'danger')
         return redirect(url_for('controle_estoque'))
 
+    # Filtros
+    filtro_unidade_id = request.args.get('unidade_id', '')
+    filtro_data_inicio = request.args.get('data_inicio', '')
+    filtro_data_fim = request.args.get('data_fim', '')
+    filtro_periodo = request.args.get('periodo', '')
+
+    # Normaliza datas a partir do período pré-definido
+    if filtro_periodo:
+        hoje = date.today()
+        if filtro_periodo == 'hoje':
+            filtro_data_inicio = filtro_data_fim = hoje.isoformat()
+        elif filtro_periodo == '7dias':
+            filtro_data_inicio = (hoje - timedelta(days=6)).isoformat()
+            filtro_data_fim = hoje.isoformat()
+        elif filtro_periodo == 'mes':
+            filtro_data_inicio = hoje.replace(day=1).isoformat()
+            filtro_data_fim = hoje.isoformat()
+        elif filtro_periodo == 'mes_passado':
+            primeiro_dia_mes = hoje.replace(day=1)
+            ultimo_dia_mes_passado = primeiro_dia_mes - timedelta(days=1)
+            primeiro_dia_mes_passado = ultimo_dia_mes_passado.replace(day=1)
+            filtro_data_inicio = primeiro_dia_mes_passado.isoformat()
+            filtro_data_fim = ultimo_dia_mes_passado.isoformat()
+
     # Separa tipo base e cor (ex: "Toner Black" -> "Toner", "Black")
     partes_tipo = (item['tipo_suprimento'] or '').split(' ', 1)
     tipo_base = partes_tipo[0]
     cor = partes_tipo[1] if len(partes_tipo) > 1 else None
 
-    cur.execute("""
+    sql = """
         SELECT em.*, si.motivo_padrao, si.defeito, si.motivo as motivo_item,
                se.unidade_id, u.nome as unidade_nome, emp.nome as empresa_nome, se.observacoes
         FROM estoque_movimentacoes em
@@ -2745,11 +2769,40 @@ def estoque_historico(estoque_id):
             AND COALESCE(si.modelo_impressora, '') = COALESCE(%s, '')
             AND COALESCE(si.marca, '') = COALESCE(%s, '')
         WHERE em.estoque_id=%s
-        ORDER BY em.data_movimento DESC, em.id DESC
-    """, (tipo_base, cor or '', item['modelo_impressora'] or '', item['marca'] or '', estoque_id))
+    """
+    params = [tipo_base, cor or '', item['modelo_impressora'] or '', item['marca'] or '', estoque_id]
+
+    if filtro_unidade_id:
+        sql += " AND se.unidade_id = %s"
+        params.append(filtro_unidade_id)
+    if filtro_data_inicio:
+        sql += " AND DATE(em.data_movimento) >= %s"
+        params.append(filtro_data_inicio)
+    if filtro_data_fim:
+        sql += " AND DATE(em.data_movimento) <= %s"
+        params.append(filtro_data_fim)
+
+    sql += " ORDER BY em.data_movimento DESC, em.id DESC"
+    cur.execute(sql, params)
     movimentacoes = cur.fetchall()
 
-    return render_template('estoque_historico.html', item=item, movimentacoes=movimentacoes)
+    # Lista de unidades para o filtro
+    cur.execute("""
+        SELECT DISTINCT u.id, u.nome
+        FROM estoque_movimentacoes em
+        LEFT JOIN suprimentos_entregas se ON se.id = em.entrega_id
+        LEFT JOIN unidades u ON u.id = se.unidade_id
+        WHERE em.estoque_id=%s AND u.id IS NOT NULL
+        ORDER BY u.nome
+    """, (estoque_id,))
+    unidades = cur.fetchall()
+
+    return render_template('estoque_historico.html', item=item, movimentacoes=movimentacoes,
+                           unidades=unidades,
+                           filtro_unidade_id=filtro_unidade_id,
+                           filtro_data_inicio=filtro_data_inicio,
+                           filtro_data_fim=filtro_data_fim,
+                           filtro_periodo=filtro_periodo)
 
 
 @app.route('/api/estoque/historico')

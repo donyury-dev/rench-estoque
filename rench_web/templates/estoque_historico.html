@@ -33,7 +33,47 @@
   </li>
 </ul>
 
+<div class="card card-dashboard p-4 mb-4">
+  <form method="GET" action="{{url_for('estoque_historico', estoque_id=item.id)}}" class="row g-3 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label fw-bold">Unidade</label>
+      <select name="unidade_id" class="form-select">
+        <option value="">Todas as unidades</option>
+        {% for u in unidades %}
+        <option value="{{u.id}}" {{'selected' if filtro_unidade_id|string == u.id|string else ''}}>{{u.nome}}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label fw-bold">Período</label>
+      <select name="periodo" class="form-select" id="periodoSelect">
+        <option value="">Personalizado</option>
+        <option value="hoje" {{'selected' if filtro_periodo=='hoje' else ''}}>Hoje</option>
+        <option value="7dias" {{'selected' if filtro_periodo=='7dias' else ''}}>Últimos 7 dias</option>
+        <option value="mes" {{'selected' if filtro_periodo=='mes' else ''}}>Este mês</option>
+        <option value="mes_passado" {{'selected' if filtro_periodo=='mes_passado' else ''}}>Mês passado</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label fw-bold">Data início</label>
+      <input type="date" name="data_inicio" class="form-control" value="{{filtro_data_inicio or ''}}" id="dataInicio">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label fw-bold">Data fim</label>
+      <input type="date" name="data_fim" class="form-control" value="{{filtro_data_fim or ''}}" id="dataFim">
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+      <button type="submit" class="btn btn-rench-primary flex-fill"><i class="bi bi-funnel"></i> Filtrar</button>
+      <a href="{{url_for('estoque_historico', estoque_id=item.id)}}" class="btn btn-outline-secondary">Limpar</a>
+    </div>
+  </form>
+</div>
+
 <div class="table-rench">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold mb-0"><i class="bi bi-clock-history me-2"></i>Movimentações</h5>
+    <span class="badge bg-soft-primary text-dark">{{movimentacoes|length}} registro{{'s' if movimentacoes|length != 1 else ''}}</span>
+  </div>
   <table class="table table-rench mb-0">
     <thead>
       <tr>
@@ -95,4 +135,30 @@
     </tbody>
   </table>
 </div>
+
+{% block scripts %}
+<script>
+  const periodoSelect = document.getElementById('periodoSelect');
+  const dataInicio = document.getElementById('dataInicio');
+  const dataFim = document.getElementById('dataFim');
+
+  // Se escolher um periodo rapido, limpa as datas customizadas
+  periodoSelect?.addEventListener('change', function(){
+    if(this.value){
+      dataInicio.value = '';
+      dataFim.value = '';
+    }
+  });
+
+  // Se digitar uma data manualmente, limpa o periodo rapido
+  [dataInicio, dataFim].forEach(el => {
+    el?.addEventListener('input', function(){
+      if(dataInicio.value || dataFim.value){
+        periodoSelect.value = '';
+      }
+    });
+  });
+</script>
+{% endblock %}
+
 {% endblock %}
