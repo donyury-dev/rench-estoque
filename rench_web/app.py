@@ -949,10 +949,15 @@ def verificar_saldo(cur, tipo_suprimento, modelo_impressora, quantidade, marca=N
 
 
 def debitar_estoque_entrega(cur, entrega_id, itens, responsavel=None):
-    """Recebe lista de dicts: {tipo_suprimento, modelo_impressora, quantidade, marca}."""
+    """Recebe lista de dicts: {tipo_suprimento, modelo_impressora, quantidade, marca, cor_selecionada}."""
     faltantes = []
     for item in itens:
-        tipo, modelo, marca = _chave_estoque(item.get('tipo_suprimento'), item.get('modelo_impressora'), item.get('marca'))
+        tipo = (item.get('tipo_suprimento') or '').strip()
+        cor = (item.get('cor_selecionada') or '').strip()
+        # Garante que tipo e cor estejam combinados no padrao do estoque
+        if cor and not tipo.endswith(cor) and tipo not in ('Papel Fotografico',):
+            tipo = f"{tipo} {cor}"
+        tipo, modelo, marca = _chave_estoque(tipo, item.get('modelo_impressora'), item.get('marca'))
         qtd = int(item.get('quantidade') or 1)
         ok, saldo = verificar_saldo(cur, tipo, modelo, qtd, marca)
         if not ok:
@@ -961,7 +966,11 @@ def debitar_estoque_entrega(cur, entrega_id, itens, responsavel=None):
         return faltantes
 
     for item in itens:
-        tipo, modelo, marca = _chave_estoque(item.get('tipo_suprimento'), item.get('modelo_impressora'), item.get('marca'))
+        tipo = (item.get('tipo_suprimento') or '').strip()
+        cor = (item.get('cor_selecionada') or '').strip()
+        if cor and not tipo.endswith(cor) and tipo not in ('Papel Fotografico',):
+            tipo = f"{tipo} {cor}"
+        tipo, modelo, marca = _chave_estoque(tipo, item.get('modelo_impressora'), item.get('marca'))
         qtd = int(item.get('quantidade') or 1)
         estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo, modelo, marca)
         movimentar_estoque(
@@ -3266,14 +3275,21 @@ def api_modelos_impressora():
 @login_required
 def api_estoque_saldo():
     tipo = request.args.get('tipo', '').strip()
+    cor = request.args.get('cor', '').strip()
     modelo = request.args.get('modelo', '').strip().upper()
     marca = request.args.get('marca', '').strip()
+
+    # Permite enviar cor separadamente (formulario desktop)
+    if cor and not tipo.endswith(cor) and tipo not in ('Papel Fotografico',):
+        tipo = f"{tipo} {cor}"
+
     if not tipo:
         return jsonify({'saldo': 0})
     db = get_db()
     cur = db.cursor()
+    tipo, modelo, marca = _chave_estoque(tipo, modelo, marca)
     _, saldo = buscar_ou_criar_estoque(cur, tipo, modelo, marca)
-    return jsonify({'saldo': saldo})
+    return jsonify({'saldo': saldo, 'tipo': tipo, 'modelo': modelo, 'marca': marca})
 
 
 @app.route('/api/estoque/entrada', methods=['POST'])

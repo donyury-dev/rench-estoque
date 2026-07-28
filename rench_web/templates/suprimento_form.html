@@ -61,7 +61,7 @@
           <div class="row g-2 item-row align-items-end border rounded p-3 mb-2">
             <div class="col-md-2">
               <label class="form-label small fw-bold">Tipo</label>
-              <select class="form-select tipo-select" name="tipo_suprimento[]" required onchange="atualizarLinha(this)">
+              <select class="form-select tipo-select" name="tipo_suprimento[]" required onchange="atualizarLinha(this); atualizarSaldoLinha(this.closest('.item-row'))">
                 <option value="" disabled selected>Selecione...</option>
                 <option value="Toner">Toner</option>
                 <option value="Drum">Drum</option>
@@ -75,7 +75,7 @@
             </div>
             <div class="col-md-2 cor-wrap">
               <label class="form-label small fw-bold">Cor</label>
-              <select class="form-select cor-select" name="cor_selecionada[]" onchange="sincronizarCor(this)">
+              <select class="form-select cor-select" name="cor_selecionada[]" onchange="atualizarSaldoLinha(this.closest('.item-row'))">
                 <option value="" selected>-</option>
                 <option value="Black">Black</option>
                 <option value="Ciano">Ciano</option>
@@ -85,11 +85,11 @@
             </div>
             <div class="col-md-2 modelo-wrap">
               <label class="form-label small fw-bold">Modelo</label>
-              <input type="text" class="form-control modelo-input" name="modelo_impressora[]" placeholder="Selecione..." list="modelos-suprimentos" onblur="normalizarCampoModelo(this)" oninput="atualizarCorMonocromatica(this)">
+              <input type="text" class="form-control modelo-input" name="modelo_impressora[]" placeholder="Selecione..." list="modelos-suprimentos" onblur="normalizarCampoModelo(this); atualizarSaldoLinha(this.closest('.item-row'))" oninput="atualizarCorMonocromatica(this); atualizarSaldoLinha(this.closest('.item-row'))">
             </div>
             <div class="col-md-2 marca-wrap" style="display:none;">
               <label class="form-label small fw-bold">Marca</label>
-              <select class="form-select marca-select" name="marca[]">
+              <select class="form-select marca-select" name="marca[]" onchange="atualizarSaldoLinha(this.closest('.item-row'))">
                 <option value="" selected>-</option>
                 <option value="OKIData">OKIData</option>
                 <option value="R10">R10</option>
@@ -124,6 +124,9 @@
               <button type="button" class="btn btn-outline-danger w-100" onclick="removerItem(this)" title="Remover item">
                 <i class="bi bi-trash"></i>
               </button>
+            </div>
+            <div class="col-12">
+              <div class="saldo-linha small mt-1" style="min-height:1.5em;"></div>
             </div>
           </div>
         </div>
@@ -166,6 +169,38 @@ function normalizarCampoModelo(input){
 
 function sincronizarCor(select){
   select.disabled = false;
+}
+
+async function atualizarSaldoLinha(row){
+  if(!row) return;
+  const tipo = row.querySelector('.tipo-select').value;
+  const cor = row.querySelector('.cor-select').value;
+  const modelo = normalizarModelo(row.querySelector('.modelo-input').value);
+  const marca = row.querySelector('.marca-select').value;
+  const el = row.querySelector('.saldo-linha');
+
+  if(!tipo || (!modelo && tipo !== 'Papel Fotografico')){
+    el.innerHTML = '';
+    return;
+  }
+  if(['Toner','Drum','Drum para Transformar'].includes(tipo) && !cor){
+    el.innerHTML = '<span class="text-muted">Selecione a cor para ver o saldo.</span>';
+    return;
+  }
+
+  el.innerHTML = '<span class="text-muted">Consultando saldo...</span>';
+  try{
+    let url = `/api/estoque/saldo?tipo=${encodeURIComponent(tipo)}&modelo=${encodeURIComponent(modelo || '-')}&cor=${encodeURIComponent(cor)}&marca=${encodeURIComponent(marca)}&_=${Date.now()}`;
+    const r = await fetch(url);
+    const j = await r.json();
+    if(j.saldo > 0){
+      el.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> Em estoque: <strong>${j.saldo}</strong></span>`;
+    } else {
+      el.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> Estoque zerado (${j.saldo})</span>`;
+    }
+  } catch(err){
+    el.innerHTML = '';
+  }
 }
 
 function toggleMotivoOutro(sel){
