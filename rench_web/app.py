@@ -2693,6 +2693,80 @@ def estoque_ajuste(estoque_id):
     return render_template('estoque_ajuste.html', item=item)
 
 
+@app.route('/estoque/editar/<int:estoque_id>', methods=['GET', 'POST'])
+@login_required
+def estoque_editar(estoque_id):
+    db = get_db()
+    cur = db.cursor()
+
+    cur.execute("SELECT * FROM estoque WHERE id=%s", (estoque_id,))
+    item = cur.fetchone()
+    if not item:
+        flash('Item nao encontrado.', 'danger')
+        return redirect(url_for('controle_estoque'))
+
+    if request.method == 'POST':
+        tipo = (request.form.get('tipo_suprimento') or '').strip()
+        modelo = (request.form.get('modelo_impressora') or '').strip().upper()
+        marca = (request.form.get('marca') or '').strip()
+
+        if not tipo:
+            flash('Informe o tipo do suprimento.', 'danger')
+            return redirect(url_for('estoque_editar', estoque_id=estoque_id))
+
+        if not modelo:
+            modelo = '-'
+
+        if _modelo_com_marca(tipo, modelo):
+            if not marca:
+                flash('Este modelo exige informacao de marca (OKIData ou R10).', 'danger')
+                return redirect(url_for('estoque_editar', estoque_id=estoque_id))
+        else:
+            marca = ''
+
+        cur.execute("""
+            SELECT id FROM estoque
+            WHERE tipo_suprimento=%s AND modelo_impressora=%s
+              AND COALESCE(marca, '')=%s AND id != %s
+        """, (tipo, modelo, marca or '', estoque_id))
+        if cur.fetchone():
+            flash('Ja existe outro item de estoque com estes dados. Nao e possivel duplicar.', 'danger')
+            return redirect(url_for('estoque_editar', estoque_id=estoque_id))
+
+        cur.execute("""
+            UPDATE estoque SET tipo_suprimento=%s, modelo_impressora=%s, marca=%s
+            WHERE id=%s
+        """, (tipo, modelo, marca or None, estoque_id))
+        db.commit()
+        flash('Item de estoque atualizado com sucesso!', 'success')
+        return redirect(url_for('controle_estoque'))
+
+    return render_template('estoque_editar.html', item=item)
+
+
+@app.route('/estoque/excluir/<int:estoque_id>', methods=['POST'])
+@login_required
+def estoque_excluir(estoque_id):
+    db = get_db()
+    cur = db.cursor()
+
+    cur.execute("SELECT * FROM estoque WHERE id=%s", (estoque_id,))
+    item = cur.fetchone()
+    if not item:
+        flash('Item nao encontrado.', 'danger')
+        return redirect(url_for('controle_estoque'))
+
+    cur.execute("SELECT COUNT(*) as total FROM estoque_movimentacoes WHERE estoque_id=%s", (estoque_id,))
+    if cur.fetchone()['total'] > 0:
+        flash('Nao e possivel excluir este item porque ele possui historico de movimentacoes. Ajuste o saldo para zero ou entre em contato.', 'danger')
+        return redirect(url_for('controle_estoque'))
+
+    cur.execute("DELETE FROM estoque WHERE id=%s", (estoque_id,))
+    db.commit()
+    flash('Item de estoque excluido com sucesso!', 'success')
+    return redirect(url_for('controle_estoque'))
+
+
 @app.route('/estoque/auditoria')
 @login_required
 def estoque_auditoria():

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Editar Item de Estoque - RENCH{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Editar Item de Estoque</h1>
+    <p class="text-muted mb-0">{{item.tipo_suprimento}} {{ 'Papel Fotográfico' if item.modelo_impressora == '-' else (item.modelo_impressora or '')}}{% if item.marca %} ({{item.marca}}){% endif %}</p>
+  </div>
+  <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-secondary">Voltar</a>
+</div>
+
+<ul class="nav nav-tabs mb-4" style="border-bottom:1px solid var(--primary-borda);">
+  <li class="nav-item">
+    <a class="nav-link" href="{{url_for('controle_estoque')}}" style="color:var(--primary);">
+      <i class="bi bi-box-seam me-1"></i> Saldos
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{{url_for('lista_suprimentos')}}" style="color:var(--primary);">
+      <i class="bi bi-arrow-up-right-circle me-1"></i> Entregas / Histórico de Saídas
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link active fw-bold" href="#" style="color:var(--primary);border-color:var(--primary-borda) var(--primary-borda) #fff;">
+      <i class="bi bi-pencil-square me-1"></i> Editar Item
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{{url_for('estoque_auditoria')}}" style="color:var(--primary);">
+      <i class="bi bi-shield-check me-1"></i> Auditoria
+    </a>
+  </li>
+</ul>
+
+<div class="row">
+  <div class="col-lg-5">
+    <div class="card card-dashboard p-4">
+      <form method="POST" id="formEditarEstoque">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Tipo do suprimento *</label>
+          <input type="text" class="form-control" name="tipo_suprimento" value="{{item.tipo_suprimento}}" required list="tipos-suprimentos">
+          <datalist id="tipos-suprimentos">
+            <option value="Toner Black">
+            <option value="Toner Ciano">
+            <option value="Toner Magenta">
+            <option value="Toner Amarelo">
+            <option value="Drum Black">
+            <option value="Drum Ciano">
+            <option value="Drum Magenta">
+            <option value="Drum Amarelo">
+            <option value="Drum Preto para Transformar">
+            <option value="Drum Ciano para Transformar">
+            <option value="Drum Magenta para Transformar">
+            <option value="Drum Amarelo para Transformar">
+            <option value="Fusor">
+            <option value="Transfer">
+            <option value="Coletor">
+            <option value="Papel Fotografico">
+            <option value="Outro">
+          </datalist>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-bold">Modelo da impressora *</label>
+          <input type="text" class="form-control" name="modelo_impressora" value="{{ 'Papel Fotográfico' if item.modelo_impressora == '-' else item.modelo_impressora }}" required list="modelos-suprimentos">
+          <datalist id="modelos-suprimentos">
+            <option value="ES5112/4172">
+            <option value="C711">
+            <option value="C831">
+            <option value="C911">
+            <option value="ES8473">
+            <option value="MC573">
+            <option value="PARA TRANSFORMAR">
+            <option value="-">
+          </datalist>
+          <div class="form-text">Use "-" para itens sem modelo (ex: Papel Fotográfico).</div>
+        </div>
+
+        <div class="mb-3" id="marca-wrap">
+          <label class="form-label fw-bold">Marca</label>
+          <select class="form-select" name="marca" id="marca-select">
+            <option value="" {{'selected' if not item.marca else ''}}>-</option>
+            <option value="OKIData" {{'selected' if item.marca=='OKIData' else ''}}>OKIData</option>
+            <option value="R10" {{'selected' if item.marca=='R10' else ''}}>R10</option>
+          </select>
+          <div class="form-text" id="marca-aviso">Marca obrigatória apenas para modelo ES5112/4172.</div>
+        </div>
+
+        <div class="alert alert-warning small">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          A alteração dos dados do item não muda o histórico de movimentações, que continuará vinculado a este item.
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-secondary">Cancelar</a>
+          <button type="submit" class="btn btn-rench-primary px-4"><i class="bi bi-check-lg me-1"></i> Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+  const modeloInput = document.querySelector('input[name="modelo_impressora"]');
+  const marcaSelect = document.getElementById('marca-select');
+  const marcaAviso = document.getElementById('marca-aviso');
+
+  function atualizarMarca(){
+    const modelo = (modeloInput.value || '').trim().toUpperCase();
+    if(modelo === 'ES5112/4172'){
+      marcaSelect.setAttribute('required','required');
+      marcaAviso.textContent = 'Marca obrigatória para este modelo.';
+      marcaAviso.classList.add('text-danger');
+    } else {
+      marcaSelect.removeAttribute('required');
+      marcaAviso.textContent = 'Marca obrigatória apenas para modelo ES5112/4172.';
+      marcaAviso.classList.remove('text-danger');
+    }
+  }
+
+  modeloInput.addEventListener('input', atualizarMarca);
+  modeloInput.addEventListener('blur', atualizarMarca);
+  atualizarMarca();
+</script>
+{% endblock %}
+
+{% endblock %}
