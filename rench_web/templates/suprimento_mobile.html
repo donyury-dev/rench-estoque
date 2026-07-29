@@ -770,7 +770,7 @@
       const tipo = tipoBtn?.dataset.val || '';
       const modelo = (card.querySelector('.modelo-input')?.value || '').trim().toUpperCase();
       const marcaWrap = card.querySelector('.marca-wrap');
-      if(tipo === 'Drum' && ['ES5112/4172','C711'].includes(modelo) && marcaWrap.style.display !== 'none'){
+      if(tipo === 'Drum' && ['ES5112/4172'].includes(modelo) && marcaWrap.style.display !== 'none'){
         return card.querySelector('.marca-select')?.value || '';
       }
       return '';
@@ -782,7 +782,7 @@
       const modelo = (card.querySelector('.modelo-input')?.value || '').trim().toUpperCase();
       const marcaWrap = card.querySelector('.marca-wrap');
       const marcaSelect = card.querySelector('.marca-select');
-      if(tipo === 'Drum' && ['ES5112/4172','C711'].includes(modelo)){
+      if(tipo === 'Drum' && ['ES5112/4172'].includes(modelo)){
         marcaWrap.style.display = 'block';
         marcaSelect.setAttribute('required','required');
       } else {
@@ -1034,7 +1034,7 @@
       const modelo = (document.getElementById('modelo-entrada-selecionado')?.value || '').trim().toUpperCase();
       const wrap = document.getElementById('marca-entrada-wrap');
       const marca = document.getElementById('marca-entrada');
-      if(tipo === 'Drum' && ['ES5112/4172','C711'].includes(modelo)){
+      if(tipo === 'Drum' && ['ES5112/4172'].includes(modelo)){
         wrap.style.display = 'block';
         marca.setAttribute('required','required');
       } else {

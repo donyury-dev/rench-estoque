@@ -850,9 +850,8 @@ def gerar_codigo_rastreio(cur, tipo_equipamento):
 
 
 def _modelo_com_marca(tipo_suprimento, modelo_impressora):
-    tipo = (tipo_suprimento or '').strip().upper()
     modelo = (modelo_impressora or '').strip().upper()
-    return tipo.startswith('DRUM') and modelo in ('ES5112/4172', 'C711')
+    return modelo == 'ES5112/4172'
 
 
 def _remover_acentos(texto):
