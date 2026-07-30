@@ -1,34 +1,131 @@
 {% extends "base.html" %}
-{% block title %}Relatório Mensal de Entregas - RENCH{% endblock %}
+{% block title %}Relatório de Entregas - RENCH{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
-    <h1>Relatório Mensal de Entregas</h1>
-    <p class="text-muted mb-0">Suprimentes entregues por modelo e unidade</p>
+    <h1>Relatório de Entregas</h1>
+    <p class="text-muted mb-0">Suprimentos entregues por período, unidade e tipo</p>
   </div>
   <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-primary">
     <i class="bi bi-arrow-left me-1"></i> Voltar ao estoque
   </a>
 </div>
 
-<div class="filter-bar">
-  <form method="GET" class="d-flex flex-wrap gap-2 align-items-center w-100">
-    <label class="fw-bold mb-0" style="color:var(--primary);">Mês/Ano:</label>
-    <select name="mes" class="form-select" style="max-width:160px;">
-      {% for m in meses %}
-      <option value="{{m}}" {{'selected' if m==mes else ''}}>{{m.split('-')[1]}}/{{m.split('-')[0]}}</option>
-      {% endfor %}
-    </select>
-    <button type="submit" class="btn btn-outline-primary">
-      <i class="bi bi-search"></i> Consultar
-    </button>
+<!-- FILTROS -->
+<div class="card card-dashboard p-4 mb-4">
+  <form method="GET" class="row g-3 align-items-end">
+    <div class="col-md-2">
+      <label class="form-label fw-bold">Mês/Ano</label>
+      <select name="mes" class="form-select" id="mesSelect">
+        {% for m in meses %}
+        <option value="{{m}}" {{'selected' if m==mes else ''}}>{{m.split('-')[1]}}/{{m.split('-')[0]}}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label fw-bold">Unidade</label>
+      <select name="unidade_id" class="form-select">
+        <option value="">Todas as unidades</option>
+        {% for u in unidades %}
+        <option value="{{u.id}}" {{'selected' if u.id|string == unidade_id else ''}}>{{u.nome}}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label fw-bold">Tipo de suprimento</label>
+      <select name="tipo" class="form-select">
+        <option value="">Todos os tipos</option>
+        {% for t in tipos_disponiveis %}
+        <option value="{{t}}" {{'selected' if t==tipo_filtro else ''}}>{{t}}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label fw-bold">Data início</label>
+      <input type="date" name="data_inicio" class="form-control" value="{{data_inicio}}" id="dataInicio">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label fw-bold">Data fim</label>
+      <input type="date" name="data_fim" class="form-control" value="{{data_fim}}" id="dataFim">
+    </div>
+    <div class="col-12 d-flex gap-2">
+      <button type="submit" class="btn btn-rench-primary">
+        <i class="bi bi-funnel"></i> Filtrar
+      </button>
+      <a href="{{url_for('relatorio_mensal')}}" class="btn btn-outline-secondary">Limpar</a>
+    </div>
   </form>
 </div>
 
+<!-- CARDS DE TOTAIS -->
+<div class="row g-4 mb-4">
+  <div class="col-md-4">
+    <div class="card card-dashboard p-4 text-center h-100">
+      <div class="small text-muted text-uppercase fw-bold mb-1">Total de suprimentos</div>
+      <div class="display-5 fw-bold" style="color:var(--primary);">{{total_geral}}</div>
+      <div class="small text-muted">unidades enviadas</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card card-dashboard p-4 text-center h-100">
+      <div class="small text-muted text-uppercase fw-bold mb-1">Total de entregas</div>
+      <div class="display-5 fw-bold" style="color:var(--primary);">{{total_entregas}}</div>
+      <div class="small text-muted">registros no período</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card card-dashboard p-4 text-center h-100">
+      <div class="small text-muted text-uppercase fw-bold mb-1">Período</div>
+      <div class="h4 fw-bold mt-2" style="color:var(--primary);">
+        {{data_inicio|replace('-','/')}} <small>até</small> {{(data_fim)|replace('-','/')}}
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="row g-4">
-  <!-- RESUMO POR MODELO -->
-  <div class="col-lg-6">
+  <!-- RESUMO POR UNIDADE -->
+  <div class="col-lg-7">
+    <div class="card card-dashboard h-100">
+      <div class="p-3 border-bottom d-flex justify-content-between align-items-center" style="border-color:var(--primary-borda)!important;">
+        <h5 class="mb-0 fw-bold" style="color:var(--primary);">
+          <i class="bi bi-building me-2"></i>Por unidade
+        </h5>
+        <span class="badge bg-soft-primary">{{unidades_map|length}} unidade(s)</span>
+      </div>
+      <div class="p-0">
+        {% if unidades_map %}
+          {% for (empresa, unidade), itens in unidades_map.items() %}
+          <div class="p-3 border-bottom" style="border-color:#eee!important;">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="fw-bold" style="color:var(--primary);">{{unidade}}</div>
+                <div class="small text-muted">{{empresa}}</div>
+              </div>
+              <div class="text-end">
+                <div class="h5 fw-bold mb-0" style="color:var(--primary);">{{totais_por_unidade[(empresa, unidade)]}}</div>
+                <div class="small text-muted">total</div>
+              </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+              {% for item in itens %}
+              <span class="badge bg-soft-secondary" style="color:#444;">
+                {{item.tipo_suprimento}}{% if item.modelo_impressora %} {{item.modelo_impressora}}{% endif %}: <strong>{{item.total}}</strong>
+              </span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="p-4 text-center text-muted">Nenhuma entrega encontrada para os filtros selecionados.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- RESUMO POR MODELO / TIPO -->
+  <div class="col-lg-5">
     <div class="card card-dashboard h-100">
       <div class="p-3 border-bottom" style="border-color:var(--primary-borda)!important;">
         <h5 class="mb-0 fw-bold" style="color:var(--primary);">
@@ -48,37 +145,7 @@
           </div>
           {% endfor %}
         {% else %}
-          <div class="p-4 text-center text-muted">Nenhuma entrega neste mês.</div>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-
-  <!-- RESUMO POR UNIDADE -->
-  <div class="col-lg-6">
-    <div class="card card-dashboard h-100">
-      <div class="p-3 border-bottom" style="border-color:var(--primary-borda)!important;">
-        <h5 class="mb-0 fw-bold" style="color:var(--primary);">
-          <i class="bi bi-building me-2"></i>Por unidade
-        </h5>
-      </div>
-      <div class="p-0">
-        {% if unidades_map %}
-          {% for (empresa, unidade), itens in unidades_map.items() %}
-          <div class="p-3 border-bottom" style="border-color:#eee!important;">
-            <div class="fw-bold" style="color:var(--primary);">{{unidade}}</div>
-            <div class="small text-muted mb-2">{{empresa}}</div>
-            <div class="d-flex flex-wrap gap-2">
-              {% for item in itens %}
-              <span class="badge bg-soft-secondary" style="color:#444;">
-                {{item.tipo_suprimento}}{% if item.modelo_impressora %} {{item.modelo_impressora}}{% endif %}: <strong>{{item.total}}</strong>
-              </span>
-              {% endfor %}
-            </div>
-          </div>
-          {% endfor %}
-        {% else %}
-          <div class="p-4 text-center text-muted">Nenhuma entrega neste mês.</div>
+          <div class="p-4 text-center text-muted">Nenhuma entrega encontrada para os filtros selecionados.</div>
         {% endif %}
       </div>
     </div>
@@ -87,10 +154,11 @@
 
 <!-- ENTREGAS DETALHADAS -->
 <div class="card card-dashboard mt-4">
-  <div class="p-3 border-bottom" style="border-color:var(--primary-borda)!important;">
+  <div class="p-3 border-bottom d-flex justify-content-between align-items-center" style="border-color:var(--primary-borda)!important;">
     <h5 class="mb-0 fw-bold" style="color:var(--primary);">
       <i class="bi bi-list-check me-2"></i>Entregas detalhadas
     </h5>
+    <span class="badge bg-soft-primary">{{entregas|length}} entrega(s)</span>
   </div>
   <div class="p-0">
     {% if entregas %}
@@ -117,8 +185,30 @@
       </div>
       {% endfor %}
     {% else %}
-      <div class="p-4 text-center text-muted">Nenhuma entrega registrada neste mês.</div>
+      <div class="p-4 text-center text-muted">Nenhuma entrega encontrada para os filtros selecionados.</div>
     {% endif %}
   </div>
 </div>
+
+{% block scripts %}
+<script>
+  const mesSelect = document.getElementById('mesSelect');
+  const dataInicio = document.getElementById('dataInicio');
+  const dataFim = document.getElementById('dataFim');
+
+  mesSelect?.addEventListener('change', function(){
+    dataInicio.value = '';
+    dataFim.value = '';
+  });
+
+  [dataInicio, dataFim].forEach(el => {
+    el?.addEventListener('input', function(){
+      if(dataInicio.value || dataFim.value){
+        mesSelect.value = '';
+      }
+    });
+  });
+</script>
+{% endblock %}
+
 {% endblock %}

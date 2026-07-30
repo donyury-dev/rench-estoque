@@ -2348,57 +2348,110 @@ def relatorio_mensal():
     db = get_db()
     cur = db.cursor()
 
+    # Filtros
     mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
-    try:
-        ano, numero_mes = mes.split('-')
-        ano = int(ano)
-        numero_mes = int(numero_mes)
-    except Exception:
-        ano = datetime.now().year
-        numero_mes = datetime.now().month
-        mes = f'{ano:04d}-{numero_mes:02d}'
+    unidade_id = request.args.get('unidade_id', '').strip()
+    tipo_filtro = request.args.get('tipo', '').strip()
+    data_inicio = request.args.get('data_inicio', '').strip()
+    data_fim = request.args.get('data_fim', '').strip()
+    agrupamento = request.args.get('agrupamento', 'unidade')  # 'unidade' ou 'modelo'
 
-    data_inicio = f'{ano}-{numero_mes:02d}-01'
-    if numero_mes == 12:
-        data_fim = f'{ano + 1}-01-01'
+    # Determina datas de inicio e fim
+    if data_inicio and data_fim:
+        try:
+            dt_inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+            dt_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
+            mes = None
+        except Exception:
+            data_inicio = data_fim = ''
     else:
-        data_fim = f'{ano}-{numero_mes + 1:02d}-01'
+        try:
+            ano, numero_mes = mes.split('-')
+            ano = int(ano)
+            numero_mes = int(numero_mes)
+        except Exception:
+            ano = datetime.now().year
+            numero_mes = datetime.now().month
+            mes = f'{ano:04d}-{numero_mes:02d}'
+        dt_inicio = date(ano, numero_mes, 1)
+        if numero_mes == 12:
+            dt_fim = date(ano + 1, 1, 1)
+        else:
+            dt_fim = date(ano, numero_mes + 1, 1)
+        data_inicio = dt_inicio.isoformat()
+        data_fim = dt_fim.isoformat()
 
-    # Resumo por tipo de suprimento
-    cur.execute("""
+    # Lista de unidades para o filtro
+    cur.execute("SELECT id, nome FROM unidades ORDER BY nome")
+    unidades = cur.fetchall()
+
+    # Base WHERE
+    where_sql = "WHERE se.data_entrega >= %s AND se.data_entrega < %s"
+    params = [data_inicio, data_fim]
+
+    if unidade_id:
+        where_sql += " AND se.unidade_id = %s"
+        params.append(unidade_id)
+    if tipo_filtro:
+        where_sql += " AND si.tipo_suprimento = %s"
+        params.append(tipo_filtro)
+
+    # Total geral de suprimentos
+    cur.execute(f"""
+        SELECT COALESCE(SUM(si.quantidade), 0) as total
+        FROM suprimentos_itens si
+        JOIN suprimentos_entregas se ON se.id = si.entrega_id
+        {where_sql}
+    """, params)
+    total_geral = cur.fetchone()['total']
+
+    # Total de entregas
+    cur.execute(f"""
+        SELECT COUNT(DISTINCT se.id) as total
+        FROM suprimentos_entregas se
+        JOIN suprimentos_itens si ON si.entrega_id = se.id
+        {where_sql}
+    """, params)
+    total_entregas = cur.fetchone()['total']
+
+    # Resumo por tipo de suprimento (com totais)
+    cur.execute(f"""
         SELECT si.tipo_suprimento, si.modelo_impressora, SUM(si.quantidade) as total
         FROM suprimentos_itens si
         JOIN suprimentos_entregas se ON se.id = si.entrega_id
-        WHERE se.data_entrega >= %s AND se.data_entrega < %s
+        {where_sql}
         GROUP BY si.tipo_suprimento, si.modelo_impressora
         ORDER BY si.modelo_impressora, si.tipo_suprimento
-    """, (data_inicio, data_fim))
+    """, params)
     resumo_tipo = cur.fetchall()
 
     # Resumo por unidade
-    cur.execute("""
-        SELECT u.nome as unidade_nome, emp.nome as empresa_nome,
+    cur.execute(f"""
+        SELECT u.id as unidade_id, u.nome as unidade_nome, emp.nome as empresa_nome,
                si.tipo_suprimento, si.modelo_impressora, SUM(si.quantidade) as total
         FROM suprimentos_itens si
         JOIN suprimentos_entregas se ON se.id = si.entrega_id
         JOIN unidades u ON u.id = se.unidade_id
         JOIN empresas emp ON emp.id = u.empresa_id
-        WHERE se.data_entrega >= %s AND se.data_entrega < %s
-        GROUP BY u.nome, emp.nome, si.tipo_suprimento, si.modelo_impressora
+        {where_sql}
+        GROUP BY u.id, u.nome, emp.nome, si.tipo_suprimento, si.modelo_impressora
         ORDER BY emp.nome, u.nome, si.modelo_impressora, si.tipo_suprimento
-    """, (data_inicio, data_fim))
+    """, params)
     resumo_unidade = cur.fetchall()
 
-    # Lista de entregas detalhadas
-    cur.execute("""
+    # Entregas detalhadas
+    cur.execute(f"""
         SELECT se.id, se.data_entrega, se.data_registro, se.responsavel, se.observacoes,
                u.nome as unidade_nome, emp.nome as empresa_nome
         FROM suprimentos_entregas se
         JOIN unidades u ON u.id = se.unidade_id
         JOIN empresas emp ON emp.id = u.empresa_id
-        WHERE se.data_entrega >= %s AND se.data_entrega < %s
+        JOIN suprimentos_itens si ON si.entrega_id = se.id
+        {where_sql}
+        GROUP BY se.id, se.data_entrega, se.data_registro, se.responsavel, se.observacoes,
+                 u.nome, emp.nome
         ORDER BY se.data_entrega DESC, se.data_registro DESC
-    """, (data_inicio, data_fim))
+    """, params)
     entregas = cur.fetchall()
 
     resultado_entregas = []
@@ -2430,27 +2483,38 @@ def relatorio_mensal():
             'itens': itens_fmt
         })
 
-    # Agrupar por modelo para o resumo geral
+    # Agrupar por modelo
     resumo_por_modelo = {}
     for r in resumo_tipo:
         modelo = r['modelo_impressora'] or 'Sem modelo'
         resumo_por_modelo.setdefault(modelo, []).append(r)
 
-    # Agrupar por unidade
+    # Agrupar por unidade com totais
     unidades_map = {}
+    totais_por_unidade = {}
     for r in resumo_unidade:
         chave = (r['empresa_nome'], r['unidade_nome'])
         unidades_map.setdefault(chave, []).append(r)
+        totais_por_unidade[chave] = totais_por_unidade.get(chave, 0) + r['total']
 
-    meses = [
-        '2026-01','2026-02','2026-03','2026-04','2026-05','2026-06',
-        '2026-07','2026-08','2026-09','2026-10','2026-11','2026-12'
-    ]
+    # Tipos unicos para filtro
+    cur.execute("SELECT DISTINCT tipo_suprimento FROM suprimentos_itens ORDER BY tipo_suprimento")
+    tipos_disponiveis = [row['tipo_suprimento'] for row in cur.fetchall()]
+
+    meses = []
+    for a in range(2025, 2028):
+        for m in range(1, 13):
+            meses.append(f'{a:04d}-{m:02d}')
 
     return render_template('relatorio_mensal.html',
-        mes=mes, meses=meses, ano=ano, numero_mes=numero_mes,
+        mes=mes, meses=meses, data_inicio=data_inicio, data_fim=data_fim,
+        unidades=unidades, unidade_id=unidade_id,
+        tipos_disponiveis=tipos_disponiveis, tipo_filtro=tipo_filtro,
+        agrupamento=agrupamento,
+        total_geral=total_geral, total_entregas=total_entregas,
         resumo_por_modelo=resumo_por_modelo,
         unidades_map=unidades_map,
+        totais_por_unidade=totais_por_unidade,
         entregas=resultado_entregas)
 
 
