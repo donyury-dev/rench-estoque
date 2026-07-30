@@ -61,24 +61,27 @@
 <!-- CARDS DE TOTAIS -->
 <div class="row g-4 mb-4">
   <div class="col-md-3">
-    <div class="card card-dashboard p-4 text-center h-100">
+    <div class="card card-dashboard p-4 text-center h-100 clickable-card" style="cursor:pointer;" onclick="filtrarCards('suprimentos')" id="card-suprimentos">
       <div class="small text-muted text-uppercase fw-bold mb-1">Suprimentos</div>
       <div class="display-5 fw-bold" style="color:var(--primary);">{{total_suprimentos_sem_papel}}</div>
       <div class="small text-muted">unidades enviadas</div>
+      <div class="small text-primary mt-1"><i class="bi bi-filter-circle"></i> Clique para filtrar</div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card card-dashboard p-4 text-center h-100">
+    <div class="card card-dashboard p-4 text-center h-100 clickable-card" style="cursor:pointer;" onclick="filtrarCards('folhas')" id="card-folhas">
       <div class="small text-muted text-uppercase fw-bold mb-1">Folhas de papel</div>
       <div class="display-5 fw-bold" style="color:var(--primary);">{{total_folhas}}</div>
       <div class="small text-muted">folhas fotográficas</div>
+      <div class="small text-primary mt-1"><i class="bi bi-filter-circle"></i> Clique para filtrar</div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card card-dashboard p-4 text-center h-100">
+    <div class="card card-dashboard p-4 text-center h-100 clickable-card" style="cursor:pointer;" onclick="document.getElementById('entregas-detalhadas').scrollIntoView({behavior:'smooth'})" id="card-entregas">
       <div class="small text-muted text-uppercase fw-bold mb-1">Total de entregas</div>
       <div class="display-5 fw-bold" style="color:var(--primary);">{{total_entregas}}</div>
       <div class="small text-muted">registros no período</div>
+      <div class="small text-primary mt-1"><i class="bi bi-arrow-down-circle"></i> Clique para ver</div>
     </div>
   </div>
   <div class="col-md-3">
@@ -88,6 +91,13 @@
         {{data_inicio|replace('-','/')}} <small>até</small> {{(data_fim)|replace('-','/')}}
       </div>
     </div>
+  </div>
+</div>
+
+<div class="alert alert-info d-none" id="filtro-ativo-alert">
+  <div class="d-flex justify-content-between align-items-center">
+    <span id="filtro-ativo-texto"></span>
+    <button type="button" class="btn btn-sm btn-outline-dark" onclick="limparFiltroCards()">Limpar filtro</button>
   </div>
 </div>
 
@@ -104,7 +114,7 @@
       <div class="p-0">
         {% if unidades_map %}
           {% for (empresa, unidade), itens in unidades_map.items() %}
-          <div class="p-3 border-bottom" style="border-color:#eee!important;">
+          <div class="p-3 border-bottom unidade-row" style="border-color:#eee!important;" data-tem-suprimentos="{{'sim' if suprimentos_por_unidade.get((empresa, unidade), 0) > 0 else 'nao'}}" data-tem-folhas="{{'sim' if folhas_por_unidade.get((empresa, unidade), 0) > 0 else 'nao'}}">
             <div class="d-flex justify-content-between align-items-start">
               <div>
                 <div class="fw-bold" style="color:var(--primary);">{{unidade}}</div>
@@ -163,7 +173,7 @@
 </div>
 
 <!-- ENTREGAS DETALHADAS -->
-<div class="card card-dashboard mt-4">
+<div class="card card-dashboard mt-4" id="entregas-detalhadas">
   <div class="p-3 border-bottom d-flex justify-content-between align-items-center" style="border-color:var(--primary-borda)!important;">
     <h5 class="mb-0 fw-bold" style="color:var(--primary);">
       <i class="bi bi-list-check me-2"></i>Entregas detalhadas
@@ -201,10 +211,71 @@
 </div>
 
 {% block scripts %}
+<style>
+  .clickable-card {
+    transition: transform .15s ease, box-shadow .15s ease;
+    border: 2px solid transparent;
+  }
+  .clickable-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(139, 0, 0, 0.12);
+    border-color: var(--primary);
+  }
+  .clickable-card.active {
+    border-color: var(--primary);
+    background-color: #fff8f8;
+  }
+</style>
 <script>
   const mesSelect = document.getElementById('mesSelect');
   const dataInicio = document.getElementById('dataInicio');
   const dataFim = document.getElementById('dataFim');
+
+  function filtrarCards(tipo){
+    const rows = document.querySelectorAll('.unidade-row');
+    const alert = document.getElementById('filtro-ativo-alert');
+    const alertTexto = document.getElementById('filtro-ativo-texto');
+    let visiveis = 0;
+
+    document.querySelectorAll('.clickable-card').forEach(c => c.classList.remove('active'));
+    document.getElementById(tipo === 'suprimentos' ? 'card-suprimentos' : 'card-folhas').classList.add('active');
+
+    rows.forEach(row => {
+      const temSuprimentos = row.dataset.temSuprimentos === 'sim';
+      const temFolhas = row.dataset.temFolhas === 'sim';
+      let mostrar = false;
+      if(tipo === 'suprimentos' && temSuprimentos) mostrar = true;
+      if(tipo === 'folhas' && temFolhas) mostrar = true;
+
+      if(mostrar){
+        row.style.display = '';
+        row.classList.add('bg-light');
+        visiveis++;
+      } else {
+        row.style.display = 'none';
+        row.classList.remove('bg-light');
+      }
+    });
+
+    alert.classList.remove('d-none');
+    if(tipo === 'suprimentos'){
+      alertTexto.innerHTML = '<strong>Filtro ativo:</strong> mostrando apenas unidades que receberam suprimentes (' + visiveis + ' unidade(s)).';
+    } else {
+      alertTexto.innerHTML = '<strong>Filtro ativo:</strong> mostrando apenas unidades que receberam folhas de papel fotográfico (' + visiveis + ' unidade(s)).';
+    }
+
+    document.querySelector('.col-lg-7').scrollIntoView({behavior:'smooth'});
+  }
+
+  function limparFiltroCards(){
+    const rows = document.querySelectorAll('.unidade-row');
+    rows.forEach(row => {
+      row.style.display = '';
+      row.classList.remove('bg-light');
+    });
+    document.querySelectorAll('.clickable-card').forEach(c => c.classList.remove('active'));
+    document.getElementById('filtro-ativo-alert').classList.add('d-none');
+  }
 
   mesSelect?.addEventListener('change', function(){
     dataInicio.value = '';
