@@ -2405,6 +2405,18 @@ def relatorio_mensal():
     """, params)
     total_geral = cur.fetchone()['total']
 
+    # Total de folhas (Papel Fotografico)
+    cur.execute(f"""
+        SELECT COALESCE(SUM(si.quantidade), 0) as total
+        FROM suprimentos_itens si
+        JOIN suprimentos_entregas se ON se.id = si.entrega_id
+        {where_sql} AND si.tipo_suprimento = 'Papel Fotografico'
+    """, params)
+    total_folhas = cur.fetchone()['total']
+
+    # Total de suprimentos sem papel fotografico
+    total_suprimentos_sem_papel = total_geral - total_folhas
+
     # Total de entregas
     cur.execute(f"""
         SELECT COUNT(DISTINCT se.id) as total
@@ -2492,10 +2504,16 @@ def relatorio_mensal():
     # Agrupar por unidade com totais
     unidades_map = {}
     totais_por_unidade = {}
+    folhas_por_unidade = {}
+    suprimentos_por_unidade = {}
     for r in resumo_unidade:
         chave = (r['empresa_nome'], r['unidade_nome'])
         unidades_map.setdefault(chave, []).append(r)
         totais_por_unidade[chave] = totais_por_unidade.get(chave, 0) + r['total']
+        if r['tipo_suprimento'] == 'Papel Fotografico':
+            folhas_por_unidade[chave] = folhas_por_unidade.get(chave, 0) + r['total']
+        else:
+            suprimentos_por_unidade[chave] = suprimentos_por_unidade.get(chave, 0) + r['total']
 
     # Tipos unicos para filtro
     cur.execute("SELECT DISTINCT tipo_suprimento FROM suprimentos_itens ORDER BY tipo_suprimento")
@@ -2512,9 +2530,13 @@ def relatorio_mensal():
         tipos_disponiveis=tipos_disponiveis, tipo_filtro=tipo_filtro,
         agrupamento=agrupamento,
         total_geral=total_geral, total_entregas=total_entregas,
+        total_folhas=total_folhas,
+        total_suprimentos_sem_papel=total_suprimentos_sem_papel,
         resumo_por_modelo=resumo_por_modelo,
         unidades_map=unidades_map,
         totais_por_unidade=totais_por_unidade,
+        folhas_por_unidade=folhas_por_unidade,
+        suprimentos_por_unidade=suprimentos_por_unidade,
         entregas=resultado_entregas)
 
 
