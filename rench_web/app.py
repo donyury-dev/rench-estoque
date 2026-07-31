@@ -2342,44 +2342,47 @@ def excluir_suprimento(entrega_id):
     return redirect(url_for('lista_suprimentos'))
 
 
+def _get_periodo_relatorio(request):
+    """Retorna (data_inicio, data_fim, mes) a partir dos parametros do request."""
+    mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+    data_inicio = request.args.get('data_inicio', '').strip()
+    data_fim = request.args.get('data_fim', '').strip()
+
+    if data_inicio and data_fim:
+        try:
+            dt_inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+            dt_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
+            return data_inicio, data_fim, None
+        except Exception:
+            data_inicio = data_fim = ''
+
+    try:
+        ano, numero_mes = mes.split('-')
+        ano = int(ano)
+        numero_mes = int(numero_mes)
+    except Exception:
+        ano = datetime.now().year
+        numero_mes = datetime.now().month
+        mes = f'{ano:04d}-{numero_mes:02d}'
+
+    dt_inicio = date(ano, numero_mes, 1)
+    if numero_mes == 12:
+        dt_fim = date(ano + 1, 1, 1)
+    else:
+        dt_fim = date(ano, numero_mes + 1, 1)
+
+    return dt_inicio.isoformat(), dt_fim.isoformat(), mes
+
+
 @app.route('/relatorio/mensal')
 @login_required
 def relatorio_mensal():
     db = get_db()
     cur = db.cursor()
 
-    # Filtros
-    mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+    data_inicio, data_fim, mes = _get_periodo_relatorio(request)
     unidade_id = request.args.get('unidade_id', '').strip()
     tipo_filtro = request.args.get('tipo', '').strip()
-    data_inicio = request.args.get('data_inicio', '').strip()
-    data_fim = request.args.get('data_fim', '').strip()
-    agrupamento = request.args.get('agrupamento', 'unidade')  # 'unidade' ou 'modelo'
-
-    # Determina datas de inicio e fim
-    if data_inicio and data_fim:
-        try:
-            dt_inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
-            dt_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
-            mes = None
-        except Exception:
-            data_inicio = data_fim = ''
-    else:
-        try:
-            ano, numero_mes = mes.split('-')
-            ano = int(ano)
-            numero_mes = int(numero_mes)
-        except Exception:
-            ano = datetime.now().year
-            numero_mes = datetime.now().month
-            mes = f'{ano:04d}-{numero_mes:02d}'
-        dt_inicio = date(ano, numero_mes, 1)
-        if numero_mes == 12:
-            dt_fim = date(ano + 1, 1, 1)
-        else:
-            dt_fim = date(ano, numero_mes + 1, 1)
-        data_inicio = dt_inicio.isoformat()
-        data_fim = dt_fim.isoformat()
 
     # Lista de unidades para o filtro
     cur.execute("SELECT id, nome FROM unidades ORDER BY nome")
@@ -2528,7 +2531,6 @@ def relatorio_mensal():
         mes=mes, meses=meses, data_inicio=data_inicio, data_fim=data_fim,
         unidades=unidades, unidade_id=unidade_id,
         tipos_disponiveis=tipos_disponiveis, tipo_filtro=tipo_filtro,
-        agrupamento=agrupamento,
         total_geral=total_geral, total_entregas=total_entregas,
         total_folhas=total_folhas,
         total_suprimentos_sem_papel=total_suprimentos_sem_papel,
@@ -2538,6 +2540,166 @@ def relatorio_mensal():
         folhas_por_unidade=folhas_por_unidade,
         suprimentos_por_unidade=suprimentos_por_unidade,
         entregas=resultado_entregas)
+
+
+@app.route('/relatorio/detalhes')
+@login_required
+def relatorio_detalhes():
+    db = get_db()
+    cur = db.cursor()
+
+    data_inicio, data_fim, mes = _get_periodo_relatorio(request)
+    unidade_id = request.args.get('unidade_id', '').strip()
+    tipo_filtro = request.args.get('tipo', '').strip()
+    detalhar = request.args.get('detalhar', 'suprimentos').strip()  # suprimentos, folhas, entregas
+
+    # Base WHERE
+    where_sql = "WHERE se.data_entrega >= %s AND se.data_entrega < %s"
+    params = [data_inicio, data_fim]
+
+    if unidade_id:
+        where_sql += " AND se.unidade_id = %s"
+        params.append(unidade_id)
+    if tipo_filtro:
+        where_sql += " AND si.tipo_suprimento = %s"
+        params.append(tipo_filtro)
+
+    titulo = "Detalhes do Relatório"
+    if detalhar == 'suprimentos':
+        titulo = "Detalhes de Suprimentos Entregues"
+        where_sql += " AND si.tipo_suprimento != 'Papel Fotografico'"
+    elif detalhar == 'folhas':
+        titulo = "Detalhes de Folhas de Papel Fotográfico"
+        where_sql += " AND si.tipo_suprimento = 'Papel Fotografico'"
+    elif detalhar == 'entregas':
+        titulo = "Detalhes de Entregas Registradas"
+
+    # Lista de unidades para filtro
+    cur.execute("SELECT id, nome FROM unidades ORDER BY nome")
+    unidades = cur.fetchall()
+
+    # Resumo por unidade
+    cur.execute(f"""
+        SELECT u.id as unidade_id, u.nome as unidade_nome, emp.nome as empresa_nome,
+               si.tipo_suprimento, si.modelo_impressora, SUM(si.quantidade) as total
+        FROM suprimentos_itens si
+        JOIN suprimentos_entregas se ON se.id = si.entrega_id
+        JOIN unidades u ON u.id = se.unidade_id
+        JOIN empresas emp ON emp.id = u.empresa_id
+        {where_sql}
+        GROUP BY u.id, u.nome, emp.nome, si.tipo_suprimento, si.modelo_impressora
+        ORDER BY emp.nome, u.nome, si.modelo_impressora, si.tipo_suprimento
+    """, params)
+    resumo_unidade = cur.fetchall()
+
+    # Agrupar por unidade
+    unidades_map = {}
+    for r in resumo_unidade:
+        chave = (r['empresa_nome'], r['unidade_nome'])
+        unidades_map.setdefault(chave, []).append(r)
+
+    # Entregas detalhadas
+    entregas_params = params[:]
+    entregas_where = where_sql
+    if detalhar == 'suprimentos':
+        entregas_where = "WHERE se.data_entrega >= %s AND se.data_entrega < %s"
+        entregas_params = [data_inicio, data_fim]
+        if unidade_id:
+            entregas_where += " AND se.unidade_id = %s"
+            entregas_params.append(unidade_id)
+        entregas_where += " AND EXISTS (SELECT 1 FROM suprimentos_itens si2 WHERE si2.entrega_id = se.id AND si2.tipo_suprimento != 'Papel Fotografico')"
+    elif detalhar == 'folhas':
+        entregas_where = "WHERE se.data_entrega >= %s AND se.data_entrega < %s"
+        entregas_params = [data_inicio, data_fim]
+        if unidade_id:
+            entregas_where += " AND se.unidade_id = %s"
+            entregas_params.append(unidade_id)
+        entregas_where += " AND EXISTS (SELECT 1 FROM suprimentos_itens si2 WHERE si2.entrega_id = se.id AND si2.tipo_suprimento = 'Papel Fotografico')"
+
+    cur.execute(f"""
+        SELECT se.id, se.data_entrega, se.data_registro, se.responsavel, se.observacoes,
+               u.nome as unidade_nome, emp.nome as empresa_nome
+        FROM suprimentos_entregas se
+        JOIN unidades u ON u.id = se.unidade_id
+        JOIN empresas emp ON emp.id = u.empresa_id
+        {entregas_where}
+        GROUP BY se.id, se.data_entrega, se.data_registro, se.responsavel, se.observacoes,
+                 u.nome, emp.nome
+        ORDER BY se.data_entrega DESC, se.data_registro DESC
+    """, entregas_params)
+    entregas = cur.fetchall()
+
+    resultado_entregas = []
+    for e in entregas:
+        item_where = ""
+        item_params = [e['id']]
+        if detalhar == 'suprimentos':
+            item_where = " AND tipo_suprimento != 'Papel Fotografico'"
+        elif detalhar == 'folhas':
+            item_where = " AND tipo_suprimento = 'Papel Fotografico'"
+
+        cur.execute(f"""
+            SELECT tipo_suprimento, modelo_impressora, quantidade, motivo_padrao, defeito, motivo
+            FROM suprimentos_itens WHERE entrega_id=%s {item_where}
+        """, item_params)
+        itens = cur.fetchall()
+        itens_fmt = []
+        for item in itens:
+            nome = item['tipo_suprimento']
+            if item['modelo_impressora']:
+                nome += ' ' + item['modelo_impressora']
+            motivo = item['motivo'] or item['motivo_padrao'] or ''
+            itens_fmt.append({
+                'nome': nome,
+                'quantidade': item['quantidade'],
+                'motivo': motivo
+            })
+        resultado_entregas.append({
+            'id': e['id'],
+            'data': e['data_entrega'].strftime('%d/%m/%Y') if hasattr(e['data_entrega'], 'strftime') else (str(e['data_entrega'])[:10] if e['data_entrega'] else '-'),
+            'hora': e['data_registro'].strftime('%H:%M') if hasattr(e['data_registro'], 'strftime') else (str(e['data_registro'])[11:16] if e['data_registro'] else '-'),
+            'unidade': e['unidade_nome'],
+            'empresa': e['empresa_nome'],
+            'responsavel': e['responsavel'],
+            'observacoes': e['observacoes'],
+            'itens': itens_fmt
+        })
+
+    # Total geral
+    total_where = "WHERE se.data_entrega >= %s AND se.data_entrega < %s"
+    total_params = [data_inicio, data_fim]
+    if unidade_id:
+        total_where += " AND se.unidade_id = %s"
+        total_params.append(unidade_id)
+    if tipo_filtro:
+        total_where += " AND si.tipo_suprimento = %s"
+        total_params.append(tipo_filtro)
+
+    cur.execute(f"""
+        SELECT COALESCE(SUM(si.quantidade), 0) as total
+        FROM suprimentos_itens si
+        JOIN suprimentos_entregas se ON se.id = si.entrega_id
+        {total_where}
+    """, total_params)
+    total_geral = cur.fetchone()['total']
+
+    # Total de entregas
+    cur.execute(f"""
+        SELECT COUNT(DISTINCT se.id) as total
+        FROM suprimentos_entregas se
+        JOIN suprimentos_itens si ON si.entrega_id = se.id
+        {total_where}
+    """, total_params)
+    total_entregas = cur.fetchone()['total']
+
+    return render_template('relatorio_detalhes.html',
+        titulo=titulo,
+        data_inicio=data_inicio, data_fim=data_fim, mes=mes,
+        unidades=unidades, unidade_id=unidade_id,
+        detalhar=detalhar,
+        unidades_map=unidades_map,
+        entregas=resultado_entregas,
+        total_geral=total_geral, total_entregas=total_entregas)
 
 
 @app.route('/debug/verificar-estoque')

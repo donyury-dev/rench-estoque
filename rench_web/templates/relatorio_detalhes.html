@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}{{titulo}} - RENCH{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{titulo}}</h1>
+    <p class="text-muted mb-0">Período: <strong>{{data_inicio|replace('-','/')}} até {{data_fim|replace('-','/')}}</strong></p>
+  </div>
+  <a href="{{url_for('relatorio_mensal', mes=mes, data_inicio=data_inicio, data_fim=data_fim, unidade_id=unidade_id)}}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i> Voltar ao relatório
+  </a>
+</div>
+
+<!-- FILTROS -->
+<div class="card card-dashboard p-4 mb-4">
+  <form method="GET" action="{{url_for('relatorio_detalhes')}}" class="row g-3 align-items-end">
+    <input type="hidden" name="detalhar" value="{{detalhar}}">
+    <div class="col-md-3">
+      <label class="form-label fw-bold">Mês/Ano</label>
+      <select name="mes" class="form-select">
+        {% for m in ['2025-01','2025-02','2025-03','2025-04','2025-05','2025-06','2025-07','2025-08','2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07','2026-08','2026-09','2026-10','2026-11','2026-12','2027-01','2027-02','2027-03','2027-04','2027-05','2027-06','2027-07','2027-08','2027-09','2027-10','2027-11','2027-12'] %}
+        <option value="{{m}}" {{'selected' if m==mes else ''}}>{{m.split('-')[1]}}/{{m.split('-')[0]}}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label fw-bold">Unidade</label>
+      <select name="unidade_id" class="form-select">
+        <option value="">Todas as unidades</option>
+        {% for u in unidades %}
+        <option value="{{u.id}}" {{'selected' if u.id|string == unidade_id else ''}}>{{u.nome}}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label fw-bold">Período customizado</label>
+      <div class="input-group">
+        <input type="date" name="data_inicio" class="form-control" value="{{data_inicio}}">
+        <span class="input-group-text">até</span>
+        <input type="date" name="data_fim" class="form-control" value="{{data_fim}}">
+      </div>
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-rench-primary w-100"><i class="bi bi-funnel"></i> Filtrar</button>
+    </div>
+  </form>
+</div>
+
+<!-- TOTAIS -->
+<div class="row g-4 mb-4">
+  <div class="col-md-6">
+    <div class="card card-dashboard p-4 text-center">
+      <div class="small text-muted text-uppercase fw-bold mb-1">Total no período</div>
+      <div class="display-5 fw-bold" style="color:var(--primary);">{{total_geral}}</div>
+      <div class="small text-muted">{{'suprimentos' if detalhar == 'suprimentos' else ('folhas fotográficas' if detalhar == 'folhas' else 'itens')}}</div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card card-dashboard p-4 text-center">
+      <div class="small text-muted text-uppercase fw-bold mb-1">Entregas registradas</div>
+      <div class="display-5 fw-bold" style="color:var(--primary);">{{total_entregas}}</div>
+      <div class="small text-muted">registros no período</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- RESUMO POR UNIDADE -->
+  <div class="col-lg-5">
+    <div class="card card-dashboard h-100">
+      <div class="p-3 border-bottom" style="border-color:var(--primary-borda)!important;">
+        <h5 class="mb-0 fw-bold" style="color:var(--primary);">
+          <i class="bi bi-building me-2"></i>Resumo por unidade
+        </h5>
+      </div>
+      <div class="p-0">
+        {% if unidades_map %}
+          {% for (empresa, unidade), itens in unidades_map.items() %}
+          <div class="p-3 border-bottom" style="border-color:#eee!important;">
+            <div class="fw-bold" style="color:var(--primary);">{{unidade}}</div>
+            <div class="small text-muted mb-2">{{empresa}}</div>
+            <div class="d-flex flex-wrap gap-2">
+              {% for item in itens %}
+              <span class="badge bg-soft-secondary" style="color:#444;">
+                {{item.tipo_suprimento}}{% if item.modelo_impressora %} {{item.modelo_impressora}}{% endif %}: <strong>{{item.total}}</strong>
+              </span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="p-4 text-center text-muted">Nenhum registro encontrado para os filtros selecionados.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ENTREGAS DETALHADAS -->
+  <div class="col-lg-7">
+    <div class="card card-dashboard h-100">
+      <div class="p-3 border-bottom d-flex justify-content-between align-items-center" style="border-color:var(--primary-borda)!important;">
+        <h5 class="mb-0 fw-bold" style="color:var(--primary);">
+          <i class="bi bi-list-check me-2"></i>Entregas detalhadas
+        </h5>
+        <span class="badge bg-soft-primary">{{entregas|length}} entrega(s)</span>
+      </div>
+      <div class="p-0">
+        {% if entregas %}
+          {% for ent in entregas %}
+          <div class="p-3 border-bottom" style="border-color:#eee!important;">
+            <div class="d-flex justify-content-between align-items-start flex-wrap">
+              <div>
+                <div class="fw-bold" style="color:var(--primary);">{{ent.unidade}}</div>
+                <div class="small text-muted">{{ent.empresa}}</div>
+              </div>
+              <div class="text-end small text-muted">
+                {{ent.data}} <span class="fw-bold">{{ent.hora}}</span>
+                <br>Resp: {{ent.responsavel or '-'}}
+              </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+              {% for item in ent.itens %}
+              <span class="badge bg-soft-primary">{{item.nome}} <strong>{{item.quantidade}}x</strong>{% if item.motivo %} <small>({{item.motivo}})</small>{% endif %}</span>
+              {% endfor %}
+            </div>
+            {% if ent.observacoes %}
+            <div class="mt-2 small text-muted"><i class="bi bi-chat-left-text me-1"></i>{{ent.observacoes}}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="p-4 text-center text-muted">Nenhuma entrega encontrada para os filtros selecionados.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
