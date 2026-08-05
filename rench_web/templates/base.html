@@ -167,10 +167,11 @@
     });
   });
 
-  // Alerta sonoro e visual para mensagens de sucesso
+  // Alerta sonoro e notificacao do navegador para mensagens de sucesso
   (function(){
     const successAlerts = document.querySelectorAll('.alert-success');
     if(successAlerts.length > 0){
+      // Beep suave
       try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         if(AudioContext){
@@ -187,8 +188,27 @@
           osc.start();
           osc.stop(ctx.currentTime + 0.3);
         }
-      } catch(e) {
-        // som opcional, ignora erros
+      } catch(e) {}
+
+      // Notificacao nativa do navegador
+      if('Notification' in window && Notification.permission === 'granted'){
+        successAlerts.forEach(alert => {
+          new Notification('RENCH Equipamentos', {
+            body: alert.textContent.trim(),
+            icon: '/static/favicon.ico'
+          });
+        });
+      } else if('Notification' in window && Notification.permission !== 'denied'){
+        Notification.requestPermission().then(permission => {
+          if(permission === 'granted'){
+            successAlerts.forEach(alert => {
+              new Notification('RENCH Equipamentos', {
+                body: alert.textContent.trim(),
+                icon: '/static/favicon.ico'
+              });
+            });
+          }
+        });
       }
     }
   })();
