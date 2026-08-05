@@ -1467,7 +1467,39 @@
     adicionarItem();
 
     if('serviceWorker' in navigator){
-      navigator.serviceWorker.register('/static/sw.js?v=3').catch(console.error);
+      const vapidPublicKey = '{{vapid_public_key}}';
+
+      function urlBase64ToUint8Array(base64String){
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for(let i = 0; i < rawData.length; ++i){
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+      }
+
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(registration => {
+          if(!vapidPublicKey || !('PushManager' in window)) return;
+          return registration.pushManager.getSubscription().then(subscription => {
+            if(subscription) return subscription;
+            return registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+            });
+          });
+        })
+        .then(subscription => {
+          if(!subscription) return;
+          return fetch('{{url_for('push_subscribe')}}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(subscription.toJSON())
+          });
+        })
+        .catch(console.error);
     }
   </script>
 </body>

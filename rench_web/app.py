@@ -2248,7 +2248,7 @@ def suprimento_mobile():
                 ORDER BY m.ordem, m.nome
             """)
             modelos = cur.fetchall()
-            return render_template('suprimento_mobile.html', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega')
+            return render_template('suprimento_mobile.html', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega', vapid_public_key=VAPID_PUBLIC_KEY)
 
         cur.execute("""
             INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes)
@@ -2308,7 +2308,7 @@ def suprimento_mobile():
                     ORDER BY m.ordem, m.nome
                 """)
                 modelos = cur.fetchall()
-                return render_template('suprimento_mobile.html', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega')
+                return render_template('suprimento_mobile.html', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega', vapid_public_key=VAPID_PUBLIC_KEY)
 
         for item in itens:
             mp = item['motivo_padrao']
@@ -2353,7 +2353,7 @@ def suprimento_mobile():
     modelos = cur.fetchall()
 
     hoje = datetime.now().strftime('%Y-%m-%d')
-    return render_template('suprimento_mobile.html', locais=locais, modelos_impressora=modelos, hoje=hoje, estoque=estoque, aba=request.args.get('aba', 'entrega'))
+    return render_template('suprimento_mobile.html', locais=locais, modelos_impressora=modelos, hoje=hoje, estoque=estoque, aba=request.args.get('aba', 'entrega'), vapid_public_key=VAPID_PUBLIC_KEY)
 
 @app.route('/suprimentos/novo', methods=['GET', 'POST'])
 @login_required
