@@ -134,6 +134,10 @@
               </span>
               {% endfor %}
             </div>
+            {% set total_unidade = itens | map(attribute='total') | sum %}
+            <div class="mt-2 small text-muted">
+              Total de suprimentos para <strong>{{unidade}}</strong>: <span class="fw-bold" style="color:var(--primary);">{{total_unidade}}</span>
+            </div>
           </div>
           {% endfor %}
         {% else %}
