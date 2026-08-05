@@ -4,13 +4,19 @@ import psycopg2.extras
 import hashlib
 import difflib
 import unicodedata
+import json
 from datetime import datetime, date, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, g, session
 from functools import wraps
 from urllib.parse import urlparse
+from pywebpush import webpush, WebPushException
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'rench_estoque_2026_segredo')
+
+VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
+VAPID_CLAIMS = {"sub": "mailto:contato@rench.com.br"}
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PLANILHA_PADRAO = os.path.join(os.path.dirname(BASE_DIR), 'data_atual.xlsx')
@@ -1155,6 +1161,107 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+@app.context_processor
+def inject_globals():
+    return dict(vapid_public_key=VAPID_PUBLIC_KEY)
+
+# ============================================================
+# NOTIFICACOES PUSH (PWA)
+# ============================================================
+
+def _init_push_subscriptions_table():
+    try:
+        db = get_db()
+        cur = db.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS push_subscriptions (
+                id SERIAL PRIMARY KEY,
+                endpoint TEXT NOT NULL UNIQUE,
+                p256dh TEXT NOT NULL,
+                auth TEXT NOT NULL,
+                criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        db.commit()
+        cur.close()
+    except Exception as e:
+        print('Erro ao criar tabela push_subscriptions:', e)
+
+def salvar_push_subscription(subscription):
+    _init_push_subscriptions_table()
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        INSERT INTO push_subscriptions (endpoint, p256dh, auth)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (endpoint) DO UPDATE SET p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth
+    """, (subscription['endpoint'], subscription['keys']['p256dh'], subscription['keys']['auth']))
+    db.commit()
+    cur.close()
+
+def listar_push_subscriptions():
+    _init_push_subscriptions_table()
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT endpoint, p256dh, auth FROM push_subscriptions")
+    rows = cur.fetchall()
+    cur.close()
+    return [{
+        'endpoint': r['endpoint'],
+        'keys': {'p256dh': r['p256dh'], 'auth': r['auth']}
+    } for r in rows]
+
+def enviar_notificacao_push(titulo, mensagem, url='/'):
+    if not VAPID_PRIVATE_KEY or not VAPID_PUBLIC_KEY:
+        return
+    subscriptions = listar_push_subscriptions()
+    payload = json.dumps({
+        'title': titulo,
+        'body': mensagem,
+        'icon': '/static/logo_rench.png',
+        'badge': '/static/logo_rench.png',
+        'tag': 'rench-' + str(datetime.now().timestamp()),
+        'data': {'url': url}
+    })
+    for sub in subscriptions:
+        try:
+            webpush(
+                subscription_info=sub,
+                data=payload,
+                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_claims=VAPID_CLAIMS
+            )
+        except WebPushException as e:
+            if e.response and e.response.status_code in (410, 404):
+                db = get_db()
+                cur = db.cursor()
+                cur.execute("DELETE FROM push_subscriptions WHERE endpoint=%s", (sub['endpoint'],))
+                db.commit()
+                cur.close()
+            else:
+                print('Erro ao enviar push:', e)
+        except Exception as e:
+            print('Erro ao enviar push:', e)
+
+@app.route('/api/push/subscribe', methods=['POST'])
+@login_required
+def push_subscribe():
+    try:
+        data = request.get_json(force=True)
+        if not data or not data.get('endpoint') or not data.get('keys'):
+            return jsonify({'ok': False, 'error': 'Dados incompletos'}), 400
+        salvar_push_subscription(data)
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/push/test', methods=['POST'])
+@login_required
+def push_test():
+    enviar_notificacao_push('RENCH Equipamentos', 'Teste de notificacao push!', '/')
+    flash('Notificacao de teste enviada!', 'success')
+    return redirect(url_for('index'))
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -2194,6 +2301,10 @@ def suprimento_mobile():
 
         db.commit()
         flash('Entrega salva com sucesso!', 'success')
+        cur.execute("SELECT u.nome FROM unidades u WHERE u.id=%s", (unidade_id,))
+        unidade_row = cur.fetchone()
+        unidade_nome = unidade_row['nome'] if unidade_row else 'Unidade'
+        enviar_notificacao_push('Saida de suprimento', f'Entrega registrada para {unidade_nome}', url_for('suprimento_mobile'))
         return redirect(url_for('suprimento_mobile'))
 
     cur.execute("""
@@ -2308,6 +2419,10 @@ def novo_suprimento():
 
         db.commit()
         flash('Entrega de suprimentos registrada com sucesso!', 'success')
+        cur.execute("SELECT u.nome FROM unidades u WHERE u.id=%s", (unidade_id,))
+        unidade_row = cur.fetchone()
+        unidade_nome = unidade_row['nome'] if unidade_row else 'Unidade'
+        enviar_notificacao_push('Saida de suprimento', f'Entrega registrada para {unidade_nome}', url_for('lista_suprimentos'))
         return redirect(url_for('lista_suprimentos'))
 
     cur.execute("""
@@ -2874,6 +2989,7 @@ def estoque_entrada():
         db.commit()
         descricao = f"{tipo_final} {modelo}" + (f" ({marca})" if marca else "")
         flash(f'Entrada registrada: {descricao} (+{quantidade})', 'success')
+        enviar_notificacao_push('Entrada no estoque', f'{descricao}: +{quantidade}', url_for('controle_estoque'))
         return redirect(url_for('controle_estoque'))
 
     cur.execute("""
