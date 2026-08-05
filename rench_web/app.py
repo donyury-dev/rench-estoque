@@ -2003,9 +2003,9 @@ def lista_suprimentos():
         params.append(data_fim)
     if busca:
         sql += """ AND (
-            unaccent(lower(u.nome)) LIKE unaccent(lower(%s))
-            OR unaccent(lower(emp.nome)) LIKE unaccent(lower(%s))
-            OR unaccent(lower(si.tipo_suprimento)) LIKE unaccent(lower(%s))
+            lower(u.nome) LIKE lower(%s)
+            OR lower(emp.nome) LIKE lower(%s)
+            OR lower(si.tipo_suprimento) LIKE lower(%s)
         )"""
         params.extend([f'%{busca}%', f'%{busca}%', f'%{busca}%'])
 
@@ -2793,8 +2793,8 @@ def controle_estoque():
     params = []
     if busca:
         sql += """ AND (
-            unaccent(lower(tipo_suprimento)) LIKE unaccent(lower(%s))
-            OR unaccent(lower(modelo_impressora)) LIKE unaccent(lower(%s))
+            lower(tipo_suprimento) LIKE lower(%s)
+            OR lower(modelo_impressora) LIKE lower(%s)
         )"""
         params.extend([f'%{busca}%', f'%{busca}%'])
     sql += " ORDER BY modelo_impressora, tipo_suprimento"

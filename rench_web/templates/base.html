@@ -135,10 +135,17 @@
   {% with msgs = get_flashed_messages(with_categories=true) %}
     {% if msgs %}
       {% for cat, msg in msgs %}
+        {% if cat == 'success' %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+          <i class="bi bi-check-circle-fill me-2"></i>{{msg}}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% else %}
         <div class="alert alert-{{cat.replace('danger','danger')|replace('success','success')|replace('info','info')|replace('warning','warning')}} alert-dismissible fade show" role="alert">
           {{msg}}
           <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
+        {% endif %}
       {% endfor %}
     {% endif %}
   {% endwith %}
@@ -159,6 +166,32 @@
       }
     });
   });
+
+  // Alerta sonoro e visual para mensagens de sucesso
+  (function(){
+    const successAlerts = document.querySelectorAll('.alert-success');
+    if(successAlerts.length > 0){
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if(AudioContext){
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.2);
+          gain.gain.setValueAtTime(0.1, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.3);
+        }
+      } catch(e) {
+        // som opcional, ignora erros
+      }
+    }
+  })();
 </script>
 {% block scripts %}{% endblock %}
 </body>
