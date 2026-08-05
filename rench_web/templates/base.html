@@ -124,6 +124,9 @@
     <a class="nav-link {{'active' if request.endpoint in ('lista_modelos_impressora','novo_modelo_impressora','editar_modelo_impressora') else ''}}" href="{{url_for('lista_modelos_impressora')}}">
       <i class="bi bi-printer"></i> Modelos
     </a>
+    <a class="nav-link" href="{{url_for('testar_notificacao')}}">
+      <i class="bi bi-bell"></i> Testar Notificacao
+    </a>
     <a class="nav-link text-danger" href="{{url_for('logout')}}">
       <i class="bi bi-box-arrow-right"></i> Sair
     </a>
@@ -222,7 +225,11 @@
   // Registro do Service Worker e subscription para notificacoes push
   (function(){
     const vapidPublicKey = '{{vapid_public_key}}';
-    if(!vapidPublicKey || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    console.log('VAPID public key configurada:', !!vapidPublicKey);
+    if(!vapidPublicKey || !('serviceWorker' in navigator) || !('PushManager' in window)){
+      console.log('Push nao suportado neste navegador');
+      return;
+    }
 
     function urlBase64ToUint8Array(base64String){
       const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -235,10 +242,14 @@
       return outputArray;
     }
 
-    navigator.serviceWorker.register('{{url_for('static', filename='sw.js')}}')
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
       .then(registration => {
+        console.log('Service Worker registrado:', registration.scope);
         return registration.pushManager.getSubscription().then(subscription => {
-          if(subscription) return subscription;
+          if(subscription){
+            console.log('Subscription existente encontrada');
+            return subscription;
+          }
           return registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
@@ -246,15 +257,19 @@
         });
       })
       .then(subscription => {
+        console.log('Subscription obtida, enviando para servidor...');
         return fetch('{{url_for('push_subscribe')}}', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(subscription.toJSON())
         });
       })
+      .then(r => r.json())
+      .then(resp => {
+        console.log('Resposta do servidor push:', resp);
+      })
       .catch(err => {
-        // falhas silenciosas: push nao e suportado ou permissao negada
-        console.log('Push nao disponivel:', err);
+        console.error('Erro no push:', err);
       });
   })();
 </script>

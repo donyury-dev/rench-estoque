@@ -1213,8 +1213,10 @@ def listar_push_subscriptions():
 
 def enviar_notificacao_push(titulo, mensagem, url='/'):
     if not VAPID_PRIVATE_KEY or not VAPID_PUBLIC_KEY:
+        print('Push desabilitado: chaves VAPID nao configuradas')
         return
     subscriptions = listar_push_subscriptions()
+    print(f'Enviando push para {len(subscriptions)} subscription(s)')
     payload = json.dumps({
         'title': titulo,
         'body': mensagem,
@@ -1231,17 +1233,33 @@ def enviar_notificacao_push(titulo, mensagem, url='/'):
                 vapid_private_key=VAPID_PRIVATE_KEY,
                 vapid_claims=VAPID_CLAIMS
             )
+            print(f"Push enviado para {sub['endpoint'][:80]}...")
         except WebPushException as e:
+            print(f'WebPushException: {e}')
             if e.response and e.response.status_code in (410, 404):
                 db = get_db()
                 cur = db.cursor()
                 cur.execute("DELETE FROM push_subscriptions WHERE endpoint=%s", (sub['endpoint'],))
                 db.commit()
                 cur.close()
-            else:
-                print('Erro ao enviar push:', e)
+                print('Subscription invalida removida')
         except Exception as e:
             print('Erro ao enviar push:', e)
+
+@app.route('/sw.js')
+def service_worker():
+    return app.send_static_file('sw.js'), 200, {'Content-Type': 'application/javascript', 'Service-Worker-Allowed': '/'}
+
+@app.route('/api/push/status')
+@login_required
+def push_status():
+    subs = listar_push_subscriptions()
+    return jsonify({
+        'ok': True,
+        'vapid_configured': bool(VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY),
+        'public_key_prefix': VAPID_PUBLIC_KEY[:20] if VAPID_PUBLIC_KEY else None,
+        'subscriptions_count': len(subs)
+    })
 
 @app.route('/api/push/subscribe', methods=['POST'])
 @login_required
@@ -1258,6 +1276,13 @@ def push_subscribe():
 @app.route('/api/push/test', methods=['POST'])
 @login_required
 def push_test():
+    enviar_notificacao_push('RENCH Equipamentos', 'Teste de notificacao push!', '/')
+    flash('Notificacao de teste enviada!', 'success')
+    return redirect(url_for('index'))
+
+@app.route('/testar-notificacao')
+@login_required
+def testar_notificacao():
     enviar_notificacao_push('RENCH Equipamentos', 'Teste de notificacao push!', '/')
     flash('Notificacao de teste enviada!', 'success')
     return redirect(url_for('index'))
