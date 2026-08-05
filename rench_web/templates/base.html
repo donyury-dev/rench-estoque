@@ -190,6 +190,11 @@
         }
       } catch(e) {}
 
+      // Vibracao em dispositivos moveis
+      if('vibrate' in navigator){
+        navigator.vibrate([200, 100, 200]);
+      }
+
       // Notificacao nativa do navegador
       if('Notification' in window && Notification.permission === 'granted'){
         successAlerts.forEach(alert => {
