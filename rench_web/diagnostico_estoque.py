@@ -52,12 +52,12 @@ def main():
 
     print('\n=== ULTIMAS ENTREGAS COM DRUM ES5112/4172 ===')
     cur.execute("""
-        SELECT si.id, si.tipo_suprimento, si.modelo_impressora, si.marca, si.quantidade, s.data_entrega, u.nome as unidade
+        SELECT si.id, si.tipo_suprimento, si.modelo_impressora, si.marca, si.quantidade, se.data_entrega, u.nome as unidade
         FROM suprimentos_itens si
-        JOIN suprimentos s ON si.suprimento_id = s.id
-        JOIN unidades u ON s.unidade_id = u.id
+        JOIN suprimentos_entregas se ON si.entrega_id = se.id
+        JOIN unidades u ON se.unidade_id = u.id
         WHERE si.modelo_impressora = 'ES5112/4172'
-        ORDER BY s.data_entrega DESC
+        ORDER BY se.data_entrega DESC
         LIMIT 20
     """)
     for r in cur.fetchall():
