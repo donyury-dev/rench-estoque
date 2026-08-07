@@ -31,14 +31,14 @@ def main():
 
     print('=== ITENS DE ESTOQUE DO MODELO ES5112/4172 ===')
     cur.execute("""
-        SELECT id, tipo_suprimento, modelo_impressora, marca, quantidade, quantidade_minima
+        SELECT id, tipo_suprimento, modelo_impressora, marca, quantidade
         FROM estoque
         WHERE modelo_impressora = 'ES5112/4172'
         ORDER BY tipo_suprimento, marca
     """)
     rows = cur.fetchall()
     for r in rows:
-        print(f"id={r['id']} | {r['tipo_suprimento']} | marca={r['marca'] or '-'} | qtd={r['quantidade']} | min={r['quantidade_minima']}")
+        print(f"id={r['id']} | {r['tipo_suprimento']} | marca={r['marca'] or '-'} | qtd={r['quantidade']}")
 
     print('\n=== TODOS OS ITENS DE ESTOQUE ( Drum ) ===')
     cur.execute("""
