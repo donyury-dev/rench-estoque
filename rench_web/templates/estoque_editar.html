@@ -38,27 +38,37 @@
     <div class="card card-dashboard p-4">
       <form method="POST" id="formEditarEstoque">
         <div class="mb-3">
-          <label class="form-label fw-bold">Tipo do suprimento *</label>
-          <input type="text" class="form-control" name="tipo_suprimento" value="{{item.tipo_suprimento}}" required list="tipos-suprimentos">
-          <datalist id="tipos-suprimentos">
-            <option value="Toner Black">
-            <option value="Toner Ciano">
-            <option value="Toner Magenta">
-            <option value="Toner Amarelo">
-            <option value="Drum Black">
-            <option value="Drum Ciano">
-            <option value="Drum Magenta">
-            <option value="Drum Amarelo">
-            <option value="Drum Preto para Transformar">
-            <option value="Drum Ciano para Transformar">
-            <option value="Drum Magenta para Transformar">
-            <option value="Drum Amarelo para Transformar">
-            <option value="Fusor">
-            <option value="Transfer">
-            <option value="Coletor">
-            <option value="Papel Fotografico">
-            <option value="Outro">
-          </datalist>
+          <label class="form-label fw-bold">Tipo *</label>
+          <select class="form-select" id="tipo-select" required>
+            <option value="Toner" {{'selected' if item.tipo_suprimento.startswith('Toner') else ''}}>Toner</option>
+            <option value="Drum" {{'selected' if item.tipo_suprimento.startswith('Drum') and 'Transformar' not in item.tipo_suprimento else ''}}>Drum</option>
+            <option value="Drum para Transformar" {{'selected' if 'Transformar' in item.tipo_suprimento else ''}}>Drum para Transformar</option>
+            <option value="Fusor" {{'selected' if item.tipo_suprimento == 'Fusor' else ''}}>Fusor</option>
+            <option value="Transfer" {{'selected' if item.tipo_suprimento == 'Transfer' else ''}}>Transfer</option>
+            <option value="Coletor" {{'selected' if item.tipo_suprimento == 'Coletor' else ''}}>Coletor</option>
+            <option value="Papel Fotografico" {{'selected' if item.tipo_suprimento == 'Papel Fotografico' else ''}}>Papel Fotográfico</option>
+            <option value="Outro" {{'selected' if item.tipo_suprimento == 'Outro' else ''}}>Outro</option>
+          </select>
+        </div>
+
+        <div class="row g-2 mb-3" id="cor-wrap">
+          <div class="col-6">
+            <label class="form-label fw-bold">Cor</label>
+            <select class="form-select" id="cor-select">
+              <option value="Black" {{'selected' if 'Black' in item.tipo_suprimento else ''}}>Black</option>
+              <option value="Ciano" {{'selected' if 'Ciano' in item.tipo_suprimento else ''}}>Ciano</option>
+              <option value="Magenta" {{'selected' if 'Magenta' in item.tipo_suprimento else ''}}>Magenta</option>
+              <option value="Amarelo" {{'selected' if 'Amarelo' in item.tipo_suprimento else ''}}>Amarelo</option>
+            </select>
+          </div>
+          <div class="col-6 d-flex align-items-end">
+            <input type="hidden" name="tipo_suprimento" id="tipo-final" value="{{item.tipo_suprimento}}">
+          </div>
+        </div>
+
+        <div class="mb-3" id="nome-outro-wrap" style="display:none;">
+          <label class="form-label fw-bold">Nome do suprimento *</label>
+          <input type="text" class="form-control" id="nome-outro" value="{{item.tipo_suprimento}}">
         </div>
 
         <div class="mb-3">
@@ -103,9 +113,36 @@
 
 {% block scripts %}
 <script>
+  const tipoSelect = document.getElementById('tipo-select');
+  const corSelect = document.getElementById('cor-select');
+  const corWrap = document.getElementById('cor-wrap');
+  const tipoFinal = document.getElementById('tipo-final');
+  const nomeOutroWrap = document.getElementById('nome-outro-wrap');
+  const nomeOutro = document.getElementById('nome-outro');
   const modeloInput = document.querySelector('input[name="modelo_impressora"]');
   const marcaSelect = document.getElementById('marca-select');
   const marcaAviso = document.getElementById('marca-aviso');
+
+  function atualizarTipoFinal(){
+    const tipo = tipoSelect.value;
+    if(tipo === 'Outro'){
+      corWrap.style.display = 'none';
+      nomeOutroWrap.style.display = 'block';
+      tipoFinal.value = nomeOutro.value.trim();
+      return;
+    }
+    corWrap.style.display = (tipo === 'Toner' || tipo === 'Drum' || tipo === 'Drum para Transformar') ? 'flex' : 'none';
+    nomeOutroWrap.style.display = 'none';
+    if(tipo === 'Toner' || tipo === 'Drum' || tipo === 'Drum para Transformar'){
+      tipoFinal.value = tipo + ' ' + corSelect.value;
+    } else {
+      tipoFinal.value = tipo;
+    }
+  }
+
+  tipoSelect.addEventListener('change', atualizarTipoFinal);
+  corSelect.addEventListener('change', atualizarTipoFinal);
+  nomeOutro.addEventListener('input', atualizarTipoFinal);
 
   function atualizarMarca(){
     const modelo = (modeloInput.value || '').trim().toUpperCase();
@@ -123,6 +160,7 @@
   modeloInput.addEventListener('input', atualizarMarca);
   modeloInput.addEventListener('blur', atualizarMarca);
   atualizarMarca();
+  atualizarTipoFinal();
 </script>
 {% endblock %}
 

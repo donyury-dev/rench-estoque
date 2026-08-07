@@ -3106,12 +3106,19 @@ def estoque_editar(estoque_id):
         if not modelo:
             modelo = '-'
 
+        # Valores antigos para propagar a mudanca nos registros vinculados
+        old_tipo = (item['tipo_suprimento'] or '').strip()
+        old_modelo = (item['modelo_impressora'] or '').strip().upper()
+        old_marca = (item['marca'] or '').strip()
+
         if _modelo_com_marca(tipo, modelo):
             if not marca:
                 flash('Este modelo exige informacao de marca (OKIData ou R10).', 'danger')
                 return redirect(url_for('estoque_editar', estoque_id=estoque_id))
         else:
             marca = ''
+
+        tipo = _normalizar_tipo_suprimento(tipo)
 
         cur.execute("""
             SELECT id FROM estoque
@@ -3126,8 +3133,16 @@ def estoque_editar(estoque_id):
             UPDATE estoque SET tipo_suprimento=%s, modelo_impressora=%s, marca=%s
             WHERE id=%s
         """, (tipo, modelo, marca or None, estoque_id))
+
+        # Propaga a alteracao para as entregas que usavam os dados antigos
+        cur.execute("""
+            UPDATE suprimentos_itens
+            SET tipo_suprimento=%s, modelo_impressora=%s, marca=%s
+            WHERE tipo_suprimento=%s AND modelo_impressora=%s AND COALESCE(marca, '')=%s
+        """, (tipo, modelo, marca or None, old_tipo, old_modelo, old_marca))
+
         db.commit()
-        flash('Item de estoque atualizado com sucesso!', 'success')
+        flash('Item de estoque atualizado com sucesso! Os registros vinculados tambem foram ajustados.', 'success')
         return redirect(url_for('controle_estoque'))
 
     return render_template('estoque_editar.html', item=item)
