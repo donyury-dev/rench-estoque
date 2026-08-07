@@ -109,8 +109,14 @@
           </div>
 
           <div class="col-md-6">
-            <label class="form-label fw-bold">Responsável</label>
-            <input name="responsavel" class="form-control" placeholder="Nome do técnico/responsável">
+            <label class="form-label fw-bold">Responsável *</label>
+            <select name="responsavel" class="form-select" required>
+              <option value="" selected disabled>Selecione...</option>
+              <option value="Kaio">Kaio</option>
+              <option value="Renan">Renan</option>
+              <option value="Gilvan">Gilvan</option>
+              <option value="Christian">Christian</option>
+            </select>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-bold">Origem</label>
