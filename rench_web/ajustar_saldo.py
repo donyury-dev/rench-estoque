@@ -9,6 +9,8 @@ Exemplo:
 
 Para listar os ids disponiveis:
     python ajustar_saldo.py --listar
+    python ajustar_saldo.py --listar drum        (filtra por texto)
+    python ajustar_saldo.py --listar ES5112      (filtra por modelo)
 """
 import os
 import sys
@@ -33,16 +35,27 @@ def get_db():
     return conn
 
 
-def listar(cur):
-    cur.execute("""
-        SELECT id, tipo_suprimento, modelo_impressora, marca, quantidade
-        FROM estoque
-        ORDER BY modelo_impressora, tipo_suprimento, marca
-    """)
+def listar(cur, filtro=None):
+    if filtro:
+        cur.execute("""
+            SELECT id, tipo_suprimento, modelo_impressora, marca, quantidade
+            FROM estoque
+            WHERE tipo_suprimento ILIKE %s OR modelo_impressora ILIKE %s OR COALESCE(marca,'') ILIKE %s
+            ORDER BY modelo_impressora, tipo_suprimento, marca
+        """, (f'%{filtro}%', f'%{filtro}%', f'%{filtro}%'))
+    else:
+        cur.execute("""
+            SELECT id, tipo_suprimento, modelo_impressora, marca, quantidade
+            FROM estoque
+            ORDER BY modelo_impressora, tipo_suprimento, marca
+        """)
+    rows = cur.fetchall()
     print(f"{'ID':>5} | {'SUPRIMENTO':<32} | {'MODELO':<16} | {'MARCA':<9} | QTD")
     print('-' * 80)
-    for r in cur.fetchall():
+    for r in rows:
         print(f"{r['id']:>5} | {r['tipo_suprimento']:<32} | {r['modelo_impressora']:<16} | {(r['marca'] or '-'):<9} | {r['quantidade']}")
+    print('-' * 80)
+    print(f'{len(rows)} item(ns) encontrado(s).')
 
 
 def ajustar(db, cur, estoque_id, nova_qtd, motivo):
@@ -81,7 +94,8 @@ def main():
     cur = db.cursor()
 
     if sys.argv[1] == '--listar':
-        listar(cur)
+        filtro = sys.argv[2] if len(sys.argv) > 2 else None
+        listar(cur, filtro)
     elif len(sys.argv) >= 3:
         estoque_id = int(sys.argv[1])
         nova_qtd = int(sys.argv[2])
