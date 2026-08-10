@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-"""Corrige o saldo das Drums ES5112/4172 apos o bug de saldo fantasma.
+"""Corrige definitivamente as Drums do modelo ES5112/4172.
 
-Estado errado encontrado:
-  id=291 | Drum Black  | ES5112/4172 | OKIData | 8   (saldo fantasma)
-  id=527 | Drum Teste automatizado | ES5112/4172 | R10 | 5   (nome corrompido)
+Causa raiz (ja corrigida em app.py): _normalizar_modelos_estoque() agrupava os
+itens apenas por tipo_suprimento, ignorando a marca. Isso fundia
+'Drum Black + R10' com 'Drum Black + OKIData' em uma unica linha a cada
+inicializacao do app, somando os saldos e apagando uma das linhas.
 
 Estado correto informado pelo responsavel:
-  Drum R10     = 3
-  Drum OkiData = 0
-  Toner Black  = 11 (nao mexer)
+    Drum R10     = 3   (corresponde a entrada 'Voltou do concerto +3' do Kaio)
+    Drum OkiData = 0   (nao existe nenhuma em estoque)
+    Toner Black  = 11  (nao mexer)
 
 Uso:
     python corrigir_drums_5112.py
@@ -16,6 +17,9 @@ Uso:
 import sys
 sys.path.insert(0, '.')
 from app import app, get_db
+
+MODELO = 'ES5112/4172'
+TIPO = 'Drum Black'
 
 
 def registrar_mov(cur, estoque_id, antes, depois, motivo):
@@ -34,63 +38,64 @@ def main():
         db = get_db()
         cur = db.cursor()
         try:
-            # --- 1. Restaura o item 527 (era a Drum Black R10 real) ---
-            cur.execute("SELECT id, tipo_suprimento, quantidade FROM estoque WHERE id = 527")
-            item = cur.fetchone()
-            if item:
-                antes = int(item['quantidade'] or 0)
-                print(f"[527] antes: {item['tipo_suprimento']} qtd={antes}")
-                cur.execute("""
-                    UPDATE estoque
-                       SET tipo_suprimento = 'Drum Black',
-                           modelo_impressora = 'ES5112/4172',
-                           marca = 'R10',
-                           nome_exibicao = 'Drum R10',
-                           quantidade = 3
-                     WHERE id = 527
-                """)
-                registrar_mov(cur, 527, antes, 3,
-                              'Correcao: restaurado nome Drum Black R10 e saldo real (3)')
-                # desfaz a renomeacao que vazou para o historico de entregas
-                cur.execute("""
-                    UPDATE suprimentos_itens
-                       SET tipo_suprimento = 'Drum Black'
-                     WHERE tipo_suprimento ILIKE 'Drum Teste%'
-                """)
-                print(f"[527] depois: Drum Black / R10 / exib='Drum R10' / qtd=3")
-                print(f"[527] itens de entrega corrigidos: {cur.rowcount}")
-            else:
-                print('[527] nao encontrado')
+            cur.execute("""
+                SELECT id, tipo_suprimento, nome_exibicao, marca, quantidade
+                  FROM estoque
+                 WHERE modelo_impressora = %s AND tipo_suprimento ILIKE '%%drum%%'
+                 ORDER BY id
+            """, (MODELO,))
+            drums = cur.fetchall()
+            print('Antes:')
+            for d in drums:
+                print(f"  id={d['id']} | {d['nome_exibicao'] or d['tipo_suprimento']} | marca={d['marca'] or '-'} | qtd={d['quantidade']}")
 
-            # --- 2. Zera o saldo fantasma do OKIData (id 291) ---
-            cur.execute("SELECT id, tipo_suprimento, quantidade FROM estoque WHERE id = 291")
-            item = cur.fetchone()
-            if item:
-                antes = int(item['quantidade'] or 0)
-                print(f"[291] antes: {item['tipo_suprimento']} qtd={antes}")
+            if not drums:
+                print('Nenhuma drum encontrada para este modelo. Nada a fazer.')
+                return
+
+            # A linha historica (menor id) passa a ser a R10 com 3 unidades,
+            # pois a entrada real 'Voltou do concerto +3' pertence a ela.
+            principal = drums[0]
+            antes = int(principal['quantidade'] or 0)
+            cur.execute("""
+                UPDATE estoque
+                   SET tipo_suprimento = %s,
+                       marca = 'R10',
+                       nome_exibicao = 'Drum R10',
+                       quantidade = 3
+                 WHERE id = %s
+            """, (TIPO, principal['id']))
+            registrar_mov(cur, principal['id'], antes, 3,
+                          'Correcao: saldo real da Drum R10 (fusao indevida por marca)')
+
+            # Remove eventuais outras linhas de drum duplicadas deste modelo
+            for extra in drums[1:]:
+                cur.execute("UPDATE estoque_movimentacoes SET estoque_id=%s WHERE estoque_id=%s",
+                            (principal['id'], extra['id']))
+                cur.execute("DELETE FROM estoque WHERE id=%s", (extra['id'],))
+                print(f"  linha duplicada id={extra['id']} removida")
+
+            # Garante a linha OKIData zerada, para entradas futuras
+            cur.execute("""
+                SELECT id FROM estoque
+                 WHERE tipo_suprimento=%s AND modelo_impressora=%s AND COALESCE(marca,'')='OKIData'
+            """, (TIPO, MODELO))
+            if not cur.fetchone():
                 cur.execute("""
-                    UPDATE estoque
-                       SET nome_exibicao = 'Drum OkiData',
-                           quantidade = 0
-                     WHERE id = 291
-                """)
-                registrar_mov(cur, 291, antes, 0,
-                              'Correcao: remocao de saldo fantasma gerado pela migracao de marca')
-                print("[291] depois: Drum Black / OKIData / exib='Drum OkiData' / qtd=0")
-            else:
-                print('[291] nao encontrado')
+                    INSERT INTO estoque (tipo_suprimento, modelo_impressora, marca, quantidade, estoque_minimo, nome_exibicao)
+                    VALUES (%s, %s, 'OKIData', 0, 1, 'Drum OkiData')
+                """, (TIPO, MODELO))
+                print('  linha Drum OkiData criada com saldo 0')
 
             db.commit()
 
-            # --- 3. Confere resultado ---
-            print('\n=== ESTADO FINAL ES5112/4172 ===')
+            print('\nDepois:')
             cur.execute("""
                 SELECT id, tipo_suprimento, nome_exibicao, marca, quantidade
-                  FROM estoque WHERE modelo_impressora = 'ES5112/4172' ORDER BY id
-            """)
+                  FROM estoque WHERE modelo_impressora=%s ORDER BY id
+            """, (MODELO,))
             for r in cur.fetchall():
-                nome = r['nome_exibicao'] or r['tipo_suprimento']
-                print(f"  id={r['id']} | {nome} | marca={r['marca'] or '-'} | qtd={r['quantidade']}")
+                print(f"  id={r['id']} | {r['nome_exibicao'] or r['tipo_suprimento']} | marca={r['marca'] or '-'} | qtd={r['quantidade']}")
             print('\nOK - correcao aplicada.')
         except Exception as e:
             db.rollback()

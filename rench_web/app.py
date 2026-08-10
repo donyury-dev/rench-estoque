@@ -195,15 +195,19 @@ def _normalizar_modelos_estoque():
     cur = db.cursor()
     try:
         cur.execute("""
-            SELECT id, tipo_suprimento, modelo_impressora, quantidade, estoque_minimo
+            SELECT id, tipo_suprimento, modelo_impressora, marca, quantidade, estoque_minimo
             FROM estoque
             WHERE modelo_impressora IN ('5112', 'ES5112', '4172', 'ES4172', '5112/4172', 'ES5112/4172')
             ORDER BY id
         """)
         itens_modelo_compartilhado = cur.fetchall()
+        # IMPORTANTE: agrupar por tipo E marca. Agrupar so por tipo funde itens de
+        # marcas diferentes (ex.: Drum Black R10 x Drum Black OKIData), apagando um
+        # deles e somando o saldo no outro a cada inicializacao do app.
         grupos = {}
         for item in itens_modelo_compartilhado:
-            grupos.setdefault(item['tipo_suprimento'], []).append(item)
+            chave = (item['tipo_suprimento'], (item['marca'] or '').strip())
+            grupos.setdefault(chave, []).append(item)
         for itens in grupos.values():
             destino = next((item for item in itens if item['modelo_impressora'] == 'ES5112/4172'), itens[0])
             ids_origem = [item['id'] for item in itens if item['id'] != destino['id']]
