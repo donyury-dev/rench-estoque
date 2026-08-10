@@ -22,8 +22,18 @@ VAPID_CLAIMS = {"sub": "mailto:contato@rench.com.br"}
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PLANILHA_PADRAO = os.path.join(os.path.dirname(BASE_DIR), 'data_atual.xlsx')
 
-# Usar Supabase/Postgres via variavel de ambiente DATABASE_URL
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres.yfxfmwrasjukbsjjqbzs:kaio82046697@aws-1-us-west-2.pooler.supabase.com:6543/postgres')
+# Usar Supabase/Postgres via variavel de ambiente DATABASE_URL.
+# ATENCAO: o fallback abaixo aponta para o banco de PRODUCAO. Se DATABASE_URL nao
+# estiver definida, qualquer script rodado localmente escreve direto em producao.
+DATABASE_URL_FALLBACK_PRODUCAO = 'postgresql://postgres.yfxfmwrasjukbsjjqbzs:kaio82046697@aws-1-us-west-2.pooler.supabase.com:6543/postgres'
+DATABASE_URL = os.environ.get('DATABASE_URL') or DATABASE_URL_FALLBACK_PRODUCAO
+USANDO_BANCO_PRODUCAO_POR_FALLBACK = not os.environ.get('DATABASE_URL')
+
+if USANDO_BANCO_PRODUCAO_POR_FALLBACK:
+    print('*' * 78)
+    print('AVISO: DATABASE_URL nao definida -> conectando no banco de PRODUCAO.')
+    print('       Nao rode scripts de teste/escrita nesta condicao.')
+    print('*' * 78)
 
 PREFIXOS_RASTREIO = {
     "impressora": "IMP",
