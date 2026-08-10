@@ -5,6 +5,7 @@ import hashlib
 import difflib
 import unicodedata
 import json
+import re
 from datetime import datetime, date, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, g, session
 from functools import wraps
@@ -374,6 +375,16 @@ def _converter_esteira_para_transfer():
 
 
 def _separar_drum_5112_por_marca():
+    """DESATIVADA: migracao pontual ja aplicada.
+
+    Esta funcao criava saldo fantasma porque rodava a cada acesso a pagina de
+    estoque e somava quantidades fixas (3 OKIData / 2 R10) sempre que encontrava
+    um 'Drum Black' sem marca. Mantida apenas para referencia historica.
+    """
+    return
+
+
+def _separar_drum_5112_por_marca_LEGADO():
     db = get_db()
     cur = db.cursor()
     try:
@@ -468,6 +479,15 @@ def _separar_drum_5112_por_marca():
 
 
 def _separar_drum_para_transformar():
+    """DESATIVADA: migracao pontual ja aplicada.
+
+    Assim como a separacao por marca, esta rotina podia recriar itens caso um
+    'Drum para Transformar' sem cor voltasse a existir com exatamente 13 unidades.
+    """
+    return
+
+
+def _separar_drum_para_transformar_LEGADO():
     db = get_db()
     cur = db.cursor()
     try:
@@ -703,6 +723,8 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_estoque_tipo_modelo_marca
         ON estoque (tipo_suprimento, modelo_impressora, COALESCE(marca,''))
     """)
+
+    cur.execute("ALTER TABLE estoque ADD COLUMN IF NOT EXISTS nome_exibicao TEXT")
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS estoque_movimentacoes (
@@ -2920,9 +2942,6 @@ def debug_estoque():
 @app.route('/estoque', methods=['GET'])
 @login_required
 def controle_estoque():
-    # Garante migracao de separacao por marca para Drum 5112/4172
-    _separar_drum_5112_por_marca()
-
     db = get_db()
     cur = db.cursor()
 
@@ -3098,6 +3117,7 @@ def estoque_editar(estoque_id):
         tipo = (request.form.get('tipo_suprimento') or '').strip()
         modelo = (request.form.get('modelo_impressora') or '').strip().upper()
         marca = (request.form.get('marca') or '').strip()
+        nome_exibicao = (request.form.get('nome_exibicao') or '').strip() or None
 
         if not tipo:
             flash('Informe o tipo do suprimento.', 'danger')
@@ -3111,14 +3131,28 @@ def estoque_editar(estoque_id):
         old_modelo = (item['modelo_impressora'] or '').strip().upper()
         old_marca = (item['marca'] or '').strip()
 
+        # Se o nome (exibicao ou tipo) ja indica a marca, ela deixa de ser obrigatoria,
+        # mas a marca escolhida pelo usuario continua sendo respeitada.
+        nome_indica_marca = bool(nome_exibicao and re.search(r'(R10|OKIDATA)', nome_exibicao, re.IGNORECASE))
+        tipo_indica_marca = bool(re.search(r'(R10|OKIDATA)', tipo, re.IGNORECASE))
+
         if _modelo_com_marca(tipo, modelo):
-            if not marca:
+            if not marca and not nome_indica_marca and not tipo_indica_marca:
                 flash('Este modelo exige informacao de marca (OKIData ou R10).', 'danger')
                 return redirect(url_for('estoque_editar', estoque_id=estoque_id))
         else:
+            # Modelo nao usa marca: descarta para nao criar itens duplicados
             marca = ''
 
         tipo = _normalizar_tipo_suprimento(tipo)
+
+        # Garante que a coluna nome_exibicao exista
+        try:
+            cur.execute("ALTER TABLE estoque ADD COLUMN IF NOT EXISTS nome_exibicao TEXT")
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            print('Erro ao adicionar coluna nome_exibicao:', e)
 
         cur.execute("""
             SELECT id FROM estoque
@@ -3130,9 +3164,9 @@ def estoque_editar(estoque_id):
             return redirect(url_for('estoque_editar', estoque_id=estoque_id))
 
         cur.execute("""
-            UPDATE estoque SET tipo_suprimento=%s, modelo_impressora=%s, marca=%s
+            UPDATE estoque SET tipo_suprimento=%s, modelo_impressora=%s, marca=%s, nome_exibicao=%s
             WHERE id=%s
-        """, (tipo, modelo, marca or None, estoque_id))
+        """, (tipo, modelo, marca or None, nome_exibicao, estoque_id))
 
         # Propaga a alteracao para as entregas que usavam os dados antigos
         cur.execute("""
