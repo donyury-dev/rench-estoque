@@ -303,12 +303,22 @@ function atualizarLinha(sel){
 document.getElementById('form-suprimento').addEventListener('submit', function(e){
   container.querySelectorAll('.item-row').forEach(row => {
     normalizarCampoModelo(row.querySelector('.modelo-input'));
-    const tipo = row.querySelector('[name="tipo_suprimento[]"]').value;
+    const tipoSelect = row.querySelector('[name="tipo_suprimento[]"]');
+    const tipo = tipoSelect.value;
     const corSelect = row.querySelector('[name="cor_selecionada[]"]');
     const cor = corSelect.value;
     corSelect.disabled = false;
-    const inputTipo = row.querySelector('[name="tipo_suprimento[]"]');
-    if(cor && ['Toner','Drum','Drum para Transformar'].includes(tipo)) inputTipo.value = tipo + ' ' + cor;
+
+    if(cor && ['Toner','Drum','Drum para Transformar'].includes(tipo)){
+      // O select nao possui option 'Toner Black', entao o navegador nao enviaria o value.
+      // Criamos um hidden com o nome combinado e removemos o name do select.
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = 'tipo_suprimento[]';
+      hidden.value = tipo + ' ' + cor;
+      row.appendChild(hidden);
+      tipoSelect.removeAttribute('name');
+    }
 
     if(tipo === 'Papel Fotografico'){
       const qtdInput = row.querySelector('[name="quantidade[]"]');
