@@ -21,21 +21,16 @@
         </div>
         <div class="mb-3">
           <label class="form-label fw-bold">Unidade</label>
-          <select class="form-select" name="unidade_id" id="select_unidade" required>
-            <option value="" disabled selected>Selecione a unidade...</option>
-            {% set empresa_atual = namespace(val='') %}
+          <input type="hidden" name="unidade_id" id="unidade_id" required>
+          <input type="text" class="form-control" id="busca_unidade" list="lista_unidades" placeholder="Digite para buscar a unidade..." autocomplete="off" required>
+          <datalist id="lista_unidades">
             {% for l in locais %}
               {% if l.unidade_id %}
-                {% if empresa_atual.val != l.empresa_nome %}
-                  {% if not loop.first %}</optgroup>{% endif %}
-                  <optgroup label="{{l.empresa_nome}}">
-                  {% set empresa_atual.val = l.empresa_nome %}
-                {% endif %}
-                <option value="{{l.unidade_id}}">{{l.unidade_nome}}</option>
+                <option value="{{l.unidade_nome}}" data-id="{{l.unidade_id}}"></option>
               {% endif %}
             {% endfor %}
-            {% if locais %}</optgroup>{% endif %}
-          </select>
+          </datalist>
+          <div class="invalid-feedback" id="erro_unidade">Selecione uma unidade válida.</div>
         </div>
         <div class="mb-3">
           <label class="form-label fw-bold">Responsável</label>
@@ -328,5 +323,45 @@ document.getElementById('form-suprimento').addEventListener('submit', function(e
     }
   });
 });
+
+// Busca de unidade: sincroniza o input de texto com o hidden de unidade_id
+(function(){
+  const mapaUnidades = {};
+  document.querySelectorAll('#lista_unidades option').forEach(opt => {
+    mapaUnidades[opt.value.toLowerCase().trim()] = opt.dataset.id;
+  });
+  const busca = document.getElementById('busca_unidade');
+  const hidden = document.getElementById('unidade_id');
+  const erro = document.getElementById('erro_unidade');
+
+  function validarUnidade(){
+    const nome = busca.value.trim();
+    const id = mapaUnidades[nome.toLowerCase()];
+    if(id){
+      hidden.value = id;
+      busca.classList.remove('is-invalid');
+      erro.style.display = 'none';
+      return true;
+    } else {
+      hidden.value = '';
+      busca.classList.add('is-invalid');
+      erro.style.display = 'block';
+      return false;
+    }
+  }
+
+  busca.addEventListener('input', validarUnidade);
+  busca.addEventListener('change', validarUnidade);
+
+  const form = document.getElementById('form-suprimento');
+  if(form){
+    form.addEventListener('submit', function(e){
+      if(!validarUnidade()){
+        e.preventDefault();
+        busca.focus();
+      }
+    });
+  }
+})();
 </script>
 {% endblock %}
