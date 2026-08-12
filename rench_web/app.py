@@ -2254,6 +2254,50 @@ def detalhes_entrega(entrega_id):
     return render_template('suprimento_detalhes.html', entrega=entrega, itens=itens)
 
 
+def _coletar_itens_entrega(form):
+    """Le as linhas de itens enviadas pelo formulario de entrega.
+
+    Indexa pela lista de tipos em vez de usar zip(). O zip() truncava pelo menor
+    campo: bastava o navegador nao enviar um dos campos opcionais (select oculto,
+    desabilitado ou removido do DOM) para o resultado virar zero itens, e a
+    entrega era gravada sem nenhum item e sem baixar o estoque.
+    """
+    tipos = form.getlist('tipo_suprimento[]')
+    modelos = form.getlist('modelo_impressora[]')
+    quantidades = form.getlist('quantidade[]')
+    marcas = form.getlist('marca[]')
+    cores = form.getlist('cor_selecionada[]')
+    motivos_padrao = form.getlist('motivo_padrao[]')
+    defeitos = form.getlist('defeito[]')
+    motivos_outros = form.getlist('motivo[]')
+
+    def campo(lista, idx):
+        return lista[idx] if idx < len(lista) else ''
+
+    itens = []
+    for idx, tipo in enumerate(tipos):
+        tipo = (tipo or '').strip()
+        if not tipo:
+            continue
+        try:
+            quantidade = int(campo(quantidades, idx) or 1)
+        except (TypeError, ValueError):
+            quantidade = 1
+        if quantidade <= 0:
+            continue
+        itens.append({
+            'tipo_suprimento': tipo,
+            'modelo_impressora': (campo(modelos, idx) or '').strip(),
+            'quantidade': quantidade,
+            'marca': (campo(marcas, idx) or '').strip() or None,
+            'cor_selecionada': (campo(cores, idx) or '').strip() or None,
+            'motivo_padrao': campo(motivos_padrao, idx),
+            'defeito': campo(defeitos, idx),
+            'outro': campo(motivos_outros, idx),
+        })
+    return itens
+
+
 @app.route('/suprimentos/mobile', methods=['GET', 'POST'])
 @login_required
 def suprimento_mobile():
@@ -2286,35 +2330,33 @@ def suprimento_mobile():
             modelos = cur.fetchall()
             return render_template('suprimento_mobile.html', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega', vapid_public_key=VAPID_PUBLIC_KEY)
 
+        itens = _coletar_itens_entrega(request.form)
+        if not itens:
+            flash('Adicione pelo menos um suprimento antes de salvar a entrega.', 'danger')
+            cur.execute("""
+                SELECT emp.id as empresa_id, emp.nome as empresa_nome,
+                       u.id as unidade_id, u.nome as unidade_nome
+                FROM empresas emp
+                LEFT JOIN unidades u ON u.empresa_id = emp.id AND u.ativo=1
+                WHERE emp.ativo=1
+                ORDER BY emp.tipo DESC, emp.nome, u.nome
+            """)
+            locais = cur.fetchall()
+            cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade, estoque_minimo FROM estoque ORDER BY tipo_suprimento, modelo_impressora")
+            estoque = cur.fetchall()
+            cur.execute("""
+                SELECT m.* FROM modelos_impressora m
+                WHERE m.ativo = 1
+                ORDER BY m.ordem, m.nome
+            """)
+            modelos = cur.fetchall()
+            return render_template('suprimento_mobile.html', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega', vapid_public_key=VAPID_PUBLIC_KEY)
+
         cur.execute("""
             INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes)
             VALUES (%s, %s, %s, %s) RETURNING id
         """, (unidade_id, data_entrega, responsavel, observacoes))
         entrega_id = cur.fetchone()['id']
-
-        tipos = request.form.getlist('tipo_suprimento[]')
-        modelos = request.form.getlist('modelo_impressora[]')
-        quantidades = request.form.getlist('quantidade[]')
-        marcas = request.form.getlist('marca[]')
-        cores = request.form.getlist('cor_selecionada[]')
-        motivos_padrao = request.form.getlist('motivo_padrao[]')
-        defeitos = request.form.getlist('defeito[]')
-        motivos_outros = request.form.getlist('motivo[]')
-
-        itens = []
-        for tipo, modelo, qtd, marca, cor, mp, defeito, outro in zip(tipos, modelos, quantidades, marcas, cores, motivos_padrao, defeitos, motivos_outros):
-            tipo = (tipo or '').strip()
-            if tipo:
-                itens.append({
-                    'tipo_suprimento': tipo,
-                    'modelo_impressora': modelo,
-                    'quantidade': int(qtd or 1),
-                    'marca': (marca or '').strip() or None,
-                    'cor_selecionada': (cor or '').strip() or None,
-                    'motivo_padrao': mp,
-                    'defeito': defeito,
-                    'outro': outro
-                })
 
         if itens:
             faltantes = debitar_estoque_entrega(cur, entrega_id, itens, responsavel=responsavel)
@@ -2406,35 +2448,16 @@ def novo_suprimento():
             flash('Informe a observação da entrega.', 'danger')
             return redirect(url_for('novo_suprimento'))
 
+        itens = _coletar_itens_entrega(request.form)
+        if not itens:
+            flash('Adicione pelo menos um suprimento antes de salvar a entrega.', 'danger')
+            return redirect(url_for('novo_suprimento'))
+
         cur.execute("""
             INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes)
             VALUES (%s, %s, %s, %s) RETURNING id
         """, (unidade_id, data_entrega, responsavel, observacoes))
         entrega_id = cur.fetchone()['id']
-
-        tipos = request.form.getlist('tipo_suprimento[]')
-        modelos = request.form.getlist('modelo_impressora[]')
-        quantidades = request.form.getlist('quantidade[]')
-        marcas = request.form.getlist('marca[]')
-        cores = request.form.getlist('cor_selecionada[]')
-        motivos_padrao = request.form.getlist('motivo_padrao[]')
-        defeitos = request.form.getlist('defeito[]')
-        motivos_outros = request.form.getlist('motivo[]')
-
-        itens = []
-        for tipo, modelo, qtd, marca, cor, mp, defeito, outro in zip(tipos, modelos, quantidades, marcas, cores, motivos_padrao, defeitos, motivos_outros):
-            tipo = (tipo or '').strip()
-            if tipo:
-                itens.append({
-                    'tipo_suprimento': tipo,
-                    'modelo_impressora': modelo,
-                    'quantidade': int(qtd or 1),
-                    'marca': (marca or '').strip() or None,
-                    'cor_selecionada': (cor or '').strip() or None,
-                    'motivo_padrao': mp,
-                    'defeito': defeito,
-                    'outro': outro
-                })
 
         if itens:
             faltantes = debitar_estoque_entrega(cur, entrega_id, itens, responsavel=responsavel)
