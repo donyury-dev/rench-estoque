@@ -1,7 +1,7 @@
 {
   "name": "RENCH Estoque",
   "short_name": "Estoque",
-  "start_url": "/suprimentos/mobile?v=3",
+  "start_url": "/mobile?v=3",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#850001",

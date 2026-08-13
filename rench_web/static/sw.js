@@ -1,6 +1,6 @@
 const CACHE_NAME = 'rench-estoque-v6';
 const URLS_TO_CACHE = [
-  '/suprimentos/mobile?v=3',
+  '/mobile?v=3',
   '/static/manifest.json?v=3',
   '/static/logo_rench.png'
 ];

@@ -1,0 +1,2090 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#850001">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="{{url_for('static', filename='manifest.json')}}?v=3">
+  <title>RENCH Mobile</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css?v=3">
+  <style>
+    *{box-sizing:border-box;}
+    html,body{margin:0;padding:0;width:100%;height:100%;background:#f0f0f0;font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;font-size:16px;color:#222;}
+    #app{width:100%;min-height:100vh;display:flex;flex-direction:column;background:#f0f0f0;}
+    header{background:#850001;color:#fff;padding:12px 16px;text-align:center;flex:0 0 auto;}
+    header h1{margin:0;font-size:18px;font-weight:700;}
+    header p{margin:2px 0 0;font-size:11px;opacity:0.9;}
+    main{flex:1;display:flex;flex-direction:column;}
+    .scroll-area{flex:1;overflow-y:auto;padding:12px;-webkit-overflow-scrolling:touch;}
+    .card{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+    .card-title{font-size:14px;font-weight:700;color:#850001;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+    .d-none{display:none !important;}
+    label{display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:4px;}
+    input, select, textarea{width:100%;border:1px solid #ccc;border-radius:8px;padding:10px 12px;font-size:16px;background:#fff;font-family:inherit;}
+    input:focus, select:focus, textarea:focus{outline:none;border-color:#850001;box-shadow:0 0 0 2px rgba(133,0,1,0.12);}
+    .search-input{width:100%;border:1px solid #ccc;border-radius:8px;padding:8px 12px;font-size:15px;background:#fff;}
+    .select-list{max-height:200px;overflow-y:auto;border:1px solid #ccc;border-radius:8px;background:#fff;margin-top:6px;display:none;}
+    .select-list.show{display:block;}
+    .select-item{padding:10px 12px;border-bottom:1px solid #eee;cursor:pointer;font-size:15px;}
+    .select-item:last-child{border-bottom:none;}
+    .select-item.empresa{background:#f8f8f8;font-weight:700;color:#850001;font-size:13px;padding-top:8px;padding-bottom:8px;}
+    .select-item.unidade{padding-left:22px;}
+    .select-item:hover{background:#f0f0f0;}
+    .selected-box{display:flex;align-items:center;justify-content:space-between;border:1px solid #ccc;border-radius:8px;padding:10px 12px;background:#fff;cursor:pointer;}
+    .selected-box span{color:#333;font-size:16px;}
+    .selected-box small{color:#888;font-size:12px;}
+    .mb-2{margin-bottom:10px;}
+    .mb-0{margin-bottom:0;}
+    .row{display:flex;gap:8px;}
+    .row > div{flex:1;}
+    .tipo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+    .modelo-wrap{position:relative;}
+    .modelo-opcoes-entrega{display:none;position:absolute;z-index:30;left:0;right:0;margin-top:6px;max-height:210px;overflow-y:auto;border:1px solid #ccc;border-radius:8px;background:#fff;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.14);}
+    .modelo-opcoes-entrega.show{display:block;}
+    .modelo-opcao-entrega{display:block;width:100%;background:#fff;border:0;border-bottom:1px solid #eee;padding:9px 10px;text-align:left;font-size:14px;}
+    .modelo-opcao-entrega:last-child{border-bottom:0;}
+    .tipo-btn{background:#fff;border:1px solid #ccc;border-radius:8px;padding:10px 2px;font-size:14px;font-weight:700;color:#222;text-align:center;cursor:pointer;}
+    .tipo-btn.active{background:#850001;color:#fff;border-color:#850001;}
+    .cor-row{display:flex;gap:5px;flex-wrap:wrap;}
+    .cor-btn{background:#fff;border:1px solid #ccc;border-radius:16px;padding:5px 10px;font-size:13px;font-weight:600;color:#222;cursor:pointer;}
+    .cor-btn.active{background:#850001;color:#fff;border-color:#850001;}
+    .motivo-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+    .motivo-btn{background:#fff;border:1px solid #ccc;border-radius:8px;padding:10px 4px;font-size:13px;font-weight:600;color:#222;text-align:center;cursor:pointer;}
+    .motivo-btn.active{background:#850001;color:#fff;border-color:#850001;}
+    .extra-field{display:none;margin-top:8px;}
+    .extra-field.show{display:block;}
+    .item-box{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:10px;position:relative;}
+    .nav-tabs{display:flex;background:#fff;border-bottom:1px solid #ddd;flex:0 0 auto;}
+    .nav-tab{flex:1;text-align:center;padding:12px 4px;font-size:13px;font-weight:700;color:#666;background:#f8f8f8;border:none;cursor:pointer;}
+    .nav-tab.active{color:#fff;background:#850001;}
+    .tab-content{display:none;}
+    .tab-content.active{display:block;}
+
+    /* Navegacao de modulos: Estoque / Equipamentos */
+    .modulo-tabs{display:flex;background:#fff;border-bottom:2px solid #ddd;flex:0 0 auto;}
+    .modulo-tab{flex:1;text-align:center;padding:14px 4px;font-size:14px;font-weight:700;color:#666;background:#f8f8f8;border:none;cursor:pointer;}
+    .modulo-tab.active{color:#fff;background:#850001;border-bottom:2px solid #850001;}
+    .modulo-content{display:none;}
+    .modulo-content.active{display:flex;flex-direction:column;flex:1;min-height:0;}
+
+    /* Equipamentos */
+    .equip-lista{list-style:none;margin:0;padding:0;}
+    .equip-item{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:8px;}
+    .equip-item .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+    .equip-item .codigo{font-weight:700;color:#850001;font-size:14px;}
+    .equip-item .modelo{font-weight:600;color:#222;font-size:15px;}
+    .equip-item .info{font-size:12px;color:#666;margin-top:2px;}
+    .equip-item .acoes{display:flex;gap:6px;margin-top:8px;}
+    .btn-small{background:#fff;border:1px solid #850001;color:#850001;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;}
+    .btn-small:active{background:#850001;color:#fff;}
+    .filtro-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+    .filtro-row select, .filtro-row input{flex:1;min-width:120px;}
+    .mov-item{background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px;margin-bottom:6px;font-size:13px;}
+    .mov-item .data{font-weight:700;color:#850001;}
+    .locais-grupo{margin-bottom:12px;}
+    .locais-grupo-header{background:#f8f8f8;padding:10px 12px;border-radius:8px 8px 0 0;font-weight:700;color:#850001;font-size:14px;border:1px solid #ddd;border-bottom:none;}
+    .locais-lista{background:#fff;border:1px solid #ddd;border-radius:0 0 8px 8px;padding:6px 0;}
+    .locais-lista .item{padding:8px 12px;font-size:14px;border-bottom:1px solid #f0f0f0;}
+    .locais-lista .item:last-child{border-bottom:none;}
+    .badge-tipo{display:inline-block;background:#850001;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;}
+    .form-group{margin-bottom:12px;}
+    .form-group label{margin-bottom:4px;}
+    .btn-voltar{width:100%;background:#fff;border:2px solid #666;color:#666;border-radius:10px;padding:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;}
+
+    .estoque-lista{list-style:none;margin:0;padding:0;}
+    .estoque-item{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+    .estoque-item .info{flex:1;}
+    .estoque-item .tipo{font-weight:700;color:#222;font-size:15px;}
+    .estoque-item .modelo{font-size:12px;color:#666;}
+    .estoque-item .qtd{font-size:20px;font-weight:700;}
+    .estoque-item .qtd.ok{color:#176B43;}
+    .estoque-item .qtd.baixo{color:#B76E00;}
+    .estoque-item .qtd.zerado{color:#850001;}
+    .estoque-empty{text-align:center;color:#888;padding:30px 12px;}
+
+    .form-section{margin-bottom:10px;}
+    .btn-block{width:100%;background:#850001;color:#fff;border:none;border-radius:10px;padding:14px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;}
+    .btn-block-outline{width:100%;background:#fff;border:2px solid #850001;color:#850001;border-radius:10px;padding:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;}
+
+    .acoes-estoque{display:flex;gap:6px;}
+    .btn-acao-estoque{background:#fff;border:1px solid #850001;color:#850001;border-radius:6px;padding:4px 8px;font-size:12px;font-weight:700;cursor:pointer;}
+    .btn-acao-estoque:active{background:#850001;color:#fff;}
+
+    .entrega-item{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:10px;}
+    .entrega-item .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+    .entrega-item .unidade{font-weight:700;font-size:15px;color:#222;}
+    .entrega-item .empresa{font-size:12px;color:#666;}
+    .entrega-item .datahora{text-align:right;font-size:12px;color:#666;}
+    .entrega-item .itens{margin-top:8px;padding-top:8px;border-top:1px solid #eee;}
+    .entrega-item .item-row{display:flex;justify-content:space-between;font-size:14px;margin-bottom:3px;}
+    .entrega-item .item-nome{color:#222;}
+    .entrega-item .item-qtd{font-weight:700;color:#850001;}
+    .entrega-item .resp{font-size:12px;color:#888;margin-top:6px;}
+
+    .modelo-grupo{background:#fff;border:1px solid #ddd;border-radius:12px;margin-bottom:12px;overflow:hidden;}
+    .modelo-grupo-header{background:#f8f8f8;padding:10px 14px;border-bottom:1px solid #eee;font-weight:700;font-size:15px;color:#850001;display:flex;align-items:center;gap:8px;cursor:pointer;}
+    .modelo-grupo-header small{color:#666;font-weight:400;}
+    .modelo-grupo-header i.seta{margin-left:auto;font-size:14px;transition:transform 0.2s;}
+    .modelo-grupo-header i.seta.girou{transform:rotate(180deg);}
+    .modelo-itens{padding:8px;display:none;}
+    .modelo-itens.show{display:block;}
+    .modelo-resumo{display:flex;gap:6px;align-items:center;margin-left:auto;margin-right:8px;}
+    .bolinha{width:8px;height:8px;border-radius:50%;display:inline-block;}
+    .bolinha.ok{background:#176B43;}
+    .bolinha.baixo{background:#B76E00;}
+    .bolinha.zerado{background:#850001;}
+    .modelo-alertas{font-size:12px;font-weight:600;}
+    .modelo-item{padding:8px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f0f0f0;}
+    .modelo-item:last-child{border-bottom:none;}
+    .modelo-item .info{flex:1;}
+    .modelo-item .nome{font-size:14px;font-weight:600;color:#222;}
+    .modelo-item .qtd{font-size:18px;font-weight:700;min-width:28px;text-align:right;}
+    .modelo-item .qtd.ok{color:#176B43;}
+    .modelo-item .qtd.baixo{color:#B76E00;}
+    .modelo-item .qtd.zerado{color:#850001;}
+    .acoes-mini{display:flex;gap:5px;margin-top:4px;}
+    .btn-mini{background:#fff;border:1px solid #850001;color:#850001;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:700;}
+
+    .hist-item{background:#fff;border:1px solid #ddd;border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+    .hist-item .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+    .hist-item .tipo{font-weight:700;font-size:14px;}
+    .hist-item .qtd{font-weight:700;}
+    .hist-item .qtd.entrada{color:#176B43;}
+    .hist-item .qtd.saida{color:#850001;}
+    .hist-item .info{font-size:12px;color:#666;}
+    .hist-empty{text-align:center;color:#888;padding:20px 12px;}
+
+
+    .saldo-info{padding:8px 10px;border-radius:8px;font-size:13px;font-weight:600;}
+    .saldo-ok{background:#D6F0E0;color:#176B43;}
+    .saldo-baixo{background:#FFF3CD;color:#B76E00;}
+    .saldo-zerado{background:#F8D7DA;color:#850001;}
+    .saldo-loading{opacity:0.6;}
+
+    .item-box .remove{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:none;background:#fff;color:#850001;box-shadow:0 1px 3px rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;}
+    .btn-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:#fff;border:2px dashed #850001;color:#850001;border-radius:10px;padding:11px;font-weight:700;font-size:14px;margin-top:6px;cursor:pointer;}
+    .footer{flex:0 0 auto;background:#fff;border-top:1px solid #ddd;padding:10px 12px;}
+    .btn-save{display:block;width:100%;background:#850001;color:#fff;border:none;border-radius:10px;padding:14px;font-weight:700;font-size:16px;cursor:pointer;}
+    .alert{background:#d1ecf1;color:#0c5460;border:1px solid #bee5eb;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;}
+    .hidden{display:none !important;}
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1><i class="bi bi-phone"></i> RENCH Mobile</h1>
+      <p>Controle de estoque e equipamentos</p>
+    </header>
+
+    <div class="modulo-tabs">
+      <button type="button" class="modulo-tab {{'active' if modulo=='estoque' else ''}}" onclick="mostrarModulo('estoque')">
+        <i class="bi bi-box-seam"></i> Estoque
+      </button>
+      <button type="button" class="modulo-tab {{'active' if modulo=='equipamentos' else ''}}" onclick="mostrarModulo('equipamentos')">
+        <i class="bi bi-pc-display"></i> Equipamentos
+      </button>
+    </div>
+
+    <div id="modulo-estoque" class="modulo-content {{'active' if modulo=='estoque' else ''}}">
+      <div class="nav-tabs">
+        <button type="button" class="nav-tab {{'active' if aba=='entrega' else ''}}" onclick="mostrarAba('entrega')">
+          <i class="bi bi-arrow-up-right-circle"></i> Entrega
+        </button>
+        <button type="button" class="nav-tab {{'active' if aba=='estoque' else ''}}" onclick="mostrarAba('estoque')">
+          <i class="bi bi-box-seam"></i> Estoque
+        </button>
+        <button type="button" class="nav-tab {{'active' if aba=='entrada' else ''}}" onclick="mostrarAba('entrada')">
+          <i class="bi bi-plus-lg"></i> Entrada
+        </button>
+        <button type="button" class="nav-tab {{'active' if aba=='historico' else ''}}" onclick="mostrarAba('historico')">
+          <i class="bi bi-clock-history"></i> Histórico
+        </button>
+        <button type="button" class="nav-tab {{'active' if aba=='auditoria' else ''}}" onclick="mostrarAba('auditoria')">
+          <i class="bi bi-shield-check"></i> Auditoria
+        </button>
+      </div>
+
+      <main>
+      <!-- ABA ENTREGA -->
+      <div id="aba-entrega" class="tab-content {{'active' if aba=='entrega' else ''}}">
+        <form method="POST" id="form-mobile" onsubmit="converterPapelEntrega()">
+          <div class="scroll-area">
+            {% with msgs = get_flashed_messages(with_categories=true) %}
+              {% if msgs %}
+                {% for cat, msg in msgs %}
+                  <div class="alert">{{msg}}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <div class="card">
+              <div class="card-title"><i class="bi bi-geo-alt"></i> Onde foi entregue</div>
+              <div class="mb-2">
+                <label>Data</label>
+                <input type="date" name="data_entrega" value="{{hoje}}" required>
+              </div>
+              <div class="mb-2">
+                <label>Unidade</label>
+                <input type="hidden" name="unidade_id" id="unidade_id" required>
+                <div class="selected-box" id="selectedBox" onclick="abrirLista()">
+                  <span id="selectedText">Selecione a unidade...</span>
+                  <small><i class="bi bi-chevron-down"></i></small>
+                </div>
+                <div class="select-list" id="selectList">
+                  <input type="text" class="search-input" id="buscaUnidade" placeholder="Buscar empresa ou unidade..." onkeyup="filtrarUnidades()" onclick="event.stopPropagation()">
+                  <div id="listaUnidades">
+                    {% set empresa_atual = namespace(val='') %}
+                    {% for l in locais %}
+                      {% if l.unidade_id %}
+                        {% if empresa_atual.val != l.empresa_nome %}
+                          {% if not loop.first %}</div>{% endif %}
+                          <div class="select-item empresa" data-empresa="{{l.empresa_nome|lower}}">{{l.empresa_nome}}</div>
+                          <div class="grupo-unidades">
+                          {% set empresa_atual.val = l.empresa_nome %}
+                        {% endif %}
+                        <div class="select-item unidade" data-unidade="{{l.unidade_id}}" data-texto="{{l.unidade_nome}}" data-empresa="{{l.empresa_nome}}" onclick="selecionarUnidade(this)">{{l.unidade_nome}}</div>
+                      {% endif %}
+                    {% endfor %}
+                    {% if locais %}</div>{% endif %}
+                  </div>
+                </div>
+              </div>
+              <div class="mb-0">
+                <label>Responsável *</label>
+                <select name="responsavel" required>
+                  <option value="" selected disabled>Selecione...</option>
+                  <option value="Kaio">Kaio</option>
+                  <option value="Renan">Renan</option>
+                  <option value="Gilvan">Gilvan</option>
+                  <option value="Christian">Christian</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title"><i class="bi bi-box-seam"></i> Itens entregues</div>
+              <div id="itens-container"></div>
+              <button type="button" class="btn-add" onclick="adicionarItem()">
+                <i class="bi bi-plus-lg"></i> Adicionar suprimento
+              </button>
+            </div>
+
+            <div class="card">
+              <div class="card-title"><i class="bi bi-journal-text"></i> Observações *</div>
+              <textarea name="observacoes" rows="2" placeholder="Algo importante sobre a entrega" required></textarea>
+            </div>
+          </div>
+
+          <div class="footer">
+            <button type="submit" class="btn-save">
+              <i class="bi bi-check-lg"></i> Salvar Entrega
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ABA ESTOQUE -->
+      <div id="aba-estoque" class="tab-content {{'active' if aba=='estoque' else ''}}">
+        <div class="scroll-area">
+          <div class="card">
+            <div class="card-title"><i class="bi bi-box-seam"></i> Saldos por modelo</div>
+            {% if estoque %}
+              {% set modelos = {} %}
+              {% for e in estoque %}
+                {% set modelo_raw = (e.modelo_impressora or '').strip() %}
+                {% if modelo_raw %}
+                  {% set modelo = 'Papel Fotográfico' if modelo_raw == '-' else modelo_raw %}
+                  {% if modelo not in modelos %}
+                    {% set _ = modelos.update({modelo: []}) %}
+                  {% endif %}
+                  {% set _ = modelos[modelo].append(e) %}
+                {% endif %}
+              {% endfor %}
+
+              {% for modelo in modelos|sort %}
+              {% set itens_modelo = modelos[modelo] %}
+              {% set qtd_zerado = itens_modelo|selectattr('quantidade','equalto',0)|list|length %}
+              {% set qtd_baixo = itens_modelo|selectattr('quantidade','lessthan',2)|list|length %}
+              {% set alerta_texto = '' %}
+              {% if qtd_zerado > 0 %}
+                {% set alerta_texto = qtd_zerado|string + ' em falta' %}
+              {% elif qtd_baixo > 0 %}
+                {% set alerta_texto = qtd_baixo|string + ' baixo' %}
+              {% endif %}
+              <div class="modelo-grupo" data-modelo="{{modelo}}">
+                <div class="modelo-grupo-header" onclick="toggleModelo(this)">
+                  <i class="bi bi-printer"></i>
+                  {{modelo}}
+                  <small>({{itens_modelo|length}} itens)</small>
+                  <div class="modelo-resumo">
+                    {% if qtd_zerado > 0 %}
+                      <span class="modelo-alertas" style="color:#850001;">{{qtd_zerado}} falta</span>
+                      <span class="bolinha zerado"></span>
+                    {% elif qtd_baixo > 0 %}
+                      <span class="modelo-alertas" style="color:#B76E00;">{{qtd_baixo}} baixo</span>
+                      <span class="bolinha baixo"></span>
+                    {% else %}
+                      <span class="modelo-alertas" style="color:#176B43;">OK</span>
+                      <span class="bolinha ok"></span>
+                    {% endif %}
+                  </div>
+                  <i class="bi bi-chevron-down seta"></i>
+                </div>
+                <div class="modelo-itens" id="itens-{{loop.index}}">
+                  {% for e in itens_modelo|sort(attribute='tipo_suprimento') %}
+                  <div class="modelo-item">
+                    <div class="info">
+                      <div class="nome">{{e.tipo_suprimento}}{% if e.marca %} <span style="font-size:11px;color:#850001;">({{e.marca}})</span>{% endif %}</div>
+                      <div class="acoes-mini">
+                        <button type="button" class="btn-mini" onclick="event.stopPropagation(); abrirAjuste('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}', {{e.quantidade}}, {{e.estoque_minimo or 1}})">Ajustar</button>
+                        <button type="button" class="btn-mini" onclick="event.stopPropagation(); abrirMovimentacoes('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}', '{{e.marca or ''}}')">Mov.</button>
+                      </div>
+                    </div>
+                    <div class="qtd {{'zerado' if e.quantidade==0 else ('baixo' if e.quantidade <= 1 else 'ok')}}">
+                      {{e.quantidade}}
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="estoque-empty">
+                <i class="bi bi-box-seam" style="font-size:36px;"></i>
+                <p class="mb-0 mt-2">Nenhum item em estoque.</p>
+                <button type="button" class="btn-block-outline" onclick="mostrarAba('entrada')">Registrar entrada</button>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- ABA ENTRADA -->
+      <div id="aba-entrada" class="tab-content {{'active' if aba=='entrada' else ''}}">
+        <form id="form-entrada-mobile" onsubmit="return salvarEntrada(event)">
+          <div class="scroll-area">
+            <div class="card">
+              <div class="card-title"><i class="bi bi-plus-lg"></i> Entrada de estoque</div>
+              <div class="mb-2">
+                <label>Tipo</label>
+                <select class="tipo-entrada" required onchange="atualizarCorEntrada()">
+                  <option value="" disabled selected>Selecione...</option>
+                  <option value="Toner">Toner</option>
+                  <option value="Drum">Drum</option>
+                  <option value="Drum para Transformar">Drum para Transformar</option>
+                  <option value="Fusor">Fusor</option>
+                  <option value="Transfer">Transfer</option>
+                  <option value="Coletor">Coletor</option>
+                  <option value="Papel Fotografico">Papel Fotográfico</option>
+                </select>
+              </div>
+              <div class="mb-2 cor-entrada-wrap">
+                <label>Cor</label>
+                <select class="cor-entrada">
+                  <option value="" selected>-</option>
+                  <option value="Black">Black</option>
+                  <option value="Ciano">Ciano</option>
+                  <option value="Magenta">Magenta</option>
+                  <option value="Amarelo">Amarelo</option>
+                </select>
+              </div>
+              <div class="mb-2" id="modelo-entrada-wrap">
+                <label>Modelo</label>
+                <input type="hidden" id="modelo-entrada-selecionado" class="modelo-entrada">
+                <div class="selected-box" id="modeloSelectedBox" onclick="abrirListaModelos()">
+                  <span id="modeloSelectedText">Selecione o modelo...</span>
+                  <small><i class="bi bi-chevron-down"></i></small>
+                </div>
+                <div class="select-list" id="modeloSelectList">
+                  <input type="text" class="search-input" id="buscaModelo" placeholder="Buscar modelo..." onkeyup="filtrarModelos()" onclick="event.stopPropagation()">
+                  <div id="listaModelos">
+                    {% set modelos_oki = modelos_impressora|selectattr('marca','equalto','OKI')|list %}
+                    {% if modelos_oki %}
+                    <div class="select-item empresa">OKI</div>
+                    <div class="grupo-unidades">
+                      {% for m in modelos_oki %}
+                      <div class="select-item unidade" data-texto="{{m.nome}}" data-modelo="{{m.nome}}" onclick="selecionarModelo(this)">{{m.nome}}</div>
+                      {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% set modelos_hp = modelos_impressora|selectattr('marca','equalto','HP')|list %}
+                    {% if modelos_hp %}
+                    <div class="select-item empresa">HP</div>
+                    <div class="grupo-unidades">
+                      {% for m in modelos_hp %}
+                      <div class="select-item unidade" data-texto="{{m.nome}}" data-modelo="{{m.nome}}" onclick="selecionarModelo(this)">{{m.nome}}</div>
+                      {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% set modelos_outros = modelos_impressora|rejectattr('marca','equalto','OKI')|rejectattr('marca','equalto','HP')|list %}
+                    {% if modelos_outros %}
+                    <div class="select-item empresa">Outros</div>
+                    <div class="grupo-unidades">
+                      {% for m in modelos_outros %}
+                      <div class="select-item unidade" data-texto="{{m.nome}}" data-modelo="{{m.nome}}" onclick="selecionarModelo(this)">{{m.nome}}</div>
+                      {% endfor %}
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              <div class="mb-2" id="marca-entrada-wrap" style="display:none;">
+                <label>Marca</label>
+                <select id="marca-entrada" class="form-select">
+                  <option value="" selected>-</option>
+                  <option value="OKIData">OKIData</option>
+                  <option value="R10">R10</option>
+                </select>
+              </div>
+              <div class="row mb-2">
+                <div style="flex:1;">
+                  <label>Quantidade</label>
+                  <input type="number" class="qtd-entrada" id="qtd-entrada" value="1" min="1" required>
+                </div>
+                <div style="flex:1;" id="unidade-papel-entrada-wrap" class="d-none">
+                  <label>Unidade</label>
+                  <select class="form-select" id="unidade-papel-entrada">
+                    <option value="1">Folhas</option>
+                    <option value="20" selected>Pacote 20</option>
+                    <option value="50">Pacote 50</option>
+                    <option value="1600">Caixa 1600</option>
+                  </select>
+                </div>
+              </div>
+              <div class="mb-2">
+                <label>Responsável</label>
+                <input type="text" class="resp-entrada" placeholder="Seu nome">
+              </div>
+              <div class="mb-0">
+                <label>Motivo / Observação</label>
+                <input type="text" class="motivo-entrada" placeholder="Ex: compra, devolução...">
+              </div>
+            </div>
+          </div>
+          <div class="footer">
+            <button type="submit" class="btn-save">
+              <i class="bi bi-check-lg"></i> Salvar Entrada
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ABA HISTORICO -->
+      <div id="aba-historico" class="tab-content {{'active' if aba=='historico' else ''}}">
+        <div class="scroll-area">
+          <div class="card">
+            <div class="card-title"><i class="bi bi-clock-history"></i> Histórico de entregas</div>
+            <div class="mb-2">
+              <label>Filtrar por unidade (opcional)</label>
+              <input type="hidden" id="hist-unidade-id">
+              <div class="selected-box" id="histSelectedBox" onclick="abrirListaUnidades()">
+                <span id="histSelectedText">Todas as unidades</span>
+                <small><i class="bi bi-chevron-down"></i></small>
+              </div>
+              <div class="select-list" id="histSelectList">
+                <input type="text" class="search-input" id="buscaHistUnidade" placeholder="Buscar empresa ou unidade..." onkeyup="filtrarHistUnidades()" onclick="event.stopPropagation()">
+                <div id="listaHistUnidades">
+                  <div class="select-item unidade" data-unidade="" data-texto="Todas as unidades" onclick="selecionarHistUnidade(this)">Todas as unidades</div>
+                  {% set empresa_atual = namespace(val='') %}
+                  {% for l in locais %}
+                    {% if l.unidade_id %}
+                      {% if empresa_atual.val != l.empresa_nome %}
+                        {% if not loop.first %}</div>{% endif %}
+                        <div class="select-item empresa" data-empresa="{{l.empresa_nome|lower}}">{{l.empresa_nome}}</div>
+                        <div class="grupo-unidades">
+                        {% set empresa_atual.val = l.empresa_nome %}
+                      {% endif %}
+                      <div class="select-item unidade" data-unidade="{{l.unidade_id}}" data-texto="{{l.unidade_nome}}" data-empresa="{{l.empresa_nome}}" onclick="selecionarHistUnidade(this)">{{l.unidade_nome}}</div>
+                    {% endif %}
+                  {% endfor %}
+                  {% if locais %}</div>{% endif %}
+                </div>
+              </div>
+            </div>
+            <div class="mb-2">
+              <label>Período</label>
+              <select id="hist-periodo" class="form-select" onchange="limparDatasHistorico()">
+                <option value="">Personalizado</option>
+                <option value="hoje">Hoje</option>
+                <option value="7dias">Últimos 7 dias</option>
+                <option value="mes">Este mês</option>
+                <option value="mes_passado">Mês passado</option>
+              </select>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label>Data início</label>
+                <input type="date" id="hist-data-inicio" class="form-control" oninput="limparPeriodoHistorico()">
+              </div>
+              <div class="col-6">
+                <label>Data fim</label>
+                <input type="date" id="hist-data-fim" class="form-control" oninput="limparPeriodoHistorico()">
+              </div>
+            </div>
+            <button type="button" class="btn-block mb-3" onclick="carregarHistoricoEntregas()">
+              <i class="bi bi-search"></i> Buscar Entregas
+            </button>
+            <div id="historico-entregas-resultado"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ABA AUDITORIA -->
+      <div id="aba-auditoria" class="tab-content {{'active' if aba=='auditoria' else ''}}">
+        <div class="scroll-area">
+          <div class="card">
+            <div class="card-title"><i class="bi bi-shield-check"></i> Auditoria de alterações</div>
+            <div class="mb-2">
+              <label>Buscar</label>
+              <input type="text" id="auditoria-busca" class="search-input" placeholder="Tipo, modelo, responsável..." onkeyup="carregarAuditoria()">
+            </div>
+            <div class="mb-2">
+              <label>Movimento</label>
+              <select id="auditoria-tipo" onchange="carregarAuditoria()">
+                <option value="">Todos</option>
+                <option value="entrada">Entrada</option>
+                <option value="saida">Saída</option>
+                <option value="ajuste">Ajuste</option>
+              </select>
+            </div>
+            <button type="button" class="btn-block mb-3" onclick="carregarAuditoria()">
+              <i class="bi bi-search"></i> Buscar
+            </button>
+            <div id="auditoria-resultado">
+              <div class="hist-empty">Clique em buscar para ver as alterações.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL DE AJUSTE -->
+      <div id="modal-ajuste" class="tab-content">
+        <form id="form-ajuste-mobile" onsubmit="return salvarAjuste(event)">
+          <div class="scroll-area">
+            <div class="card">
+              <div class="card-title"><i class="bi bi-pencil"></i> Ajustar estoque</div>
+              <input type="hidden" id="ajuste-tipo">
+              <input type="hidden" id="ajuste-modelo">
+              <div class="mb-2">
+                <label>Item</label>
+                <div id="ajuste-item-nome" class="fs-6 fw-bold"></div>
+              </div>
+              <div class="mb-2">
+                <label>Saldo atual</label>
+                <div id="ajuste-saldo-atual" class="fs-4 fw-bold text-primary"></div>
+              </div>
+              <div class="mb-2">
+                <label>Novo saldo *</label>
+                <input type="number" id="ajuste-qtd" value="0" min="0" required>
+              </div>
+              <div class="mb-2 p-2 rounded" style="background:#ffe6e6;border:1px solid #dc3545;">
+                <label style="color:#850001;">Estoque mínimo *</label>
+                <input type="number" id="ajuste-minimo" value="1" min="0" required style="border-color:#dc3545;">
+                <small style="color:#850001;">Alerta quando estiver em falta ou abaixo deste número</small>
+              </div>
+              <div class="mb-2">
+                <label>Motivo *</label>
+                <input type="text" id="ajuste-motivo" placeholder="Ex: inventário, correção" required>
+              </div>
+              <div class="mb-0">
+                <label>Responsável *</label>
+                <input type="text" id="ajuste-resp" placeholder="Seu nome" required>
+              </div>
+            </div>
+          </div>
+          <div class="footer">
+            <button type="button" class="btn-block-outline mb-2" onclick="mostrarAba('estoque')">Cancelar</button>
+            <button type="submit" class="btn-save">
+              <i class="bi bi-check-lg"></i> Salvar Ajuste
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- MODAL DE MOVIMENTACOES -->
+      <div id="modal-movimentacoes" class="tab-content">
+        <div class="scroll-area">
+          <div class="card">
+            <div class="card-title"><i class="bi bi-clock-history"></i> Movimentações do item</div>
+            <input type="hidden" id="mov-tipo">
+            <input type="hidden" id="mov-modelo">
+            <input type="hidden" id="mov-marca">
+            <div class="mb-2">
+              <label>Item</label>
+              <div id="mov-item-nome" class="fs-6 fw-bold"></div>
+            </div>
+            <button type="button" class="btn-block mb-3" onclick="carregarMovimentacoes()">
+              <i class="bi bi-search"></i> Atualizar
+            </button>
+            <div id="movimentacoes-resultado"></div>
+          </div>
+        </div>
+        <div class="footer">
+          <button type="button" class="btn-block-outline" onclick="mostrarAba('estoque')">Voltar</button>
+        </div>
+      </div>
+    </main>
+    </div> <!-- /modulo-estoque -->
+
+    <div id="modulo-equipamentos" class="modulo-content {{'active' if modulo=='equipamentos' else ''}}">
+      <div class="nav-tabs">
+        <button type="button" class="nav-tab {{'active' if aba=='equipamentos' else ''}}" onclick="mostrarAbaEquip('equipamentos')">
+          <i class="bi bi-pc-display"></i> Equipamentos
+        </button>
+        <button type="button" class="nav-tab {{'active' if aba=='equipamento_novo' else ''}}" onclick="mostrarAbaEquip('equipamento_novo')">
+          <i class="bi bi-plus-lg"></i> Novo
+        </button>
+        <button type="button" class="nav-tab {{'active' if aba=='locais' else ''}}" onclick="mostrarAbaEquip('locais')">
+          <i class="bi bi-building"></i> Locais
+        </button>
+      </div>
+
+      <main>
+        <!-- ABA LISTA EQUIPAMENTOS -->
+        <div id="aba-equipamentos" class="tab-content {{'active' if aba=='equipamentos' else ''}}">
+          <div class="scroll-area">
+            <div class="filtro-row">
+              <input type="text" id="busca-equip" class="search-input" placeholder="Buscar código, modelo, série..." value="{{filtro_q or ''}}">
+              <button type="button" class="btn-block" style="flex:0 0 auto;padding:10px 16px;" onclick="filtrarEquipamentos()"><i class="bi bi-search"></i></button>
+            </div>
+            <div class="filtro-row">
+              <select id="filtro-tipo-equip" onchange="filtrarEquipamentos()">
+                <option value="">Todos os tipos</option>
+                {% for t in tipos %}
+                <option value="{{t.tipo_equipamento}}" {{'selected' if filtro_tipo==t.tipo_equipamento else ''}}>{{t.tipo_equipamento}} ({{t.qtd}})</option>
+                {% endfor %}
+              </select>
+              <select id="filtro-unidade-equip" onchange="filtrarEquipamentos()">
+                <option value="">Todas as unidades</option>
+                {% for u in unidades %}
+                <option value="{{u.id}}" {{'selected' if filtro_unidade_id==u.id|string else ''}}>{{u.empresa_nome}} - {{u.nome}}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <ul class="equip-lista" id="lista-equipamentos">
+              {% for e in equipamentos %}
+              <li class="equip-item">
+                <div class="top">
+                  <div>
+                    <span class="badge-tipo">{{e.tipo_equipamento}}</span>
+                    <div class="modelo">{{e.modelo or 'Sem modelo'}}</div>
+                    <div class="codigo">{{e.codigo}}</div>
+                  </div>
+                </div>
+                <div class="info">
+                  {% if e.numero_serie %}<div>Série: {{e.numero_serie}}</div>{% endif %}
+                  {% if e.patrimonio %}<div>Patrimônio: {{e.patrimonio}}</div>{% endif %}
+                  <div>Local: {{e.local_nome or 'Não definido'}} {{' - ' + e.setor_equipamento if e.setor_equipamento else ''}}</div>
+                  {% if e.empresa_nome %}<div>Cliente: {{e.empresa_nome}}</div>{% endif %}
+                </div>
+                <div class="acoes">
+                  <a href="{{url_for('mobile_equipamento_detalhe', equip_id=e.id)}}" class="btn-small">Detalhes</a>
+                  <a href="{{url_for('mobile_equipamento_movimentar', equip_id=e.id)}}" class="btn-small">Movimentar</a>
+                  <a href="{{url_for('mobile_equipamento_editar', equip_id=e.id)}}" class="btn-small">Editar</a>
+                </div>
+              </li>
+              {% else %}
+              <li class="estoque-empty">Nenhum equipamento encontrado.</li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+
+        <!-- ABA NOVO EQUIPAMENTO -->
+        <div id="aba-equipamento_novo" class="tab-content {{'active' if aba=='equipamento_novo' else ''}}">
+          <form method="POST" action="{{url_for('mobile_equipamento_novo')}}" class="scroll-area">
+            <div class="card">
+              <div class="card-title"><i class="bi bi-plus-lg"></i> Novo Equipamento</div>
+              <div class="form-group">
+                <label>Tipo *</label>
+                <select name="tipo_equipamento" required onchange="toggleCamposEquip(this.value)">
+                  <option value="">Selecione...</option>
+                  <option value="impressora">Impressora</option>
+                  <option value="desktop">Desktop</option>
+                  <option value="notebook">Notebook</option>
+                  <option value="servidor">Servidor</option>
+                  <option value="monitor">Monitor</option>
+                  <option value="periferico">Periférico</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Fabricante</label>
+                <input type="text" name="fabricante" placeholder="Ex: HP, Dell, Lenovo">
+              </div>
+              <div class="form-group">
+                <label>Modelo *</label>
+                <input type="text" name="modelo" required placeholder="Ex: LaserJet Pro M404">
+              </div>
+              <div class="form-group">
+                <label>Número de Série</label>
+                <input type="text" name="numero_serie" placeholder="S/N">
+              </div>
+              <div class="form-group">
+                <label>Patrimônio</label>
+                <input type="text" name="patrimonio" placeholder="Nº patrimônio">
+              </div>
+
+              <div class="form-group">
+                <label>Unidade / Local</label>
+                <select name="unidade_id">
+                  <option value="">Selecione...</option>
+                  {% set empresa_atual = namespace(val='') %}
+                  {% for l in locais %}
+                    {% if l.unidade_id %}
+                      {% if empresa_atual.val != l.empresa_nome %}
+                        {% if not loop.first %}</optgroup>{% endif %}
+                        <optgroup label="{{l.empresa_nome}}">
+                        {% set empresa_atual.val = l.empresa_nome %}
+                      {% endif %}
+                      <option value="{{l.unidade_id}}">{{l.unidade_nome}}</option>
+                    {% endif %}
+                  {% endfor %}
+                  {% if locais %}</optgroup>{% endif %}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Setor</label>
+                <input type="text" name="setor_equipamento" placeholder="Ex: TI, Recepção">
+              </div>
+
+              <div id="campos-impressora" style="display:none;">
+                <div class="form-group">
+                  <label>Função</label>
+                  <input type="text" name="funcao" placeholder="Ex: Multifuncional">
+                </div>
+                <div class="form-group">
+                  <label>Tipo de Impressão</label>
+                  <input type="text" name="tipo_impressao" placeholder="Ex: Laser colorida">
+                </div>
+                <div class="form-group">
+                  <label>Tamanho do Papel</label>
+                  <input type="text" name="tamanho_papel" placeholder="Ex: A4">
+                </div>
+                <div class="row">
+                  <div class="form-group">
+                    <label>Contador Mono</label>
+                    <input type="number" name="contador_mono" value="0">
+                  </div>
+                  <div class="form-group">
+                    <label>Contador Color</label>
+                    <input type="number" name="contador_color" value="0">
+                  </div>
+                </div>
+              </div>
+
+              <div id="campos-computador" style="display:none;">
+                <div class="form-group">
+                  <label>Processador</label>
+                  <input type="text" name="processador_modelo" placeholder="Modelo">
+                </div>
+                <div class="row">
+                  <div class="form-group">
+                    <label>Geração</label>
+                    <input type="text" name="processador_geracao" placeholder="Ex: 12ª">
+                  </div>
+                  <div class="form-group">
+                    <label>Velocidade</label>
+                    <input type="text" name="processador_velocidade" placeholder="Ex: 3.2GHz">
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="form-group">
+                    <label>Memória</label>
+                    <input type="text" name="memoria_capacidade" placeholder="Ex: 16GB">
+                  </div>
+                  <div class="form-group">
+                    <label>Tipo</label>
+                    <input type="text" name="memoria_tipo" placeholder="Ex: DDR4">
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="form-group">
+                    <label>Armazenamento 1</label>
+                    <input type="text" name="armazenamento_1_capacidade" placeholder="Ex: 512GB SSD">
+                  </div>
+                  <div class="form-group">
+                    <label>Armazenamento 2</label>
+                    <input type="text" name="armazenamento_2_capacidade" placeholder="Ex: 1TB HD">
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Observações</label>
+                <textarea name="observacoes" rows="2" placeholder="Observações gerais"></textarea>
+              </div>
+            </div>
+            <button type="submit" class="btn-block">Salvar Equipamento</button>
+          </form>
+        </div>
+
+        <!-- ABA LOCAIS -->
+        <div id="aba-locais" class="tab-content {{'active' if aba=='locais' else ''}}">
+          <div class="scroll-area">
+            <div class="card">
+              <div class="card-title"><i class="bi bi-building"></i> Nova Empresa</div>
+              <form method="POST" action="{{url_for('mobile_locais')}}">
+                <input type="hidden" name="acao" value="empresa">
+                <div class="form-group">
+                  <label>Nome da Empresa *</label>
+                  <input type="text" name="nome" required placeholder="Ex: Hospital X">
+                </div>
+                <div class="form-group">
+                  <label>Tipo</label>
+                  <select name="tipo">
+                    <option value="cliente">Cliente</option>
+                    <option value="fornecedor">Fornecedor</option>
+                    <option value="interno">Interno</option>
+                  </select>
+                </div>
+                <button type="submit" class="btn-block">Salvar Empresa</button>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-title"><i class="bi bi-geo-alt"></i> Nova Unidade</div>
+              <form method="POST" action="{{url_for('mobile_locais')}}">
+                <input type="hidden" name="acao" value="unidade">
+                <div class="form-group">
+                  <label>Empresa *</label>
+                  <select name="empresa_id" required>
+                    <option value="">Selecione...</option>
+                    {% for l in locais %}
+                      {% if l.empresa_id %}
+                        <option value="{{l.empresa_id}}">{{l.empresa_nome}}</option>
+                      {% endif %}
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Nome da Unidade *</label>
+                  <input type="text" name="unidade_nome" required placeholder="Ex: Matriz">
+                </div>
+                <div class="form-group">
+                  <label>Setor</label>
+                  <input type="text" name="setor" placeholder="Ex: Administração">
+                </div>
+                <button type="submit" class="btn-block">Salvar Unidade</button>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-title"><i class="bi bi-list"></i> Empresas e Unidades</div>
+              {% set empresa_atual = namespace(val='') %}
+              {% for l in locais %}
+                {% if empresa_atual.val != l.empresa_nome %}
+                  {% if not loop.first %}</div></div>{% endif %}
+                  {% set empresa_atual.val = l.empresa_nome %}
+                  <div class="locais-grupo">
+                    <div class="locais-grupo-header">{{l.empresa_nome}} <small>({{l.empresa_tipo}})</small></div>
+                    <div class="locais-lista">
+                {% endif %}
+                {% if l.unidade_id %}
+                  <div class="item">{{l.unidade_nome}} {% if l.setor %}<small>- {{l.setor}}</small>{% endif %}</div>
+                {% endif %}
+              {% endfor %}
+              {% if locais %}</div></div>{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- DETALHE DO EQUIPAMENTO -->
+        {% if equip %}
+        <div id="aba-equipamento_detalhe" class="tab-content {{'active' if aba=='equipamento_detalhe' else ''}}">
+          <div class="scroll-area">
+            <div class="card">
+              <div class="card-title">{{equip.tipo_equipamento}} - {{equip.codigo}}</div>
+              <p><strong>Modelo:</strong> {{equip.modelo or '-'}}</p>
+              <p><strong>Fabricante:</strong> {{equip.fabricante or '-'}}</p>
+              <p><strong>Série:</strong> {{equip.numero_serie or '-'}}</p>
+              <p><strong>Patrimônio:</strong> {{equip.patrimonio or '-'}}</p>
+              <p><strong>Local:</strong> {{equip.local_nome or 'Não definido'}} {{' - ' + equip.setor_equipamento if equip.setor_equipamento else ''}}</p>
+              <p><strong>Status:</strong> {{equip.status}}</p>
+              {% if equip.tipo_equipamento == 'impressora' %}
+                <p><strong>Contador Mono:</strong> {{equip.contador_mono or 0}}</p>
+                <p><strong>Contador Color:</strong> {{equip.contador_color or 0}}</p>
+              {% endif %}
+              {% if equip.observacoes %}
+                <p><strong>Obs:</strong> {{equip.observacoes}}</p>
+              {% endif %}
+            </div>
+
+            <div class="card">
+              <div class="card-title"><i class="bi bi-clock-history"></i> Histórico de Movimentações</div>
+              {% for m in movimentacoes %}
+              <div class="mov-item">
+                <div class="data">{{m.data_movimentacao}}</div>
+                <div>{{m.tipo_movimento}} - De: {{m.origem_local or '-'}} → Para: {{m.destino_local or '-'}}</div>
+                {% if m.responsavel %}<div>Responsável: {{m.responsavel}}</div>{% endif %}
+                {% if m.observacoes %}<div>Obs: {{m.observacoes}}</div>{% endif %}
+              </div>
+              {% else %}
+              <p class="estoque-empty">Nenhuma movimentação registrada.</p>
+              {% endfor %}
+            </div>
+
+            <a href="{{url_for('mobile_equipamento_movimentar', equip_id=equip.id)}}" class="btn-block" style="display:block;text-align:center;text-decoration:none;">Movimentar</a>
+            <a href="{{url_for('mobile_equipamento_editar', equip_id=equip.id)}}" class="btn-block" style="display:block;text-align:center;text-decoration:none;">Editar</a>
+            <a href="{{url_for('mobile_equipamentos')}}" class="btn-voltar" style="display:block;text-align:center;text-decoration:none;">Voltar</a>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- EDITAR EQUIPAMENTO -->
+        {% if equip and aba == 'equipamento_editar' %}
+        <div id="aba-equipamento_editar" class="tab-content active">
+          <form method="POST" action="{{url_for('mobile_equipamento_editar', equip_id=equip.id)}}" class="scroll-area">
+            <div class="card">
+              <div class="card-title"><i class="bi bi-pencil"></i> Editar {{equip.codigo}}</div>
+              <div class="form-group">
+                <label>Tipo</label>
+                <input type="text" value="{{equip.tipo_equipamento}}" disabled>
+              </div>
+              <div class="form-group">
+                <label>Fabricante</label>
+                <input type="text" name="fabricante" value="{{equip.fabricante or ''}}">
+              </div>
+              <div class="form-group">
+                <label>Modelo *</label>
+                <input type="text" name="modelo" value="{{equip.modelo or ''}}" required>
+              </div>
+              <div class="form-group">
+                <label>Número de Série</label>
+                <input type="text" name="numero_serie" value="{{equip.numero_serie or ''}}">
+              </div>
+              <div class="form-group">
+                <label>Patrimônio</label>
+                <input type="text" name="patrimonio" value="{{equip.patrimonio or ''}}">
+              </div>
+              <div class="form-group">
+                <label>Unidade / Local</label>
+                <select name="unidade_id">
+                  <option value="">Selecione...</option>
+                  {% set empresa_atual = namespace(val='') %}
+                  {% for l in locais %}
+                    {% if l.unidade_id %}
+                      {% if empresa_atual.val != l.empresa_nome %}
+                        {% if not loop.first %}</optgroup>{% endif %}
+                        <optgroup label="{{l.empresa_nome}}">
+                        {% set empresa_atual.val = l.empresa_nome %}
+                      {% endif %}
+                      <option value="{{l.unidade_id}}" {{'selected' if equip.unidade_id == l.unidade_id else ''}}>{{l.unidade_nome}}</option>
+                    {% endif %}
+                  {% endfor %}
+                  {% if locais %}</optgroup>{% endif %}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Setor</label>
+                <input type="text" name="setor_equipamento" value="{{equip.setor_equipamento or ''}}">
+              </div>
+              <div class="form-group">
+                <label>Status</label>
+                <select name="status">
+                  <option value="ativo" {{'selected' if equip.status=='ativo' else ''}}>Ativo</option>
+                  <option value="manutencao" {{'selected' if equip.status=='manutencao' else ''}}>Manutenção</option>
+                  <option value="inativo" {{'selected' if equip.status=='inativo' else ''}}>Inativo</option>
+                </select>
+              </div>
+
+              {% if equip.tipo_equipamento == 'impressora' %}
+              <div class="form-group">
+                <label>Contador Mono</label>
+                <input type="number" name="contador_mono" value="{{equip.contador_mono or 0}}">
+              </div>
+              <div class="form-group">
+                <label>Contador Color</label>
+                <input type="number" name="contador_color" value="{{equip.contador_color or 0}}">
+              </div>
+              {% endif %}
+
+              <div class="form-group">
+                <label>Observações</label>
+                <textarea name="observacoes" rows="2">{{equip.observacoes or ''}}</textarea>
+              </div>
+            </div>
+            <button type="submit" class="btn-block">Salvar Alterações</button>
+            <a href="{{url_for('mobile_equipamento_detalhe', equip_id=equip.id)}}" class="btn-voltar" style="display:block;text-align:center;text-decoration:none;">Cancelar</a>
+          </form>
+        </div>
+        {% endif %}
+
+        <!-- MOVIMENTAR EQUIPAMENTO -->
+        {% if equip and aba == 'equipamento_movimentar' %}
+        <div id="aba-equipamento_movimentar" class="tab-content active">
+          <form method="POST" action="{{url_for('mobile_equipamento_movimentar', equip_id=equip.id)}}" class="scroll-area">
+            <div class="card">
+              <div class="card-title"><i class="bi bi-arrow-left-right"></i> Movimentar {{equip.codigo}}</div>
+              <p><strong>Modelo:</strong> {{equip.modelo or '-'}}</p>
+              <p><strong>Local atual:</strong> {{equip.local_nome or 'Não definido'}}</p>
+
+              <div class="form-group">
+                <label>Tipo de Movimentação *</label>
+                <select name="tipo_movimento" required>
+                  <option value="transferencia">Transferência</option>
+                  <option value="instalacao">Instalação</option>
+                  <option value="retirada">Retirada</option>
+                  <option value="manutencao">Manutenção</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Data *</label>
+                <input type="date" name="data_movimentacao" value="{{hoje}}" required>
+              </div>
+              <div class="form-group">
+                <label>Destino (Unidade)</label>
+                <select name="destino_unidade_id">
+                  <option value="">Selecione...</option>
+                  {% set empresa_atual = namespace(val='') %}
+                  {% for l in locais %}
+                    {% if l.unidade_id %}
+                      {% if empresa_atual.val != l.empresa_nome %}
+                        {% if not loop.first %}</optgroup>{% endif %}
+                        <optgroup label="{{l.empresa_nome}}">
+                        {% set empresa_atual.val = l.empresa_nome %}
+                      {% endif %}
+                      <option value="{{l.unidade_id}}">{{l.unidade_nome}}</option>
+                    {% endif %}
+                  {% endfor %}
+                  {% if locais %}</optgroup>{% endif %}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Setor Destino</label>
+                <input type="text" name="setor_equipamento" placeholder="Ex: TI">
+              </div>
+              <div class="form-group">
+                <label>Responsável *</label>
+                <select name="responsavel" required>
+                  <option value="">Selecione...</option>
+                  <option value="Kaio">Kaio</option>
+                  <option value="Renan">Renan</option>
+                  <option value="Gilvan">Gilvan</option>
+                  <option value="Christian">Christian</option>
+                </select>
+              </div>
+              
+              {% if equip.tipo_equipamento == 'impressora' %}
+              <div class="row">
+                <div class="form-group">
+                  <label>Contador Mono</label>
+                  <input type="number" name="contador_mono_novo" value="{{equip.contador_mono or 0}}">
+                </div>
+                <div class="form-group">
+                  <label>Contador Color</label>
+                  <input type="number" name="contador_color_novo" value="{{equip.contador_color or 0}}">
+                </div>
+              </div>
+              {% endif %}
+
+              <div class="form-group">
+                <label>Observações</label>
+                <textarea name="observacoes" rows="2" placeholder="Motivo da movimentação"></textarea>
+              </div>
+            </div>
+            <button type="submit" class="btn-block">Registrar Movimentação</button>
+            <a href="{{url_for('mobile_equipamento_detalhe', equip_id=equip.id)}}" class="btn-voltar" style="display:block;text-align:center;text-decoration:none;">Cancelar</a>
+          </form>
+        </div>
+        {% endif %}
+
+      </main>
+    </div> <!-- /modulo-equipamentos -->
+
+  </div> <!-- /app -->
+
+  <template id="item-template">
+      <button type="button" class="remove" onclick="removerItem(this)" title="Remover">
+        <i class="bi bi-x-lg"></i>
+      </button>
+
+      <input type="hidden" name="tipo_suprimento[]" class="tipo-input" required>
+
+      <label>Tipo de suprimento</label>
+      <div class="tipo-grid">
+        <button type="button" class="tipo-btn" data-val="Toner">Toner</button>
+        <button type="button" class="tipo-btn" data-val="Drum">Drum</button>
+        <button type="button" class="tipo-btn" data-val="Fusor">Fusor</button>
+        <button type="button" class="tipo-btn" data-val="Transfer">Transfer</button>
+        <button type="button" class="tipo-btn" data-val="Coletor">Coletor</button>
+        <button type="button" class="tipo-btn" data-val="Papel Fotografico">Papel Fotográfico</button>
+      </div>
+
+      <div class="mb-2">
+        <label>Cor (se houver)</label>
+        <input type="hidden" name="cor_selecionada[]" class="cor-input">
+        <div class="cor-row">
+          <button type="button" class="cor-btn" data-cor="Black">Black</button>
+          <button type="button" class="cor-btn" data-cor="Ciano">Ciano</button>
+          <button type="button" class="cor-btn" data-cor="Magenta">Magenta</button>
+          <button type="button" class="cor-btn" data-cor="Amarelo">Amarelo</button>
+        </div>
+      </div>
+
+      <div class="row mb-2">
+        <div style="flex:1;" class="modelo-wrap">
+          <label>Modelo</label>
+          <input type="hidden" name="modelo_impressora[]" class="modelo-input">
+          <div class="selected-box modelo-selected-box"><span>Selecione o modelo...</span><small><i class="bi bi-chevron-down"></i></small></div>
+          <div class="modelo-opcoes-entrega">
+            <input type="text" class="search-input modelo-busca" placeholder="Buscar modelo...">
+            <div class="modelo-opcoes-conteudo"></div>
+          </div>
+        </div>
+        <div style="flex:1;" class="marca-wrap" style="display:none;">
+          <label>Marca</label>
+          <select class="form-select marca-select" name="marca[]">
+            <option value="" selected>-</option>
+            <option value="OKIData">OKIData</option>
+            <option value="R10">R10</option>
+          </select>
+        </div>
+        <div style="max-width:80px;" class="qtd-wrap">
+          <label>Qtd</label>
+          <input type="number" name="quantidade[]" value="1" min="1" required class="qtd-input" onchange="atualizarSaldo(this.closest('.item-box'))">
+        </div>
+        <div style="flex:1;" class="papel-wrap" style="display:none;">
+          <label>Unidade</label>
+          <select class="form-select unidade-papel" name="unidade_papel[]">
+            <option value="1">Folhas</option>
+            <option value="20" selected>Pct 20</option>
+            <option value="50">Pct 50</option>
+            <option value="1600">Cx 1600</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="saldo-info mb-2" style="display:none;">
+        <div class="saldo-badge"></div>
+      </div>
+
+      <div class="mb-0">
+        <label>Motivo da troca</label>
+        <input type="hidden" name="motivo_padrao[]" class="motivo-input">
+        <div class="motivo-grid">
+          <button type="button" class="motivo-btn" data-val="deixar_estoque">Estoque local</button>
+          <button type="button" class="motivo-btn" data-val="acabou_impressora">Acabou</button>
+          <button type="button" class="motivo-btn" data-val="defeito_peca">Defeito</button>
+          <button type="button" class="motivo-btn" data-val="outro">Outro...</button>
+        </div>
+        <div class="extra-field defeito-field">
+          <input type="text" name="defeito[]" placeholder="Qual defeito na peça?">
+        </div>
+        <div class="extra-field outro-field">
+          <input type="text" name="motivo[]" placeholder="Descreva o motivo">
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    const container = document.getElementById('itens-container');
+    const template = document.getElementById('item-template');
+    const MODELOS = {{ modelos_impressora|default([])|tojson }};
+
+    function preencherModelos(card){
+      const conteudo = card.querySelector('.modelo-opcoes-conteudo');
+      if(!conteudo || !MODELOS || MODELOS.length === 0) return;
+      const oki = MODELOS.filter(m=>(m.marca||'').toUpperCase() === 'OKI');
+      const hp = MODELOS.filter(m=>(m.marca||'').toUpperCase() === 'HP');
+      const outros = MODELOS.filter(m=>!['OKI','HP'].includes((m.marca||'').toUpperCase()));
+      let html = '';
+      if(oki.length){
+        html += '<div class="select-item empresa">OKI</div><div class="grupo-unidades">';
+        oki.forEach(m=>{ html += `<button type="button" class="modelo-opcao-entrega" data-modelo="${m.nome}">${m.nome}</button>`; });
+        html += '</div>';
+      }
+      if(hp.length){
+        html += '<div class="select-item empresa">HP</div><div class="grupo-unidades">';
+        hp.forEach(m=>{ html += `<button type="button" class="modelo-opcao-entrega" data-modelo="${m.nome}">${m.nome}</button>`; });
+        html += '</div>';
+      }
+      if(outros.length){
+        html += '<div class="select-item empresa">Outros</div><div class="grupo-unidades">';
+        outros.forEach(m=>{ html += `<button type="button" class="modelo-opcao-entrega" data-modelo="${m.nome}">${m.nome}</button>`; });
+        html += '</div>';
+      }
+      conteudo.innerHTML = html;
+    }
+
+    function atualizarTipo(card){
+      const tipo = card.querySelector('.tipo-btn.active')?.dataset.val || '';
+      const cor = card.querySelector('.cor-btn.active')?.dataset.cor || '';
+      const corInput = card.querySelector('.cor-input');
+      const tipoInput = card.querySelector('.tipo-input');
+      tipoInput.value = cor ? tipo + ' ' + cor : tipo;
+      if(corInput) corInput.value = cor;
+      atualizarSaldo(card);
+    }
+
+    function normalizarModelo(modelo){
+      const valor = (modelo || '').trim().toUpperCase();
+      if(['5112','ES5112','4172','ES4172','5112/4172'].includes(valor)) return 'ES5112/4172';
+      return valor;
+    }
+
+    async function atualizarSaldo(card){
+      const tipoInput = card.querySelector('.tipo-input');
+      const modeloInput = card.querySelector('.modelo-input');
+      const qtdInput = card.querySelector('.qtd-input');
+      const saldoInfo = card.querySelector('.saldo-info');
+      const saldoBadge = card.querySelector('.saldo-badge');
+
+      const tipo = (tipoInput?.value || '').trim();
+      const modelo = (modeloInput?.value || '').trim().toUpperCase();
+      const qtd = parseInt(qtdInput?.value || 1);
+
+      if(!tipo){
+        saldoInfo.style.display = 'none';
+        return;
+      }
+
+      saldoInfo.style.display = 'block';
+      saldoBadge.className = 'saldo-badge saldo-loading';
+
+      if(!modelo){
+        saldoBadge.className = 'saldo-badge';
+        saldoBadge.textContent = 'Informe o modelo para consultar o estoque';
+        return;
+      }
+
+      saldoBadge.textContent = 'Consultando estoque...';
+
+      const marca = obterMarcaItem(card);
+      try{
+        let url = `/api/estoque/saldo?tipo=${encodeURIComponent(tipo)}&modelo=${encodeURIComponent(modelo)}&_=${Date.now()}`;
+        if(marca) url += `&marca=${encodeURIComponent(marca)}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        const saldo = data.saldo || 0;
+
+        saldoBadge.classList.remove('saldo-loading');
+        if(saldo === 0){
+          saldoBadge.className = 'saldo-badge saldo-zerado';
+          saldoBadge.textContent = `Estoque zerado (${saldo})`;
+        } else if(saldo < qtd){
+          saldoBadge.className = 'saldo-badge saldo-baixo';
+          saldoBadge.textContent = `Saldo insuficiente: ${saldo} em estoque`;
+        } else {
+          saldoBadge.className = 'saldo-badge saldo-ok';
+          saldoBadge.textContent = `Em estoque: ${saldo}`;
+        }
+      } catch(e){
+        console.error(e);
+        saldoBadge.className = 'saldo-badge';
+        saldoBadge.textContent = 'Não foi possível consultar o estoque';
+      }
+    }
+
+    function obterMarcaItem(card){
+      const tipoBtn = card.querySelector('.tipo-btn.active');
+      const tipo = tipoBtn?.dataset.val || '';
+      const modelo = (card.querySelector('.modelo-input')?.value || '').trim().toUpperCase();
+      const marcaWrap = card.querySelector('.marca-wrap');
+      if(tipo === 'Drum' && ['ES5112/4172'].includes(modelo) && marcaWrap.style.display !== 'none'){
+        return card.querySelector('.marca-select')?.value || '';
+      }
+      return '';
+    }
+
+    function atualizarMarcaItem(card){
+      const tipoBtn = card.querySelector('.tipo-btn.active');
+      const tipo = tipoBtn?.dataset.val || '';
+      const modelo = (card.querySelector('.modelo-input')?.value || '').trim().toUpperCase();
+      const marcaWrap = card.querySelector('.marca-wrap');
+      const marcaSelect = card.querySelector('.marca-select');
+      if(tipo === 'Drum' && ['ES5112/4172'].includes(modelo)){
+        marcaWrap.style.display = 'block';
+        marcaSelect.setAttribute('required','required');
+      } else {
+        marcaWrap.style.display = 'none';
+        marcaSelect.removeAttribute('required');
+        marcaSelect.value = '';
+      }
+    }
+
+    function configurarItem(card){
+      const modeloInput = card.querySelector('.modelo-input');
+      const modeloBox = card.querySelector('.modelo-selected-box');
+      const modeloLista = card.querySelector('.modelo-opcoes-entrega');
+      const modeloBusca = card.querySelector('.modelo-busca');
+      modeloBox.addEventListener('click', function(event){
+        event.stopPropagation();
+        modeloLista.classList.toggle('show');
+        if(modeloLista.classList.contains('show')){
+          modeloBusca.value = '';
+          card.querySelectorAll('.modelo-opcao-entrega').forEach(opcao=>opcao.style.display='block');
+          modeloBusca.focus();
+        }
+      });
+      modeloBusca.addEventListener('click', event=>event.stopPropagation());
+      modeloBusca.addEventListener('input', function(){
+        const termo = this.value.toLowerCase();
+        card.querySelectorAll('.modelo-opcao-entrega').forEach(opcao=>{
+          opcao.style.display = opcao.dataset.modelo.toLowerCase().includes(termo) ? 'block' : 'none';
+        });
+      });
+      card.querySelectorAll('.modelo-opcao-entrega').forEach(opcao=>{
+        opcao.addEventListener('click', function(event){
+          event.stopPropagation();
+          const modelo = normalizarModelo(this.dataset.modelo);
+          modeloInput.value = modelo;
+          modeloBox.querySelector('span').textContent = modelo;
+          modeloLista.classList.remove('show');
+          atualizarMarcaItem(card);
+          if(modelo === 'ES5112/4172'){
+            card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
+            card.querySelector('.cor-btn[data-cor="Black"]').classList.add('active');
+            atualizarTipo(card);
+          } else {
+            atualizarSaldo(card);
+          }
+        });
+      });
+      document.addEventListener('click', function(event){
+        if(!card.contains(event.target)) modeloLista.classList.remove('show');
+      });
+      card.querySelectorAll('.tipo-btn').forEach(btn=>{
+        btn.addEventListener('click', function(){
+          card.querySelectorAll('.tipo-btn').forEach(b=>b.classList.remove('active'));
+          this.classList.add('active');
+          const tipo = this.dataset.val;
+          const corRow = card.querySelector('.cor-row').parentElement;
+          const modeloWrap = card.querySelector('.modelo-wrap');
+          const papelWrap = card.querySelector('.papel-wrap');
+          if(['Toner','Drum'].includes(tipo)){
+            corRow.style.display = 'block';
+            modeloWrap.style.display = 'block';
+            papelWrap.style.display = 'none';
+            const modeloInput = card.querySelector('.modelo-input');
+            const modelo = (modeloInput?.value || '').trim().toUpperCase();
+            if(['ES5112','ES4172','ES5112/4172'].includes(modelo)){
+              card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
+              card.querySelector('.cor-btn[data-cor="Black"]').classList.add('active');
+            }
+          } else if(tipo === 'Papel Fotografico'){
+            corRow.style.display = 'none';
+            card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
+            modeloWrap.style.display = 'none';
+            card.querySelector('.modelo-input').value = '-';
+            card.querySelector('.modelo-selected-box span').textContent = '-';
+            papelWrap.style.display = 'block';
+          } else {
+            corRow.style.display = 'none';
+            card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
+            modeloWrap.style.display = 'block';
+            papelWrap.style.display = 'none';
+          }
+          atualizarMarcaItem(card);
+          atualizarTipo(card);
+        });
+      });
+      card.querySelectorAll('.cor-btn').forEach(btn=>{
+        btn.addEventListener('click', function(){
+          const modeloInput = this.closest('.item-box').querySelector('.modelo-input');
+          const modelo = (modeloInput?.value || '').trim().toUpperCase();
+          if(['ES5112','ES4172','ES5112/4172'].includes(modelo)){
+            // forca apenas Black para monocromaticas
+            card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
+            card.querySelector('.cor-btn[data-cor="Black"]').classList.add('active');
+            atualizarTipo(card);
+            return;
+          }
+          const ja = this.classList.contains('active');
+          card.querySelectorAll('.cor-btn').forEach(b=>b.classList.remove('active'));
+          if(!ja) this.classList.add('active');
+          atualizarTipo(card);
+          atualizarMarcaItem(card);
+        });
+      });
+      card.querySelectorAll('.motivo-btn').forEach(btn=>{
+        btn.addEventListener('click', function(){
+          card.querySelectorAll('.motivo-btn').forEach(b=>b.classList.remove('active'));
+          this.classList.add('active');
+          card.querySelector('.motivo-input').value = this.dataset.val;
+          card.querySelector('.defeito-field').classList.remove('show');
+          card.querySelector('.outro-field').classList.remove('show');
+          card.querySelector('.defeito-field input').removeAttribute('required');
+          card.querySelector('.outro-field input').removeAttribute('required');
+          if(this.dataset.val === 'defeito_peca'){
+            card.querySelector('.defeito-field').classList.add('show');
+            card.querySelector('.defeito-field input').setAttribute('required','required');
+          }
+          if(this.dataset.val === 'outro'){
+            card.querySelector('.outro-field').classList.add('show');
+            card.querySelector('.outro-field input').setAttribute('required','required');
+          }
+        });
+      });
+
+      card.querySelector('.qtd-input').addEventListener('input', ()=>atualizarSaldo(card));
+    }
+
+    function adicionarItem(){
+      const clone = template.content.cloneNode(true);
+      const card = clone.querySelector('.item-box');
+      preencherModelos(card);
+      configurarItem(card);
+      container.appendChild(card);
+      atualizarSaldo(card);
+    }
+
+    function removerItem(btn){
+      if(container.querySelectorAll('.item-box').length > 1){
+        btn.closest('.item-box').remove();
+      } else {
+        alert('Pelo menos um item é necessário.');
+      }
+    }
+
+    function abrirLista(){
+      const list = document.getElementById('selectList');
+      list.classList.toggle('show');
+      if(list.classList.contains('show')){
+        document.getElementById('buscaUnidade').value = '';
+        document.getElementById('buscaUnidade').focus();
+        filtrarUnidades();
+      }
+    }
+
+    function filtrarUnidades(){
+      const termo = document.getElementById('buscaUnidade').value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const empresas = document.querySelectorAll('.select-item.empresa');
+      const unidades = document.querySelectorAll('.select-item.unidade');
+
+      unidades.forEach(u => {
+        const texto = (u.dataset.texto + ' ' + u.dataset.empresa).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        u.style.display = texto.includes(termo) ? 'block' : 'none';
+      });
+
+      empresas.forEach(e => {
+        const grupo = e.nextElementSibling;
+        const visiveis = grupo.querySelectorAll('.unidade:not([style*="none"])').length;
+        e.style.display = visiveis > 0 ? 'block' : 'none';
+      });
+    }
+
+    function selecionarUnidade(el){
+      document.getElementById('unidade_id').value = el.dataset.unidade;
+      document.getElementById('selectedText').textContent = el.dataset.texto + ' (' + el.dataset.empresa + ')';
+      document.getElementById('selectList').classList.remove('show');
+    }
+
+    document.addEventListener('click', function(e){
+      const box = document.getElementById('selectedBox');
+      const list = document.getElementById('selectList');
+      if(!box.contains(e.target) && !list.contains(e.target)){
+        list.classList.remove('show');
+      }
+    });
+
+    function mostrarAba(aba){
+      // Dentro do modulo ativo, ativa a aba correspondente
+      const moduloAtivo = document.querySelector('.modulo-content.active');
+      if(moduloAtivo){
+        moduloAtivo.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+        moduloAtivo.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+        const tab = moduloAtivo.querySelector(`.nav-tab[onclick="mostrarAba('${aba}')"]`);
+        if(tab) tab.classList.add('active');
+        const content = moduloAtivo.querySelector('#aba-' + aba);
+        if(content) content.classList.add('active');
+      } else {
+        document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+        document.querySelector(`.nav-tab[onclick="mostrarAba('${aba}')"]`)?.classList.add('active');
+        document.getElementById('aba-' + aba)?.classList.add('active');
+      }
+      window.scrollTo(0,0);
+    }
+
+    function mostrarModulo(modulo){
+      document.querySelectorAll('.modulo-tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.modulo-content').forEach(t=>t.classList.remove('active'));
+      document.querySelector(`.modulo-tab[onclick="mostrarModulo('${modulo}')"]`)?.classList.add('active');
+      document.getElementById('modulo-' + modulo)?.classList.add('active');
+      window.scrollTo(0,0);
+      // Ativa a primeira aba do modulo
+      if(modulo === 'equipamentos'){
+        mostrarAbaEquip('equipamentos');
+      } else {
+        mostrarAba('entrega');
+      }
+    }
+
+    function mostrarAbaEquip(aba){
+      const modulo = document.getElementById('modulo-equipamentos');
+      if(!modulo) return;
+      modulo.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+      modulo.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+      const tab = modulo.querySelector(`.nav-tab[onclick="mostrarAbaEquip('${aba}')"]`);
+      if(tab) tab.classList.add('active');
+      const content = modulo.querySelector('#aba-' + aba);
+      if(content) content.classList.add('active');
+      window.scrollTo(0,0);
+    }
+
+    function filtrarEquipamentos(){
+      const q = document.getElementById('busca-equip').value.trim();
+      const tipo = document.getElementById('filtro-tipo-equip').value;
+      const unidade = document.getElementById('filtro-unidade-equip').value;
+      const params = new URLSearchParams();
+      if(q) params.set('q', q);
+      if(tipo) params.set('tipo', tipo);
+      if(unidade) params.set('unidade_id', unidade);
+      window.location.href = '{{url_for("mobile_equipamentos")}}?' + params.toString();
+    }
+
+    function toggleCamposEquip(tipo){
+      const imp = document.getElementById('campos-impressora');
+      const comp = document.getElementById('campos-computador');
+      if(imp) imp.style.display = (tipo === 'impressora') ? 'block' : 'none';
+      if(comp) comp.style.display = ['desktop','notebook','servidor'].includes(tipo) ? 'block' : 'none';
+    }
+
+    function setModeloEntrada(modelo){
+      document.querySelector('.modelo-entrada').value = modelo;
+      document.getElementById('modeloSelectedText').textContent = modelo;
+    }
+
+    function toggleModelo(header){
+      const grupo = header.closest('.modelo-grupo');
+      const itens = grupo.querySelector('.modelo-itens');
+      const seta = header.querySelector('.seta');
+      itens.classList.toggle('show');
+      seta.classList.toggle('girou');
+    }
+
+    function abrirListaModelos(){
+      const list = document.getElementById('modeloSelectList');
+      list.classList.toggle('show');
+      if(list.classList.contains('show')){
+        document.getElementById('buscaModelo').value = '';
+        document.getElementById('buscaModelo').focus();
+        filtrarModelos();
+      }
+    }
+
+    function filtrarModelos(){
+      const termo = document.getElementById('buscaModelo').value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const empresas = document.querySelectorAll('#listaModelos .select-item.empresa');
+      const unidades = document.querySelectorAll('#listaModelos .select-item.unidade');
+      unidades.forEach(u => {
+        const texto = (u.dataset.texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        u.style.display = texto.includes(termo) ? 'block' : 'none';
+      });
+      empresas.forEach(e => {
+        const grupo = e.nextElementSibling;
+        const visiveis = grupo.querySelectorAll('.unidade:not([style*="none"])').length;
+        e.style.display = visiveis > 0 ? 'block' : 'none';
+      });
+    }
+
+    function selecionarModelo(el){
+      const modelo = el.dataset.modelo;
+      document.getElementById('modelo-entrada-selecionado').value = modelo;
+      document.getElementById('modeloSelectedText').textContent = el.dataset.texto;
+      document.getElementById('modeloSelectList').classList.remove('show');
+      atualizarMarcaEntrada();
+    }
+
+    document.addEventListener('click', function(e){
+      const box = document.getElementById('modeloSelectedBox');
+      const list = document.getElementById('modeloSelectList');
+      if(box && list && !box.contains(e.target) && !list.contains(e.target)){
+        list.classList.remove('show');
+      }
+    });
+
+    function atualizarMarcaEntrada(){
+      const tipo = document.querySelector('.tipo-entrada').value;
+      const modelo = (document.getElementById('modelo-entrada-selecionado')?.value || '').trim().toUpperCase();
+      const wrap = document.getElementById('marca-entrada-wrap');
+      const marca = document.getElementById('marca-entrada');
+      if(tipo === 'Drum' && ['ES5112/4172'].includes(modelo)){
+        wrap.style.display = 'block';
+        marca.setAttribute('required','required');
+      } else {
+        wrap.style.display = 'none';
+        marca.removeAttribute('required');
+        marca.value = '';
+      }
+    }
+
+    function atualizarCorEntrada(){
+      const tipo = document.querySelector('.tipo-entrada').value;
+      const wrap = document.querySelector('.cor-entrada-wrap');
+      const modeloWrap = document.getElementById('modelo-entrada-wrap');
+      const papelWrap = document.getElementById('unidade-papel-entrada-wrap');
+      document.getElementById('qtd-entrada').value = '1';
+      if(['Toner','Drum','Drum para Transformar'].includes(tipo)){
+        wrap.style.display = 'block';
+        modeloWrap.style.display = 'block';
+        papelWrap.classList.add('d-none');
+      } else if(tipo === 'Papel Fotografico'){
+        wrap.style.display = 'none';
+        document.querySelector('.cor-entrada').value = '';
+        modeloWrap.style.display = 'none';
+        setModeloEntrada('-');
+        papelWrap.classList.remove('d-none');
+      } else {
+        wrap.style.display = 'none';
+        document.querySelector('.cor-entrada').value = '';
+        modeloWrap.style.display = 'block';
+        papelWrap.classList.add('d-none');
+      }
+      atualizarMarcaEntrada();
+    }
+
+    function converterPapelEntrada(){
+      const qtd = parseInt(document.getElementById('qtd-entrada').value || '1');
+      const unidade = parseInt(document.getElementById('unidade-papel-entrada').value || '1');
+      return qtd * unidade;
+    }
+
+    function converterPapelItem(sel){
+      const card = sel.closest('.item-box');
+      const qtdInput = card.querySelector('.qtd-input');
+      const qtd = parseInt(qtdInput.dataset.original || qtdInput.value || '1');
+      const unidade = parseInt(sel.value || '1');
+      qtdInput.dataset.original = qtd;
+      qtdInput.value = qtd * unidade;
+    }
+
+    function converterPapelEntrega(){
+      document.querySelectorAll('#itens-container .item-box').forEach(card => {
+        const tipoBtn = card.querySelector('.tipo-btn.active');
+        if(tipoBtn && tipoBtn.dataset.val === 'Papel Fotografico'){
+          const qtdInput = card.querySelector('.qtd-input');
+          const unidade = parseInt(card.querySelector('.unidade-papel').value || '1');
+          const qtd = parseInt(qtdInput.value || '1');
+          qtdInput.value = qtd * unidade;
+        }
+      });
+    }
+
+    function abrirAjuste(tipo, modelo, saldo, minimo){
+      document.getElementById('ajuste-tipo').value = tipo;
+      document.getElementById('ajuste-modelo').value = modelo;
+      document.getElementById('ajuste-item-nome').textContent = tipo + (modelo ? ' - ' + modelo : '');
+      document.getElementById('ajuste-saldo-atual').textContent = saldo;
+      document.getElementById('ajuste-qtd').value = saldo;
+      document.getElementById('ajuste-minimo').value = minimo || 1;
+      document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+      document.getElementById('modal-ajuste').classList.add('active');
+      window.scrollTo(0,0);
+    }
+
+    function abrirMovimentacoes(tipo, modelo, marca){
+      document.getElementById('mov-tipo').value = tipo;
+      document.getElementById('mov-modelo').value = modelo;
+      document.getElementById('mov-marca').value = marca || '';
+      document.getElementById('mov-item-nome').textContent = tipo + (modelo ? ' - ' + modelo : '') + (marca ? ' (' + marca + ')' : '');
+      document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+      document.getElementById('modal-movimentacoes').classList.add('active');
+      carregarMovimentacoes();
+    }
+
+    function abrirListaUnidades(){
+      document.getElementById('histSelectList').classList.toggle('show');
+      if(document.getElementById('histSelectList').classList.contains('show')){
+        document.getElementById('buscaHistUnidade').value = '';
+        document.getElementById('buscaHistUnidade').focus();
+        filtrarHistUnidades();
+      }
+    }
+
+    function filtrarHistUnidades(){
+      const termo = document.getElementById('buscaHistUnidade').value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const empresas = document.querySelectorAll('#listaHistUnidades .select-item.empresa');
+      const unidades = document.querySelectorAll('#listaHistUnidades .select-item.unidade');
+
+      unidades.forEach(u => {
+        const texto = (u.dataset.texto + ' ' + (u.dataset.empresa || '')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        u.style.display = texto.includes(termo) ? 'block' : 'none';
+      });
+
+      empresas.forEach(e => {
+        const grupo = e.nextElementSibling;
+        const visiveis = grupo.querySelectorAll('.unidade:not([style*="none"])').length;
+        e.style.display = visiveis > 0 ? 'block' : 'none';
+      });
+    }
+
+    function selecionarHistUnidade(el){
+      document.getElementById('hist-unidade-id').value = el.dataset.unidade;
+      document.getElementById('histSelectedText').textContent = el.dataset.texto;
+      document.getElementById('histSelectList').classList.remove('show');
+    }
+
+    document.addEventListener('click', function(e){
+      const box = document.getElementById('histSelectedBox');
+      const list = document.getElementById('histSelectList');
+      if(box && list && !box.contains(e.target) && !list.contains(e.target)){
+        list.classList.remove('show');
+      }
+    });
+
+    async function carregarMovimentacoes(){
+      const tipo = document.getElementById('mov-tipo').value;
+      const modelo = document.getElementById('mov-modelo').value;
+      const marca = document.getElementById('mov-marca')?.value || '';
+      const container = document.getElementById('movimentacoes-resultado');
+      container.innerHTML = '<div class="hist-empty">Carregando...</div>';
+
+      try{
+        let url = `/api/estoque/historico?tipo=${encodeURIComponent(tipo)}&modelo=${encodeURIComponent(modelo)}&_=${Date.now()}`;
+        if(marca) url += `&marca=${encodeURIComponent(marca)}`;
+        const r = await fetch(url);
+        const data = await r.json();
+        if(!r.ok){
+          container.innerHTML = `<div class="hist-empty">${data.erro || 'Erro'}</div>`;
+          return;
+        }
+        if(!data.movimentacoes || data.movimentacoes.length === 0){
+          container.innerHTML = '<div class="hist-empty">Nenhuma movimentação.</div>';
+          return;
+        }
+        let html = '';
+        data.movimentacoes.forEach(m => {
+          const sinal = m.quantidade > 0 ? '+' : '';
+          const classe = m.tipo_movimento === 'saida' ? 'saida' : 'entrada';
+          const nome = m.tipo_movimento === 'entrada' ? 'Entrada' : (m.tipo_movimento === 'saida' ? 'Saída' : 'Ajuste');
+          const motivo = m.motivo_padrao || m.motivo_item || m.motivo || '-';
+          const defeito = m.defeito ? `<br><span style="color:#850001;">Defeito: ${m.defeito}</span>` : '';
+          const unidade = m.unidade_nome ? `<br><strong>${m.unidade_nome}</strong>${m.empresa_nome ? ' ('+m.empresa_nome+')' : ''}` : '';
+          html += `
+            <div class="hist-item" onclick="${m.entrega_id ? `window.location.href='/suprimentos/entrega/${m.entrega_id}'` : ''}" style="${m.entrega_id ? 'cursor:pointer;' : ''}">
+              <div class="top">
+                <span class="tipo">${nome}</span>
+                <span class="qtd ${classe}">${sinal}${m.quantidade}</span>
+              </div>
+              <div class="info">
+                Saldo: ${m.saldo_antes} → ${m.saldo_depois}${unidade}<br>
+                <strong>Motivo:</strong> ${motivo}${defeito}
+                <br><span style="color:#999;">${m.data_movimento}${m.responsavel ? ' | ' + m.responsavel : ''}</span>
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      } catch(err){
+        container.innerHTML = '<div class="hist-empty">Erro de conexão.</div>';
+      }
+    }
+
+    async function carregarHistoricoEntregas(){
+      const unidadeId = document.getElementById('hist-unidade-id').value;
+      const periodo = document.getElementById('hist-periodo').value;
+      const dataInicio = document.getElementById('hist-data-inicio').value;
+      const dataFim = document.getElementById('hist-data-fim').value;
+      const container = document.getElementById('historico-entregas-resultado');
+      container.innerHTML = '<div class="hist-empty">Carregando...</div>';
+
+      try{
+        let url = `/api/suprimentos/historico?limite=50&_=${Date.now()}`;
+        if(unidadeId) url += `&unidade_id=${unidadeId}`;
+        if(periodo) url += `&periodo=${encodeURIComponent(periodo)}`;
+        if(dataInicio) url += `&data_inicio=${encodeURIComponent(dataInicio)}`;
+        if(dataFim) url += `&data_fim=${encodeURIComponent(dataFim)}`;
+        const r = await fetch(url);
+        const data = await r.json();
+        if(!data.entregas || data.entregas.length === 0){
+          container.innerHTML = '<div class="hist-empty">Nenhuma entrega encontrada.</div>';
+          return;
+        }
+        let html = '';
+        data.entregas.forEach(ent => {
+          let itensHtml = '';
+          ent.itens.forEach(item => {
+            const motivoItem = item.motivo ? ` (${item.motivo})` : '';
+            itensHtml += `
+              <div class="item-row">
+                <span class="item-nome">${item.nome}${motivoItem}</span>
+                <span class="item-qtd">${item.quantidade}x</span>
+              </div>
+            `;
+          });
+          html += `
+            <div class="entrega-item">
+              <div class="top">
+                <div>
+                  <div class="unidade">${ent.unidade}</div>
+                  <div class="empresa">${ent.empresa}</div>
+                </div>
+                <div class="datahora">
+                  ${ent.data}<br>${ent.hora}
+                </div>
+              </div>
+              <div class="itens">
+                ${itensHtml}
+              </div>
+              <div class="resp">
+                Responsável: ${ent.responsavel || '-'}${ent.observacoes ? ' | Obs: ' + ent.observacoes : ''}
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      } catch(err){
+        container.innerHTML = '<div class="hist-empty">Erro de conexão.</div>';
+      }
+    }
+
+    function limparDatasHistorico(){
+      const periodo = document.getElementById('hist-periodo').value;
+      if(periodo){
+        document.getElementById('hist-data-inicio').value = '';
+        document.getElementById('hist-data-fim').value = '';
+      }
+    }
+
+    function limparPeriodoHistorico(){
+      const dataInicio = document.getElementById('hist-data-inicio').value;
+      const dataFim = document.getElementById('hist-data-fim').value;
+      if(dataInicio || dataFim){
+        document.getElementById('hist-periodo').value = '';
+      }
+    }
+
+    async function carregarAuditoria(){
+      const busca = document.getElementById('auditoria-busca').value.trim();
+      const tipo = document.getElementById('auditoria-tipo').value;
+      const container = document.getElementById('auditoria-resultado');
+      container.innerHTML = '<div class="hist-empty">Carregando...</div>';
+
+      try{
+        let url = `/api/auditoria/estoque?limite=100&_=${Date.now()}`;
+        if(tipo) url += `&tipo_movimento=${encodeURIComponent(tipo)}`;
+        if(busca) url += `&busca=${encodeURIComponent(busca)}`;
+        const r = await fetch(url);
+        const data = await r.json();
+        if(!r.ok){
+          container.innerHTML = `<div class="hist-empty">${data.erro || 'Erro'}</div>`;
+          return;
+        }
+        if(!data.movimentacoes || data.movimentacoes.length === 0){
+          container.innerHTML = '<div class="hist-empty">Nenhuma alteração encontrada.</div>';
+          return;
+        }
+        let html = '';
+        data.movimentacoes.forEach(m => {
+          const sinal = m.quantidade > 0 ? '+' : '';
+          const classe = m.tipo_movimento === 'saida' ? 'saida' : (m.tipo_movimento === 'ajuste' ? 'ajuste' : 'entrada');
+          const nome = m.tipo_movimento === 'entrada' ? 'Entrada' : (m.tipo_movimento === 'saida' ? 'Saída' : 'Ajuste');
+          html += `
+            <div class="hist-item">
+              <div class="top">
+                <span class="tipo">${nome}</span>
+                <span class="qtd ${classe}">${sinal}${m.quantidade}</span>
+              </div>
+              <div class="info">
+                <strong>${m.tipo_suprimento}</strong>${m.modelo_impressora ? ' - ' + m.modelo_impressora : ''}${m.marca ? ' (' + m.marca + ')' : ''}<br>
+                Saldo: ${m.saldo_antes} → ${m.saldo_depois}<br>
+                <strong>Motivo:</strong> ${m.motivo || '-'}<br>
+                <span style="color:#999;">${m.data_movimento}${m.responsavel ? ' | Resp: ' + m.responsavel : ''}</span>
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      } catch(err){
+        container.innerHTML = '<div class="hist-empty">Erro de conexão.</div>';
+      }
+    }
+
+    async function salvarAjuste(e){
+      e.preventDefault();
+      const tipo = document.getElementById('ajuste-tipo').value;
+      const modelo = document.getElementById('ajuste-modelo').value;
+      const qtd = document.getElementById('ajuste-qtd').value;
+      const minimo = document.getElementById('ajuste-minimo').value;
+      const motivo = document.getElementById('ajuste-motivo').value.trim();
+      const resp = document.getElementById('ajuste-resp').value.trim();
+
+      if(!motivo){
+        alert('Informe o motivo do ajuste.');
+        return;
+      }
+      if(!resp){
+        alert('Informe o responsável pelo ajuste.');
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append('tipo_suprimento', tipo);
+      fd.append('modelo_impressora', modelo);
+      fd.append('quantidade', qtd);
+      fd.append('estoque_minimo', minimo);
+      fd.append('motivo', motivo);
+      fd.append('responsavel', resp);
+
+      try{
+        const r = await fetch('/api/estoque/ajuste', {method:'POST', body:fd});
+        const data = await r.json();
+        if(r.ok && data.ok){
+          alert('Ajuste salvo: ' + data.mensagem);
+          document.getElementById('form-ajuste-mobile').reset();
+          mostrarAba('estoque');
+          setTimeout(()=>location.reload(), 300);
+        } else {
+          alert(data.erro || 'Erro ao salvar ajuste.');
+        }
+      } catch(err){
+        alert('Erro de conexão.');
+      }
+      return false;
+    }
+
+    async function carregarHistorico(){
+      const tipo = document.getElementById('hist-tipo').value;
+      const cor = document.getElementById('hist-cor').value;
+      const modelo = document.getElementById('hist-modelo').value;
+      const container = document.getElementById('historico-resultado');
+
+      if(!tipo){
+        alert('Selecione o tipo.');
+        return;
+      }
+
+      const tipoFinal = cor ? tipo + ' ' + cor : tipo;
+      container.innerHTML = '<div class="hist-empty">Carregando...</div>';
+
+      try{
+        const url = `/api/estoque/historico?tipo=${encodeURIComponent(tipoFinal)}&modelo=${encodeURIComponent(modelo)}&_=${Date.now()}`;
+        const r = await fetch(url);
+        const data = await r.json();
+        if(!r.ok){
+          container.innerHTML = `<div class="hist-empty">${data.erro || 'Erro'}</div>`;
+          return;
+        }
+        if(!data.movimentacoes || data.movimentacoes.length === 0){
+          container.innerHTML = '<div class="hist-empty">Nenhuma movimentação encontrada.</div>';
+          return;
+        }
+        let html = '';
+        data.movimentacoes.forEach(m => {
+          const sinal = m.quantidade > 0 ? '+' : '';
+          const classe = m.tipo_movimento === 'saida' ? 'saida' : 'entrada';
+          const nome = m.tipo_movimento === 'entrada' ? 'Entrada' : (m.tipo_movimento === 'saida' ? 'Saída' : 'Ajuste');
+          html += `
+            <div class="hist-item">
+              <div class="top">
+                <span class="tipo">${nome}</span>
+                <span class="qtd ${classe}">${sinal}${m.quantidade}</span>
+              </div>
+              <div class="info">
+                Saldo: ${m.saldo_antes} → ${m.saldo_depois}<br>
+                ${m.motivo || '-'} <span style="color:#999;">| ${m.data_movimento}${m.responsavel ? ' | ' + m.responsavel : ''}</span>
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      } catch(err){
+        container.innerHTML = '<div class="hist-empty">Erro de conexão.</div>';
+      }
+    }
+
+    async function salvarEntrada(e){
+      e.preventDefault();
+      const form = e.target;
+      const tipo = form.querySelector('.tipo-entrada').value;
+      const cor = form.querySelector('.cor-entrada').value;
+      const modelo = form.querySelector('.modelo-entrada').value;
+      let qtd = parseInt(form.querySelector('.qtd-entrada').value || '1');
+      const resp = form.querySelector('.resp-entrada').value;
+      const motivo = form.querySelector('.motivo-entrada').value;
+      const marca = document.getElementById('marca-entrada')?.value || '';
+
+      if(tipo === 'Papel Fotografico'){
+        const unidade = parseInt(document.getElementById('unidade-papel-entrada').value || '1');
+        const original = parseInt(document.getElementById('qtd-entrada').value || '1');
+        qtd = original * unidade;
+      }
+
+      const fd = new FormData();
+      fd.append('tipo_suprimento', tipo);
+      fd.append('cor_selecionada', cor);
+      fd.append('modelo_impressora', modelo);
+      fd.append('marca', marca);
+      fd.append('quantidade', qtd);
+      fd.append('responsavel', resp);
+      fd.append('motivo', motivo);
+
+      try{
+        const r = await fetch('/api/estoque/entrada', {method:'POST', body:fd});
+        const data = await r.json();
+        if(r.ok && data.ok){
+          alert('Entrada salva: ' + data.mensagem);
+          form.reset();
+          mostrarAba('estoque');
+          setTimeout(()=>location.reload(), 300);
+        } else {
+          alert(data.erro || 'Erro ao salvar entrada.');
+        }
+      } catch(err){
+        alert('Erro de conexão.');
+      }
+      return false;
+    }
+
+    adicionarItem();
+
+    if('serviceWorker' in navigator){
+      const vapidPublicKey = '{{vapid_public_key}}';
+
+      function urlBase64ToUint8Array(base64String){
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for(let i = 0; i < rawData.length; ++i){
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+      }
+
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(registration => {
+          if(!vapidPublicKey || !('PushManager' in window)) return;
+          return registration.pushManager.getSubscription().then(subscription => {
+            if(subscription) return subscription;
+            return registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+            });
+          });
+        })
+        .then(subscription => {
+          if(!subscription) return;
+          return fetch('{{url_for('push_subscribe')}}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(subscription.toJSON())
+          });
+        })
+        .catch(console.error);
+    }
+    // Inicializa modulo e aba vindos do servidor
+    (function(){
+      const moduloInicial = '{{modulo|default('estoque')}}';
+      const abaInicial = '{{aba|default('entrega')}}';
+      document.querySelectorAll('.modulo-tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.modulo-content').forEach(t=>t.classList.remove('active'));
+      document.querySelector(`.modulo-tab[onclick="mostrarModulo('${moduloInicial}')"]`)?.classList.add('active');
+      document.getElementById('modulo-' + moduloInicial)?.classList.add('active');
+      if(moduloInicial === 'equipamentos'){
+        mostrarAbaEquip(abaInicial);
+      } else {
+        mostrarAba(abaInicial);
+      }
+    })();
+  </script>
+</body>
+</html>

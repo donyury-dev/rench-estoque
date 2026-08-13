@@ -2328,7 +2328,7 @@ def suprimento_mobile():
                 ORDER BY m.ordem, m.nome
             """)
             modelos = cur.fetchall()
-            return render_template('suprimento_mobile.html', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega', vapid_public_key=VAPID_PUBLIC_KEY)
+            return render_template('mobile_app.html', modulo='estoque', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega', vapid_public_key=VAPID_PUBLIC_KEY)
 
         itens = _coletar_itens_entrega(request.form)
         if not itens:
@@ -2350,7 +2350,7 @@ def suprimento_mobile():
                 ORDER BY m.ordem, m.nome
             """)
             modelos = cur.fetchall()
-            return render_template('suprimento_mobile.html', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega', vapid_public_key=VAPID_PUBLIC_KEY)
+            return render_template('mobile_app.html', modulo='estoque', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega', vapid_public_key=VAPID_PUBLIC_KEY)
 
         cur.execute("""
             INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes)
@@ -2386,7 +2386,7 @@ def suprimento_mobile():
                     ORDER BY m.ordem, m.nome
                 """)
                 modelos = cur.fetchall()
-                return render_template('suprimento_mobile.html', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega', vapid_public_key=VAPID_PUBLIC_KEY)
+                return render_template('mobile_app.html', modulo='estoque', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega', vapid_public_key=VAPID_PUBLIC_KEY)
 
         for item in itens:
             mp = item['motivo_padrao']
@@ -2431,7 +2431,7 @@ def suprimento_mobile():
     modelos = cur.fetchall()
 
     hoje = datetime.now().strftime('%Y-%m-%d')
-    return render_template('suprimento_mobile.html', locais=locais, modelos_impressora=modelos, hoje=hoje, estoque=estoque, aba=request.args.get('aba', 'entrega'), vapid_public_key=VAPID_PUBLIC_KEY)
+    return render_template('mobile_app.html', modulo='estoque', locais=locais, modelos_impressora=modelos, hoje=hoje, estoque=estoque, aba=request.args.get('aba', 'entrega'), vapid_public_key=VAPID_PUBLIC_KEY)
 
 @app.route('/suprimentos/novo', methods=['GET', 'POST'])
 @login_required
@@ -3874,6 +3874,360 @@ def api_estoque_entrada():
     )
     db.commit()
     return jsonify({'ok': True, 'mensagem': f'{tipo_final} {modelo}: +{quantidade}'})
+
+
+# ============================================================
+# MOBILE - EQUIPAMENTOS
+# ============================================================
+
+@app.route('/mobile')
+@login_required
+def mobile_index():
+    return render_template('mobile_app.html', vapid_public_key=VAPID_PUBLIC_KEY, modulo='estoque', aba='entrega')
+
+@app.route('/mobile/equipamentos')
+@login_required
+def mobile_equipamentos():
+    db = get_db()
+    cur = db.cursor()
+    busca = request.args.get('q', '').strip()
+    tipo = request.args.get('tipo', '')
+    unidade_id = request.args.get('unidade_id', '')
+
+    sql = """
+        SELECT e.*, COALESCE(u.nome, e.local_atual_nome) as local_nome,
+               emp.nome as empresa_nome, u.setor as unidade_setor
+        FROM equipamentos e
+        LEFT JOIN unidades u ON e.unidade_id = u.id
+        LEFT JOIN empresas emp ON emp.id = u.empresa_id
+        WHERE e.ativo=1
+    """
+    params = []
+    if tipo:
+        sql += " AND e.tipo_equipamento = %s"
+        params.append(tipo)
+    if unidade_id:
+        sql += " AND e.unidade_id = %s"
+        params.append(unidade_id)
+    sql += " ORDER BY e.tipo_equipamento, e.modelo"
+    cur.execute(sql, params)
+    equipamentos = cur.fetchall()
+
+    if busca:
+        termos = preparar_termos_busca(busca)
+        filtrados = []
+        for eq in equipamentos:
+            pontuacao = calcular_pontuacao_busca(
+                termos, eq['codigo'], eq['fabricante'], eq['modelo'],
+                eq['numero_serie'], eq['patrimonio'], eq['cliente_atual'],
+                eq['local_nome'], eq['empresa_nome'], eq.get('unidade_setor'),
+                eq.get('setor_equipamento')
+            )
+            if pontuacao >= 50:
+                filtrados.append((pontuacao, eq))
+        filtrados.sort(key=lambda x: x[0], reverse=True)
+        equipamentos = [x[1] for x in filtrados]
+
+    cur.execute("""
+        SELECT u.id, u.nome, e.nome as empresa_nome
+        FROM unidades u JOIN empresas e ON e.id = u.empresa_id
+        WHERE u.ativo=1 ORDER BY e.nome, u.nome
+    """)
+    unidades = cur.fetchall()
+
+    cur.execute("SELECT tipo_equipamento, COUNT(*) as qtd FROM equipamentos WHERE ativo=1 GROUP BY tipo_equipamento")
+    tipos = cur.fetchall()
+
+    return render_template('mobile_app.html', vapid_public_key=VAPID_PUBLIC_KEY, modulo='equipamentos', aba='equipamentos',
+                           equipamentos=equipamentos, unidades=unidades, tipos=tipos, filtro_q=busca,
+                           filtro_tipo=tipo, filtro_unidade_id=unidade_id)
+
+
+@app.route('/mobile/equipamento/<int:equip_id>')
+@login_required
+def mobile_equipamento_detalhe(equip_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        SELECT e.*, COALESCE(u.nome, e.local_atual_nome) as local_nome,
+               emp.nome as empresa_nome
+        FROM equipamentos e
+        LEFT JOIN unidades u ON e.unidade_id = u.id
+        LEFT JOIN empresas emp ON emp.id = u.empresa_id
+        WHERE e.id=%s AND e.ativo=1
+    """, (equip_id,))
+    equip = cur.fetchone()
+    if not equip:
+        flash('Equipamento nao encontrado.', 'danger')
+        return redirect(url_for('mobile_equipamentos'))
+
+    cur.execute("""
+        SELECT * FROM movimentacoes WHERE equipamento_id=%s
+        ORDER BY data_movimentacao DESC, id DESC LIMIT 30
+    """, (equip_id,))
+    movimentacoes = cur.fetchall()
+    return render_template('mobile_app.html', vapid_public_key=VAPID_PUBLIC_KEY, modulo='equipamentos', aba='equipamento_detalhe',
+                           equip=equip, movimentacoes=movimentacoes)
+
+
+@app.route('/mobile/equipamento/novo', methods=['GET', 'POST'])
+@login_required
+def mobile_equipamento_novo():
+    db = get_db()
+    cur = db.cursor()
+    if request.method == 'POST':
+        tipo = request.form.get('tipo_equipamento')
+        unidade_id = request.form.get('unidade_id') or None
+        local_atual_nome = request.form.get('local_atual_nome')
+        cliente_atual = None
+        if unidade_id:
+            cur.execute("""
+                SELECT u.nome, e.nome FROM unidades u
+                JOIN empresas e ON e.id = u.empresa_id WHERE u.id=%s
+            """, (unidade_id,))
+            unidade = cur.fetchone()
+            if unidade:
+                local_atual_nome = unidade[0]
+                cliente_atual = unidade[1]
+
+        campos = {
+            'codigo': gerar_codigo_rastreio(cur, tipo),
+            'tipo_equipamento': tipo,
+            'fabricante': request.form.get('fabricante'),
+            'modelo': request.form.get('modelo'),
+            'numero_serie': request.form.get('numero_serie'),
+            'patrimonio': request.form.get('patrimonio'),
+            'setor_equipamento': request.form.get('setor_equipamento'),
+            'status': request.form.get('status', 'ativo'),
+            'unidade_id': unidade_id,
+            'local_atual_nome': local_atual_nome,
+            'cliente_atual': cliente_atual,
+            'observacoes': request.form.get('observacoes'),
+        }
+        if tipo == 'impressora':
+            campos.update({
+                'funcao': request.form.get('funcao'),
+                'tipo_impressao': request.form.get('tipo_impressao'),
+                'tamanho_papel': request.form.get('tamanho_papel'),
+                'funcionalidades': request.form.get('funcionalidades'),
+                'contador_mono': request.form.get('contador_mono', 0),
+                'contador_color': request.form.get('contador_color', 0),
+            })
+        else:
+            for k in ['processador_modelo','processador_geracao','processador_velocidade',
+                      'memoria_capacidade','memoria_tipo','memoria_velocidade',
+                      'armazenamento_1_capacidade','armazenamento_1_tipo',
+                      'armazenamento_2_capacidade','armazenamento_2_tipo',
+                      'armazenamento_3_capacidade','armazenamento_3_tipo']:
+                campos[k] = request.form.get(k)
+
+        colunas = [k for k, v in campos.items() if v is not None]
+        valores = [campos[k] for k in colunas]
+        placeholders = ','.join(['%s'] * len(colunas))
+        cur.execute(f"INSERT INTO equipamentos ({','.join(colunas)}) VALUES ({placeholders})", valores)
+        db.commit()
+        flash('Equipamento cadastrado com sucesso!', 'success')
+        return redirect(url_for('mobile_equipamentos'))
+
+    cur.execute("""
+        SELECT e.id as empresa_id, e.nome as empresa_nome,
+               u.id as unidade_id, u.nome as unidade_nome
+        FROM empresas e
+        LEFT JOIN unidades u ON u.empresa_id = e.id AND u.ativo=1
+        WHERE e.ativo=1
+        ORDER BY e.nome, u.nome
+    """)
+    locais = cur.fetchall()
+    return render_template('mobile_app.html', vapid_public_key=VAPID_PUBLIC_KEY, modulo='equipamentos', aba='equipamento_novo', locais=locais)
+
+
+@app.route('/mobile/equipamento/<int:equip_id>/editar', methods=['GET', 'POST'])
+@login_required
+def mobile_equipamento_editar(equip_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT * FROM equipamentos WHERE id=%s AND ativo=1", (equip_id,))
+    equip = cur.fetchone()
+    if not equip:
+        flash('Equipamento nao encontrado.', 'danger')
+        return redirect(url_for('mobile_equipamentos'))
+
+    if request.method == 'POST':
+        unidade_id = request.form.get('unidade_id') or None
+        local_atual_nome = request.form.get('local_atual_nome')
+        cliente_atual = None
+        if unidade_id:
+            cur.execute("""
+                SELECT u.nome, e.nome FROM unidades u
+                JOIN empresas e ON e.id = u.empresa_id WHERE u.id=%s
+            """, (unidade_id,))
+            unidade = cur.fetchone()
+            if unidade:
+                local_atual_nome = unidade[0]
+                cliente_atual = unidade[1]
+
+        campos = {
+            'fabricante': request.form.get('fabricante'),
+            'modelo': request.form.get('modelo'),
+            'numero_serie': request.form.get('numero_serie'),
+            'patrimonio': request.form.get('patrimonio'),
+            'setor_equipamento': request.form.get('setor_equipamento'),
+            'status': request.form.get('status', 'ativo'),
+            'unidade_id': unidade_id,
+            'local_atual_nome': local_atual_nome,
+            'cliente_atual': cliente_atual,
+            'observacoes': request.form.get('observacoes'),
+            'funcao': request.form.get('funcao') or None,
+            'tipo_impressao': request.form.get('tipo_impressao') or None,
+            'tamanho_papel': request.form.get('tamanho_papel') or None,
+            'funcionalidades': request.form.get('funcionalidades'),
+            'contador_mono': request.form.get('contador_mono', 0),
+            'contador_color': request.form.get('contador_color', 0),
+        }
+        for k in ['processador_modelo','processador_geracao','processador_velocidade',
+                  'memoria_capacidade','memoria_tipo','memoria_velocidade',
+                  'armazenamento_1_capacidade','armazenamento_1_tipo',
+                  'armazenamento_2_capacidade','armazenamento_2_tipo',
+                  'armazenamento_3_capacidade','armazenamento_3_tipo']:
+            campos[k] = request.form.get(k)
+
+        set_sql = ', '.join([f"{k}=%s" for k in campos])
+        cur.execute(f"UPDATE equipamentos SET {set_sql} WHERE id=%s", list(campos.values()) + [equip_id])
+        db.commit()
+        flash('Equipamento atualizado com sucesso!', 'success')
+        return redirect(url_for('mobile_equipamento_detalhe', equip_id=equip_id))
+
+    cur.execute("""
+        SELECT e.id as empresa_id, e.nome as empresa_nome,
+               u.id as unidade_id, u.nome as unidade_nome
+        FROM empresas e
+        LEFT JOIN unidades u ON u.empresa_id = e.id AND u.ativo=1
+        WHERE e.ativo=1
+        ORDER BY e.nome, u.nome
+    """)
+    locais = cur.fetchall()
+    return render_template('mobile_app.html', vapid_public_key=VAPID_PUBLIC_KEY, modulo='equipamentos', aba='equipamento_editar', equip=equip, locais=locais)
+
+
+@app.route('/mobile/equipamento/<int:equip_id>/movimentar', methods=['GET', 'POST'])
+@login_required
+def mobile_equipamento_movimentar(equip_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        SELECT e.*, u.nome as unidade_nome, emp.nome as empresa_nome
+        FROM equipamentos e
+        LEFT JOIN unidades u ON u.id = e.unidade_id
+        LEFT JOIN empresas emp ON emp.id = u.empresa_id
+        WHERE e.id=%s
+    """, (equip_id,))
+    equip = cur.fetchone()
+    if not equip:
+        flash('Equipamento nao encontrado.', 'danger')
+        return redirect(url_for('mobile_equipamentos'))
+
+    if request.method == 'POST':
+        tipo_mov = request.form.get('tipo_movimento')
+        data_mov = request.form.get('data_movimentacao')
+        destino_unidade_id = request.form.get('destino_unidade_id')
+        responsavel = request.form.get('responsavel')
+        obs = request.form.get('observacoes')
+        setor_destino = request.form.get('setor_equipamento', '').strip() or None
+        contador_mono_novo = request.form.get('contador_mono_novo', '').strip()
+        contador_color_novo = request.form.get('contador_color_novo', '').strip()
+
+        contador_mono_anterior = int(equip['contador_mono'] or 0)
+        contador_color_anterior = int(equip['contador_color'] or 0)
+        contador_mono_novo_int = int(contador_mono_novo) if contador_mono_novo else contador_mono_anterior
+        contador_color_novo_int = int(contador_color_novo) if contador_color_novo else contador_color_anterior
+
+        destino_unidade_nome = None
+        if destino_unidade_id:
+            cur.execute("SELECT nome FROM unidades WHERE id=%s", (destino_unidade_id,))
+            u = cur.fetchone()
+            if u:
+                destino_unidade_nome = u['nome']
+
+        cur.execute("""
+            INSERT INTO movimentacoes (equipamento_id, data_movimentacao, tipo_movimento,
+                origem_local, origem_unidade, destino_local, destino_unidade, responsavel, observacoes,
+                contador_mono_anterior, contador_mono_novo, contador_color_anterior, contador_color_novo)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (equip_id, data_mov, tipo_mov,
+              equip['local_atual_nome'], equip['unidade_nome'] or equip['local_atual_nome'],
+              destino_unidade_nome or "Sem unidade", destino_unidade_nome,
+              responsavel, obs,
+              contador_mono_anterior, contador_mono_novo_int,
+              contador_color_anterior, contador_color_novo_int))
+
+        cur.execute("""
+            UPDATE equipamentos SET unidade_id=%s, local_atual_nome=%s, cliente_atual=%s,
+                contador_mono=%s, contador_color=%s, setor_equipamento=%s WHERE id=%s
+        """, (destino_unidade_id, destino_unidade_nome, None,
+              contador_mono_novo_int, contador_color_novo_int, setor_destino, equip_id))
+        db.commit()
+        flash('Movimentacao registrada com sucesso!', 'success')
+        return redirect(url_for('mobile_equipamento_detalhe', equip_id=equip_id))
+
+    cur.execute("""
+        SELECT e.id as empresa_id, e.nome as empresa_nome,
+               u.id as unidade_id, u.nome as unidade_nome
+        FROM empresas e
+        LEFT JOIN unidades u ON u.empresa_id = e.id AND u.ativo=1
+        WHERE e.ativo=1
+        ORDER BY e.nome, u.nome
+    """)
+    locais = cur.fetchall()
+    return render_template('mobile_app.html', vapid_public_key=VAPID_PUBLIC_KEY, modulo='equipamentos', aba='equipamento_movimentar',
+                           equip=equip, locais=locais, hoje=datetime.now().strftime('%Y-%m-%d'))
+
+
+@app.route('/mobile/equipamento/<int:equip_id>/excluir', methods=['POST'])
+@login_required
+def mobile_equipamento_excluir(equip_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("UPDATE equipamentos SET ativo=0 WHERE id=%s", (equip_id,))
+    db.commit()
+    flash('Equipamento excluido com sucesso.', 'success')
+    return redirect(url_for('mobile_equipamentos'))
+
+
+@app.route('/mobile/locais', methods=['GET', 'POST'])
+@login_required
+def mobile_locais():
+    db = get_db()
+    cur = db.cursor()
+    if request.method == 'POST':
+        acao = request.form.get('acao')
+        if acao == 'empresa':
+            nome = request.form.get('nome')
+            tipo = request.form.get('tipo', 'cliente')
+            if nome:
+                cur.execute("INSERT INTO empresas (nome, tipo) VALUES (%s, %s)", (nome, tipo))
+                db.commit()
+                flash('Empresa cadastrada com sucesso!', 'success')
+        elif acao == 'unidade':
+            empresa_id = request.form.get('empresa_id')
+            nome = request.form.get('unidade_nome')
+            setor = request.form.get('setor')
+            if empresa_id and nome:
+                cur.execute("INSERT INTO unidades (empresa_id, nome, setor) VALUES (%s, %s, %s)",
+                            (empresa_id, nome, setor))
+                db.commit()
+                flash('Unidade cadastrada com sucesso!', 'success')
+        return redirect(url_for('mobile_locais'))
+
+    cur.execute("""
+        SELECT e.id as empresa_id, e.nome as empresa_nome, e.tipo as empresa_tipo,
+               u.id as unidade_id, u.nome as unidade_nome, u.setor
+        FROM empresas e
+        LEFT JOIN unidades u ON u.empresa_id = e.id AND u.ativo=1
+        WHERE e.ativo=1
+        ORDER BY e.tipo DESC, e.nome, u.nome
+    """)
+    locais = cur.fetchall()
+    return render_template('mobile_app.html', vapid_public_key=VAPID_PUBLIC_KEY, modulo='equipamentos', aba='locais', locais=locais)
 
 
 # Para produção (Render / Gunicorn)
