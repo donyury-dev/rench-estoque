@@ -3892,7 +3892,7 @@ def api_estoque_entrada():
 @app.route('/mobile')
 @login_required
 def mobile_index():
-    return render_template('mobile_app.html', vapid_public_key=VAPID_PUBLIC_KEY, modulo='estoque', aba='entrega')
+    return redirect(url_for('suprimento_mobile', aba='entrega'))
 
 @app.route('/mobile/equipamentos')
 @login_required
