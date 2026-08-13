@@ -1282,6 +1282,15 @@ def enviar_notificacao_push(titulo, mensagem, url='/'):
         except Exception as e:
             print('Erro ao enviar push:', e)
 
+@app.after_request
+def add_header(response):
+    if request.path.startswith('/mobile') or request.path.startswith('/suprimentos/mobile'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
+
 @app.route('/sw.js')
 def service_worker():
     return app.send_static_file('sw.js'), 200, {'Content-Type': 'application/javascript', 'Service-Worker-Allowed': '/'}

@@ -2050,8 +2050,16 @@
         return outputArray;
       }
 
-      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=7', { scope: '/' })
         .then(registration => {
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'activated') {
+                window.location.reload();
+              }
+            });
+          });
           if(!vapidPublicKey || !('PushManager' in window)) return;
           return registration.pushManager.getSubscription().then(subscription => {
             if(subscription) return subscription;
