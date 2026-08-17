@@ -656,12 +656,30 @@
                 <option value="{{t.tipo_equipamento}}" {{'selected' if filtro_tipo==t.tipo_equipamento else ''}}>{{t.tipo_equipamento}} ({{t.qtd}})</option>
                 {% endfor %}
               </select>
-              <select id="filtro-unidade-equip" onchange="filtrarEquipamentos()">
-                <option value="">Todas as unidades</option>
-                {% for u in unidades %}
-                <option value="{{u.id}}" {{'selected' if filtro_unidade_id==u.id|string else ''}}>{{u.empresa_nome}} - {{u.nome}}</option>
-                {% endfor %}
-              </select>
+              <input type="hidden" id="filtro-unidade-equip" value="{{filtro_unidade_id}}">
+              <div class="selected-box" id="selectedBoxFiltroUnidade" onclick="abrirListaUnidadeGenerico('selectedBoxFiltroUnidade','selectListFiltroUnidade')">
+                <span id="selectedTextFiltroUnidade">{% if filtro_unidade_id %}{{filtro_unidade_id}}{% else %}Todas as unidades{% endif %}</span>
+                <small><i class="bi bi-chevron-down"></i></small>
+              </div>
+              <div class="select-list" id="selectListFiltroUnidade">
+                <input type="text" class="search-input" id="buscaUnidadeFiltro" placeholder="Buscar empresa ou unidade..." onkeyup="filtrarUnidadeGenerico('buscaUnidadeFiltro','listaUnidadesFiltro')" onclick="event.stopPropagation()">
+                <div id="listaUnidadesFiltro">
+                  <div class="select-item unidade" data-unidade="" data-texto="Todas as unidades" data-empresa="" onclick="selecionarUnidadeGenerico(this,'filtro-unidade-equip','selectedTextFiltroUnidade','selectListFiltroUnidade'); filtrarEquipamentos();">Todas as unidades</div>
+                  {% set empresa_atual = namespace(val='') %}
+                  {% for l in unidades %}
+                    {% if l.unidade_id %}
+                      {% if empresa_atual.val != l.empresa_nome %}
+                        {% if not loop.first %}</div>{% endif %}
+                        <div class="select-item empresa" data-empresa="{{l.empresa_nome|lower}}">{{l.empresa_nome}}</div>
+                        <div class="grupo-unidades">
+                        {% set empresa_atual.val = l.empresa_nome %}
+                      {% endif %}
+                      <div class="select-item unidade" data-unidade="{{l.unidade_id}}" data-texto="{{l.unidade_nome}}" data-empresa="{{l.empresa_nome}}" onclick="selecionarUnidadeGenerico(this,'filtro-unidade-equip','selectedTextFiltroUnidade','selectListFiltroUnidade'); filtrarEquipamentos();">{{l.unidade_nome}}</div>
+                    {% endif %}
+                  {% endfor %}
+                  {% if unidades %}</div>{% endif %}
+                </div>
+              </div>
             </div>
 
             <ul class="equip-lista" id="lista-equipamentos">
@@ -728,22 +746,30 @@
               </div>
 
               <div class="form-group">
-                <label>Unidade / Local</label>
-                <select name="unidade_id">
-                  <option value="">Selecione...</option>
-                  {% set empresa_atual = namespace(val='') %}
-                  {% for l in locais %}
-                    {% if l.unidade_id %}
-                      {% if empresa_atual.val != l.empresa_nome %}
-                        {% if not loop.first %}</optgroup>{% endif %}
-                        <optgroup label="{{l.empresa_nome}}">
-                        {% set empresa_atual.val = l.empresa_nome %}
+                <label>Unidade / Local *</label>
+                <input type="hidden" name="unidade_id" id="unidade_id_equip_novo" required>
+                <div class="selected-box" id="selectedBoxEquipNovo" onclick="abrirListaUnidadeGenerico('selectedBoxEquipNovo','selectListEquipNovo')">
+                  <span id="selectedTextEquipNovo">Selecione a unidade...</span>
+                  <small><i class="bi bi-chevron-down"></i></small>
+                </div>
+                <div class="select-list" id="selectListEquipNovo">
+                  <input type="text" class="search-input" id="buscaUnidadeEquipNovo" placeholder="Buscar empresa ou unidade..." onkeyup="filtrarUnidadeGenerico('buscaUnidadeEquipNovo','listaUnidadesEquipNovo')" onclick="event.stopPropagation()">
+                  <div id="listaUnidadesEquipNovo">
+                    {% set empresa_atual = namespace(val='') %}
+                    {% for l in locais %}
+                      {% if l.unidade_id %}
+                        {% if empresa_atual.val != l.empresa_nome %}
+                          {% if not loop.first %}</div>{% endif %}
+                          <div class="select-item empresa" data-empresa="{{l.empresa_nome|lower}}">{{l.empresa_nome}}</div>
+                          <div class="grupo-unidades">
+                          {% set empresa_atual.val = l.empresa_nome %}
+                        {% endif %}
+                        <div class="select-item unidade" data-unidade="{{l.unidade_id}}" data-texto="{{l.unidade_nome}}" data-empresa="{{l.empresa_nome}}" onclick="selecionarUnidadeGenerico(this,'unidade_id_equip_novo','selectedTextEquipNovo','selectListEquipNovo')">{{l.unidade_nome}}</div>
                       {% endif %}
-                      <option value="{{l.unidade_id}}">{{l.unidade_nome}}</option>
-                    {% endif %}
-                  {% endfor %}
-                  {% if locais %}</optgroup>{% endif %}
-                </select>
+                    {% endfor %}
+                    {% if locais %}</div>{% endif %}
+                  </div>
+                </div>
               </div>
               <div class="form-group">
                 <label>Setor</label>
@@ -961,21 +987,29 @@
               </div>
               <div class="form-group">
                 <label>Unidade / Local</label>
-                <select name="unidade_id">
-                  <option value="">Selecione...</option>
-                  {% set empresa_atual = namespace(val='') %}
-                  {% for l in locais %}
-                    {% if l.unidade_id %}
-                      {% if empresa_atual.val != l.empresa_nome %}
-                        {% if not loop.first %}</optgroup>{% endif %}
-                        <optgroup label="{{l.empresa_nome}}">
-                        {% set empresa_atual.val = l.empresa_nome %}
+                <input type="hidden" name="unidade_id" id="unidade_id_equip_editar" value="{{equip.unidade_id or ''}}">
+                <div class="selected-box" id="selectedBoxEquipEditar" onclick="abrirListaUnidadeGenerico('selectedBoxEquipEditar','selectListEquipEditar')">
+                  <span id="selectedTextEquipEditar">{% if equip.unidade_id %}{{equip.local_atual_nome or 'Unidade selecionada'}}{% else %}Selecione a unidade...{% endif %}</span>
+                  <small><i class="bi bi-chevron-down"></i></small>
+                </div>
+                <div class="select-list" id="selectListEquipEditar">
+                  <input type="text" class="search-input" id="buscaUnidadeEquipEditar" placeholder="Buscar empresa ou unidade..." onkeyup="filtrarUnidadeGenerico('buscaUnidadeEquipEditar','listaUnidadesEquipEditar')" onclick="event.stopPropagation()">
+                  <div id="listaUnidadesEquipEditar">
+                    {% set empresa_atual = namespace(val='') %}
+                    {% for l in locais %}
+                      {% if l.unidade_id %}
+                        {% if empresa_atual.val != l.empresa_nome %}
+                          {% if not loop.first %}</div>{% endif %}
+                          <div class="select-item empresa" data-empresa="{{l.empresa_nome|lower}}">{{l.empresa_nome}}</div>
+                          <div class="grupo-unidades">
+                          {% set empresa_atual.val = l.empresa_nome %}
+                        {% endif %}
+                        <div class="select-item unidade" data-unidade="{{l.unidade_id}}" data-texto="{{l.unidade_nome}}" data-empresa="{{l.empresa_nome}}" onclick="selecionarUnidadeGenerico(this,'unidade_id_equip_editar','selectedTextEquipEditar','selectListEquipEditar')">{{l.unidade_nome}}</div>
                       {% endif %}
-                      <option value="{{l.unidade_id}}" {{'selected' if equip.unidade_id == l.unidade_id else ''}}>{{l.unidade_nome}}</option>
-                    {% endif %}
-                  {% endfor %}
-                  {% if locais %}</optgroup>{% endif %}
-                </select>
+                    {% endfor %}
+                    {% if locais %}</div>{% endif %}
+                  </div>
+                </div>
               </div>
               <div class="form-group">
                 <label>Setor</label>
@@ -1036,22 +1070,30 @@
                 <input type="date" name="data_movimentacao" value="{{hoje}}" required>
               </div>
               <div class="form-group">
-                <label>Destino (Unidade)</label>
-                <select name="destino_unidade_id">
-                  <option value="">Selecione...</option>
-                  {% set empresa_atual = namespace(val='') %}
-                  {% for l in locais %}
-                    {% if l.unidade_id %}
-                      {% if empresa_atual.val != l.empresa_nome %}
-                        {% if not loop.first %}</optgroup>{% endif %}
-                        <optgroup label="{{l.empresa_nome}}">
-                        {% set empresa_atual.val = l.empresa_nome %}
+                <label>Destino (Unidade) *</label>
+                <input type="hidden" name="destino_unidade_id" id="destino_unidade_id" value="{{equip.unidade_id or ''}}" required>
+                <div class="selected-box" id="selectedBoxMov" onclick="abrirListaUnidadeGenerico('selectedBoxMov','selectListMov')">
+                  <span id="selectedTextMov">{% if equip.unidade_id %}{{equip.unidade_nome or equip.local_atual_nome or 'Unidade selecionada'}}{% else %}Selecione a unidade de destino...{% endif %}</span>
+                  <small><i class="bi bi-chevron-down"></i></small>
+                </div>
+                <div class="select-list" id="selectListMov">
+                  <input type="text" class="search-input" id="buscaUnidadeMov" placeholder="Buscar empresa ou unidade..." onkeyup="filtrarUnidadeGenerico('buscaUnidadeMov','listaUnidadesMov')" onclick="event.stopPropagation()">
+                  <div id="listaUnidadesMov">
+                    {% set empresa_atual = namespace(val='') %}
+                    {% for l in locais %}
+                      {% if l.unidade_id %}
+                        {% if empresa_atual.val != l.empresa_nome %}
+                          {% if not loop.first %}</div>{% endif %}
+                          <div class="select-item empresa" data-empresa="{{l.empresa_nome|lower}}">{{l.empresa_nome}}</div>
+                          <div class="grupo-unidades">
+                          {% set empresa_atual.val = l.empresa_nome %}
+                        {% endif %}
+                        <div class="select-item unidade" data-unidade="{{l.unidade_id}}" data-texto="{{l.unidade_nome}}" data-empresa="{{l.empresa_nome}}" onclick="selecionarUnidadeGenerico(this,'destino_unidade_id','selectedTextMov','selectListMov')">{{l.unidade_nome}}</div>
                       {% endif %}
-                      <option value="{{l.unidade_id}}">{{l.unidade_nome}}</option>
-                    {% endif %}
-                  {% endfor %}
-                  {% if locais %}</optgroup>{% endif %}
-                </select>
+                    {% endfor %}
+                    {% if locais %}</div>{% endif %}
+                  </div>
+                </div>
               </div>
               <div class="form-group">
                 <label>Setor Destino</label>
@@ -1442,20 +1484,23 @@
       }
     }
 
-    function abrirLista(){
-      const list = document.getElementById('selectList');
+    function abrirListaUnidadeGenerico(boxId, listId){
+      const list = document.getElementById(listId);
       list.classList.toggle('show');
       if(list.classList.contains('show')){
-        document.getElementById('buscaUnidade').value = '';
-        document.getElementById('buscaUnidade').focus();
-        filtrarUnidades();
+        const input = list.querySelector('input.search-input');
+        if(input){ input.value = ''; input.focus(); }
+        filtrarUnidadeGenerico(input?.id, list.querySelector('[id^="listaUnidades"]')?.id);
       }
     }
 
-    function filtrarUnidades(){
-      const termo = document.getElementById('buscaUnidade').value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const empresas = document.querySelectorAll('.select-item.empresa');
-      const unidades = document.querySelectorAll('.select-item.unidade');
+    function filtrarUnidadeGenerico(inputId, listaId){
+      const input = inputId ? document.getElementById(inputId) : null;
+      const termo = (input ? input.value : '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const lista = document.getElementById(listaId);
+      if(!lista) return;
+      const empresas = lista.querySelectorAll('.select-item.empresa');
+      const unidades = lista.querySelectorAll('.select-item.unidade');
 
       unidades.forEach(u => {
         const texto = (u.dataset.texto + ' ' + u.dataset.empresa).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -1464,23 +1509,49 @@
 
       empresas.forEach(e => {
         const grupo = e.nextElementSibling;
+        if(!grupo) return;
         const visiveis = grupo.querySelectorAll('.unidade:not([style*="none"])').length;
         e.style.display = visiveis > 0 ? 'block' : 'none';
       });
     }
 
+    function selecionarUnidadeGenerico(el, inputId, textId, listId){
+      const input = document.getElementById(inputId);
+      if(input) input.value = el.dataset.unidade;
+      const text = document.getElementById(textId);
+      if(text) text.textContent = el.dataset.texto + ' (' + el.dataset.empresa + ')';
+      const list = document.getElementById(listId);
+      if(list) list.classList.remove('show');
+    }
+
+    function abrirLista(){
+      abrirListaUnidadeGenerico('selectedBox','selectList');
+    }
+
+    function filtrarUnidades(){
+      filtrarUnidadeGenerico('buscaUnidade','listaUnidades');
+    }
+
     function selecionarUnidade(el){
-      document.getElementById('unidade_id').value = el.dataset.unidade;
-      document.getElementById('selectedText').textContent = el.dataset.texto + ' (' + el.dataset.empresa + ')';
-      document.getElementById('selectList').classList.remove('show');
+      selecionarUnidadeGenerico(el,'unidade_id','selectedText','selectList');
     }
 
     document.addEventListener('click', function(e){
-      const box = document.getElementById('selectedBox');
-      const list = document.getElementById('selectList');
-      if(!box.contains(e.target) && !list.contains(e.target)){
-        list.classList.remove('show');
-      }
+      const selectors = [
+        {box:'selectedBox', list:'selectList'},
+        {box:'selectedBoxEquipNovo', list:'selectListEquipNovo'},
+        {box:'selectedBoxEquipEditar', list:'selectListEquipEditar'},
+        {box:'selectedBoxMov', list:'selectListMov'},
+        {box:'histSelectedBox', list:'histSelectList'},
+        {box:'selectedBoxFiltroUnidade', list:'selectListFiltroUnidade'}
+      ];
+      selectors.forEach(s => {
+        const box = document.getElementById(s.box);
+        const list = document.getElementById(s.list);
+        if(box && list && !box.contains(e.target) && !list.contains(e.target)){
+          list.classList.remove('show');
+        }
+      });
     });
 
     function mostrarAba(aba){

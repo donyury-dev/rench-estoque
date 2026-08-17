@@ -3980,11 +3980,14 @@ def mobile_equipamentos():
         equipamentos = [x[1] for x in filtrados]
 
     cur.execute("""
-        SELECT u.id, u.nome, e.nome as empresa_nome
-        FROM unidades u JOIN empresas e ON e.id = u.empresa_id
-        WHERE u.ativo=1 ORDER BY e.nome, u.nome
+        SELECT e.id as empresa_id, e.nome as empresa_nome,
+               u.id as unidade_id, u.nome as unidade_nome
+        FROM empresas e
+        LEFT JOIN unidades u ON u.empresa_id = e.id AND u.ativo=1
+        WHERE e.ativo=1
+        ORDER BY e.tipo DESC, e.nome, u.nome
     """)
-    unidades = cur.fetchall()
+    locais = cur.fetchall()
 
     cur.execute("SELECT tipo_equipamento, COUNT(*) as qtd FROM equipamentos WHERE ativo=1 GROUP BY tipo_equipamento")
     tipos = cur.fetchall()
@@ -4154,7 +4157,7 @@ def mobile_equipamento_editar(equip_id):
         FROM empresas e
         LEFT JOIN unidades u ON u.empresa_id = e.id AND u.ativo=1
         WHERE e.ativo=1
-        ORDER BY e.nome, u.nome
+        ORDER BY e.tipo DESC, e.nome, u.nome
     """)
     locais = cur.fetchall()
     return render_template('mobile_app.html', vapid_public_key=VAPID_PUBLIC_KEY, modulo='equipamentos', aba='equipamento_editar', equip=equip, locais=locais)
@@ -4226,7 +4229,7 @@ def mobile_equipamento_movimentar(equip_id):
         FROM empresas e
         LEFT JOIN unidades u ON u.empresa_id = e.id AND u.ativo=1
         WHERE e.ativo=1
-        ORDER BY e.nome, u.nome
+        ORDER BY e.tipo DESC, e.nome, u.nome
     """)
     locais = cur.fetchall()
     return render_template('mobile_app.html', vapid_public_key=VAPID_PUBLIC_KEY, modulo='equipamentos', aba='equipamento_movimentar',
