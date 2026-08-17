@@ -3863,6 +3863,10 @@ def api_estoque_entrada():
     if not tipo or quantidade <= 0:
         return jsonify({'erro': 'Informe o tipo e a quantidade.'}), 400
 
+    # Drum para Transformar sempre usa o modelo especial PARA TRANSFORMAR
+    if tipo == 'Drum para Transformar':
+        modelo = 'PARA TRANSFORMAR'
+
     tipo_final = f"{tipo} {cor}".strip() if cor else tipo
     tipo_base = _remover_acentos(tipo_final.upper())
     if tipo_base != 'PAPEL FOTOGRAFICO' and not modelo:

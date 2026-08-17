@@ -1621,7 +1621,12 @@
       const modeloWrap = document.getElementById('modelo-entrada-wrap');
       const papelWrap = document.getElementById('unidade-papel-entrada-wrap');
       document.getElementById('qtd-entrada').value = '1';
-      if(['Toner','Drum','Drum para Transformar'].includes(tipo)){
+      if(tipo === 'Drum para Transformar'){
+        wrap.style.display = 'block';
+        modeloWrap.style.display = 'none';
+        setModeloEntrada('PARA TRANSFORMAR');
+        papelWrap.classList.add('d-none');
+      } else if(['Toner','Drum'].includes(tipo)){
         wrap.style.display = 'block';
         modeloWrap.style.display = 'block';
         papelWrap.classList.add('d-none');
@@ -1997,11 +2002,15 @@
       const form = e.target;
       const tipo = form.querySelector('.tipo-entrada').value;
       const cor = form.querySelector('.cor-entrada').value;
-      const modelo = form.querySelector('.modelo-entrada').value;
+      let modelo = form.querySelector('.modelo-entrada').value;
       let qtd = parseInt(form.querySelector('.qtd-entrada').value || '1');
       const resp = form.querySelector('.resp-entrada').value;
       const motivo = form.querySelector('.motivo-entrada').value;
       const marca = document.getElementById('marca-entrada')?.value || '';
+
+      if(tipo === 'Drum para Transformar'){
+        modelo = 'PARA TRANSFORMAR';
+      }
 
       if(tipo === 'Papel Fotografico'){
         const unidade = parseInt(document.getElementById('unidade-papel-entrada').value || '1');
