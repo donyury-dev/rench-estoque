@@ -740,6 +740,8 @@ def init_db():
 
     cur.execute("ALTER TABLE estoque ADD COLUMN IF NOT EXISTS nome_exibicao TEXT")
 
+    cur.execute("ALTER TABLE estoque ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT TRUE")
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS estoque_movimentacoes (
             id SERIAL PRIMARY KEY,
@@ -952,14 +954,14 @@ def _chave_estoque(tipo_suprimento, modelo_impressora, marca=None):
 def buscar_ou_criar_estoque(cur, tipo_suprimento, modelo_impressora, marca=None):
     tipo, modelo, marca = _chave_estoque(tipo_suprimento, modelo_impressora, marca)
     cur.execute(
-        "SELECT id, quantidade FROM estoque WHERE tipo_suprimento=%s AND modelo_impressora=%s AND COALESCE(marca,'')=%s",
+        "SELECT id, quantidade FROM estoque WHERE tipo_suprimento=%s AND modelo_impressora=%s AND COALESCE(marca,'')=%s AND ativo=TRUE",
         (tipo, modelo, marca or '')
     )
     row = cur.fetchone()
     if row:
         return row['id'], row['quantidade']
     cur.execute(
-        "INSERT INTO estoque (tipo_suprimento, modelo_impressora, marca, quantidade) VALUES (%s, %s, %s, 0) RETURNING id",
+        "INSERT INTO estoque (tipo_suprimento, modelo_impressora, marca, quantidade, ativo) VALUES (%s, %s, %s, 0, TRUE) RETURNING id",
         (tipo, modelo, marca)
     )
     return cur.fetchone()['id'], 0
@@ -981,7 +983,7 @@ def movimentar_estoque(cur, estoque_id, tipo_movimento, quantidade, saldo_antes,
 def verificar_saldo(cur, tipo_suprimento, modelo_impressora, quantidade, marca=None):
     tipo, modelo, marca = _chave_estoque(tipo_suprimento, modelo_impressora, marca)
     cur.execute(
-        "SELECT quantidade FROM estoque WHERE tipo_suprimento=%s AND modelo_impressora=%s AND COALESCE(marca,'')=%s",
+        "SELECT quantidade FROM estoque WHERE tipo_suprimento=%s AND modelo_impressora=%s AND COALESCE(marca,'')=%s AND ativo=TRUE",
         (tipo, modelo, marca or '')
     )
     row = cur.fetchone()
@@ -2329,7 +2331,7 @@ def suprimento_mobile():
                 ORDER BY emp.tipo DESC, emp.nome, u.nome
             """)
             locais = cur.fetchall()
-            cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade, estoque_minimo FROM estoque ORDER BY tipo_suprimento, modelo_impressora")
+            cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade, estoque_minimo FROM estoque WHERE ativo=TRUE ORDER BY tipo_suprimento, modelo_impressora")
             estoque = cur.fetchall()
             cur.execute("""
                 SELECT m.* FROM modelos_impressora m
@@ -2351,7 +2353,7 @@ def suprimento_mobile():
                 ORDER BY emp.tipo DESC, emp.nome, u.nome
             """)
             locais = cur.fetchall()
-            cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade, estoque_minimo FROM estoque ORDER BY tipo_suprimento, modelo_impressora")
+            cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade, estoque_minimo FROM estoque WHERE ativo=TRUE ORDER BY tipo_suprimento, modelo_impressora")
             estoque = cur.fetchall()
             cur.execute("""
                 SELECT m.* FROM modelos_impressora m
@@ -2387,7 +2389,7 @@ def suprimento_mobile():
                     ORDER BY emp.tipo DESC, emp.nome, u.nome
                 """)
                 locais = cur.fetchall()
-                cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade, estoque_minimo FROM estoque ORDER BY tipo_suprimento, modelo_impressora")
+                cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade, estoque_minimo FROM estoque WHERE ativo=TRUE ORDER BY tipo_suprimento, modelo_impressora")
                 estoque = cur.fetchall()
                 cur.execute("""
                     SELECT m.* FROM modelos_impressora m
@@ -2429,7 +2431,7 @@ def suprimento_mobile():
     """)
     locais = cur.fetchall()
 
-    cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade FROM estoque ORDER BY tipo_suprimento, modelo_impressora")
+    cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade FROM estoque WHERE ativo=TRUE ORDER BY tipo_suprimento, modelo_impressora")
     estoque = cur.fetchall()
 
     cur.execute("""
@@ -2994,7 +2996,7 @@ def controle_estoque():
     busca = request.args.get('q', '').strip()
     status = request.args.get('status', '').strip()
 
-    sql = "SELECT * FROM estoque WHERE 1=1"
+    sql = "SELECT * FROM estoque WHERE ativo = TRUE"
     params = []
     if busca:
         sql += """ AND (
@@ -3240,15 +3242,51 @@ def estoque_excluir(estoque_id):
         flash('Item nao encontrado.', 'danger')
         return redirect(url_for('controle_estoque'))
 
-    cur.execute("SELECT COUNT(*) as total FROM estoque_movimentacoes WHERE estoque_id=%s", (estoque_id,))
-    if cur.fetchone()['total'] > 0:
-        flash('Nao e possivel excluir este item porque ele possui historico de movimentacoes. Ajuste o saldo para zero ou entre em contato.', 'danger')
-        return redirect(url_for('controle_estoque'))
-
-    cur.execute("DELETE FROM estoque WHERE id=%s", (estoque_id,))
+    cur.execute("UPDATE estoque SET ativo=FALSE, data_atualizacao=CURRENT_TIMESTAMP WHERE id=%s", (estoque_id,))
     db.commit()
-    flash('Item de estoque excluido com sucesso!', 'success')
+    flash('Item de estoque arquivado com sucesso! Ele ainda pode ser reativado pela tela de arquivados.', 'success')
     return redirect(url_for('controle_estoque'))
+
+
+@app.route('/estoque/arquivados')
+@login_required
+def estoque_arquivados():
+    db = get_db()
+    cur = db.cursor()
+
+    busca = request.args.get('q', '').strip()
+
+    sql = "SELECT * FROM estoque WHERE ativo = FALSE"
+    params = []
+    if busca:
+        sql += """ AND (
+            lower(tipo_suprimento) LIKE lower(%s)
+            OR lower(modelo_impressora) LIKE lower(%s)
+        )"""
+        params.extend([f'%{busca}%', f'%{busca}%'])
+    sql += " ORDER BY modelo_impressora, tipo_suprimento"
+    cur.execute(sql, params)
+    itens = cur.fetchall()
+
+    return render_template('estoque_arquivados.html', itens=itens, busca=busca)
+
+
+@app.route('/estoque/reativar/<int:estoque_id>', methods=['POST'])
+@login_required
+def estoque_reativar(estoque_id):
+    db = get_db()
+    cur = db.cursor()
+
+    cur.execute("SELECT * FROM estoque WHERE id=%s", (estoque_id,))
+    item = cur.fetchone()
+    if not item:
+        flash('Item nao encontrado.', 'danger')
+        return redirect(url_for('estoque_arquivados'))
+
+    cur.execute("UPDATE estoque SET ativo=TRUE, data_atualizacao=CURRENT_TIMESTAMP WHERE id=%s", (estoque_id,))
+    db.commit()
+    flash('Item de estoque reativado com sucesso!', 'success')
+    return redirect(url_for('estoque_arquivados'))
 
 
 @app.route('/estoque/auditoria')

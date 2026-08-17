@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Itens Arquivados - RENCH{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Itens Arquivados</h1>
+    <p class="text-muted mb-0">Itens de estoque ocultos da tela principal</p>
+  </div>
+  <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-secondary">Voltar ao estoque</a>
+</div>
+
+<div class="filter-bar">
+  <form method="GET" class="d-flex flex-wrap gap-2 align-items-center w-100">
+    <div class="input-group" style="max-width:320px;">
+      <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+      <input type="text" class="form-control border-start-0" name="q" value="{{busca}}" placeholder="Buscar por tipo ou modelo...">
+    </div>
+    <button type="submit" class="btn btn-outline-primary"><i class="bi bi-funnel"></i> Filtrar</button>
+    <a href="{{url_for('estoque_arquivados')}}" class="btn btn-outline-secondary">Limpar</a>
+  </form>
+</div>
+
+{% if itens %}
+<div class="card card-dashboard mb-3">
+  <div class="table-responsive">
+    <table class="table table-rench mb-0">
+      <thead>
+        <tr>
+          <th>Suprimento</th>
+          <th>Modelo</th>
+          <th>Marca</th>
+          <th class="text-center">Qtd</th>
+          <th class="text-center">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in itens %}
+        <tr>
+          <td><span class="badge bg-soft-secondary">{{item.nome_exibicao or item.tipo_suprimento}}</span></td>
+          <td>{{ 'Papel Fotográfico' if item.modelo_impressora == '-' else (item.modelo_impressora or '-') }}</td>
+          <td>{% if item.marca %}<span class="badge bg-light text-dark border">{{item.marca}}</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
+          <td class="text-center fw-bold">{{item.quantidade}}</td>
+          <td class="text-center">
+            <form method="POST" action="{{url_for('estoque_reativar', estoque_id=item.id)}}" style="display:inline;">
+              <button type="submit" class="btn btn-sm btn-outline-success" title="Reativar item"><i class="bi bi-arrow-counterclockwise"></i> Reativar</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+  <i class="bi bi-archive" style="font-size:48px;"></i>
+  <p class="mt-3 mb-0">Nenhum item arquivado.</p>
+  <a href="{{url_for('controle_estoque')}}" class="btn btn-rench-primary mt-3">Voltar ao estoque</a>
+</div>
+{% endif %}
+{% endblock %}
