@@ -3993,7 +3993,7 @@ def mobile_equipamentos():
     tipos = cur.fetchall()
 
     return render_template('mobile_app.html', vapid_public_key=VAPID_PUBLIC_KEY, modulo='equipamentos', aba='equipamentos',
-                           equipamentos=equipamentos, unidades=unidades, tipos=tipos, filtro_q=busca,
+                           equipamentos=equipamentos, unidades=locais, tipos=tipos, filtro_q=busca,
                            filtro_tipo=tipo, filtro_unidade_id=unidade_id)
 
 
