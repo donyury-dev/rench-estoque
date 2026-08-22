@@ -209,7 +209,7 @@
       <main>
       <!-- ABA ENTREGA -->
       <div id="aba-entrega" class="tab-content {{'active' if aba=='entrega' else ''}}">
-        <form method="POST" id="form-mobile" onsubmit="converterPapelEntrega()">
+        <form method="POST" id="form-mobile" onsubmit="return enviarEntregaUnica(this)">
           <div class="scroll-area">
             {% with msgs = get_flashed_messages(with_categories=true) %}
               {% if msgs %}
@@ -1729,6 +1729,15 @@
       const unidade = parseInt(sel.value || '1');
       qtdInput.dataset.original = qtd;
       qtdInput.value = qtd * unidade;
+    }
+
+    function enviarEntregaUnica(form){
+      converterPapelEntrega();
+      const btn = form.querySelector('button[type="submit"]');
+      if(btn.disabled) return false;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Salvando...';
+      return true;
     }
 
     function converterPapelEntrega(){
