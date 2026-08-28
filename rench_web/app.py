@@ -3032,15 +3032,69 @@ def controle_estoque():
             modelo = 'Papel Fotográfico'
         grupos.setdefault(modelo, []).append(r)
 
-    # Ordenar por modelo, depois por tipo e marca
+    # Ordenar por tipo base (Toner, Drum, etc.), depois cor, depois marca
+    ordem_tipo = {'Toner': 1, 'Drum': 2, 'Fusor': 3, 'Transfer': 4, 'Coletor': 5, 'Papel': 6}
+    ordem_cor = {'Black': 0, 'Ciano': 1, 'Magenta': 2, 'Amarelo': 3, 'Yellow': 3}
+
+    def _tipo_base(tipo):
+        t = (tipo or '').strip()
+        for nome in ['Toner', 'Drum', 'Fusor', 'Transfer', 'Coletor', 'Papel']:
+            if t.startswith(nome):
+                return nome
+        return t.split()[0] if t else ''
+
+    def _cor(tipo):
+        t = (tipo or '').strip()
+        for c in ['Black', 'Ciano', 'Magenta', 'Amarelo', 'Yellow']:
+            if c in t:
+                return c
+        return ''
+
+    def _chave_ordenacao(item):
+        tipo = item['tipo_suprimento'] or ''
+        base = _tipo_base(tipo)
+        cor = _cor(tipo)
+        return (
+            ordem_tipo.get(base, 99),
+            ordem_cor.get(cor, 99),
+            base,
+            cor,
+            item['marca'] or ''
+        )
+
+    def _categoria(tipo):
+        base = _tipo_base(tipo)
+        cores = []
+        if 'Toner' in (tipo or ''):
+            cores = ['Black', 'Ciano', 'Magenta', 'Amarelo']
+            cor = _cor(tipo)
+            if cor:
+                return f'Toner ({cor})'
+            return 'Toner'
+        if 'Drum' in (tipo or ''):
+            cor = _cor(tipo)
+            if cor:
+                return f'Drum ({cor})'
+            return 'Drum'
+        return base
+
     for chave in grupos:
-        grupos[chave].sort(key=lambda x: (x['modelo_impressora'] or '', x['tipo_suprimento'], x['marca'] or ''))
+        grupos[chave].sort(key=_chave_ordenacao)
+
+    # Agrupar itens de cada modelo por categoria
+    grupos_categorizados = {}
+    for modelo, itens in grupos.items():
+        cats = {}
+        for item in itens:
+            cat = _categoria(item['tipo_suprimento'])
+            cats.setdefault(cat, []).append(item)
+        grupos_categorizados[modelo] = cats
 
     resumo = {'ok': 0, 'baixo': 0, 'zerado': 0}
     for r in resultado:
         resumo[r['status']] += 1
 
-    return render_template('estoque.html', itens=resultado, grupos=grupos, busca=busca, filtro_status=status, resumo=resumo)
+    return render_template('estoque.html', itens=resultado, grupos=grupos_categorizados, busca=busca, filtro_status=status, resumo=resumo)
 
 
 @app.route('/estoque/entrada', methods=['GET', 'POST'])

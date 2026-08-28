@@ -154,30 +154,39 @@
         </tr>
       </thead>
       <tbody>
-        {% for item in grupo %}
-        <tr>
-          <td><span class="badge bg-soft-primary">{{item.nome_exibicao or item.tipo_suprimento}}</span></td>
-          <td>{% if item.marca %}<span class="badge bg-light text-dark border">{{item.marca}}</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
-          <td class="text-center fw-bold">{{item.quantidade}}</td>
-          <td class="text-center">{{item.estoque_minimo}}</td>
-          <td class="text-center">
-            {% if item.status == 'ok' %}
-              <span class="badge bg-soft-success">OK</span>
-            {% elif item.status == 'baixo' %}
-              <span class="badge bg-soft-warning">Baixo</span>
-            {% else %}
-              <span class="badge bg-soft-danger">Em falta</span>
-            {% endif %}
-          </td>
-          <td class="text-center">
-            <a href="{{url_for('estoque_ajuste', estoque_id=item.id)}}" class="btn btn-sm btn-outline-primary me-1" title="Ajustar saldo"><i class="bi bi-pencil"></i></a>
-            <a href="{{url_for('estoque_historico', estoque_id=item.id)}}" class="btn btn-sm btn-outline-secondary me-1" title="Ver histórico"><i class="bi bi-clock-history"></i></a>
-            <a href="{{url_for('estoque_editar', estoque_id=item.id)}}" class="btn btn-sm btn-outline-dark me-1" title="Editar item"><i class="bi bi-pencil-square"></i></a>
-            <form method="POST" action="{{url_for('estoque_excluir', estoque_id=item.id)}}" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este item?');">
-              <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir item"><i class="bi bi-trash"></i></button>
-            </form>
-          </td>
-        </tr>
+        {% for categoria, itens_categoria in grupo.items() %}
+        <tbody class="table-group-divider">
+          <tr class="table-light">
+            <td colspan="6" class="fw-bold" style="background:#f8f9fa;color:var(--primary);font-size:14px;padding:10px 18px;">
+              <i class="bi bi-collection me-1"></i> {{categoria}}
+            </td>
+          </tr>
+          {% for item in itens_categoria %}
+          <tr>
+            <td><span class="badge bg-soft-primary">{{item.nome_exibicao or item.tipo_suprimento}}</span></td>
+            <td>{% if item.marca %}<span class="badge bg-light text-dark border">{{item.marca}}</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
+            <td class="text-center fw-bold">{{item.quantidade}}</td>
+            <td class="text-center">{{item.estoque_minimo}}</td>
+            <td class="text-center">
+              {% if item.status == 'ok' %}
+                <span class="badge bg-soft-success">OK</span>
+              {% elif item.status == 'baixo' %}
+                <span class="badge bg-soft-warning">Baixo</span>
+              {% else %}
+                <span class="badge bg-soft-danger">Em falta</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <a href="{{url_for('estoque_ajuste', estoque_id=item.id)}}" class="btn btn-sm btn-outline-primary me-1" title="Ajustar saldo"><i class="bi bi-pencil"></i></a>
+              <a href="{{url_for('estoque_historico', estoque_id=item.id)}}" class="btn btn-sm btn-outline-secondary me-1" title="Ver histórico"><i class="bi bi-clock-history"></i></a>
+              <a href="{{url_for('estoque_editar', estoque_id=item.id)}}" class="btn btn-sm btn-outline-dark me-1" title="Editar item"><i class="bi bi-pencil-square"></i></a>
+              <form method="POST" action="{{url_for('estoque_excluir', estoque_id=item.id)}}" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este item?');">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir item"><i class="bi bi-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
         {% endfor %}
       </tbody>
     </table>
