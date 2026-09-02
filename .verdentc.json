@@ -1,6 +1,6 @@
 {
   "deploy": {
     "type": "fullstack",
-    "rootDir": "rench_web"
+    "rootDir": "."
   }
 }
