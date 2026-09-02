@@ -13,7 +13,9 @@ from urllib.parse import urlparse
 from pywebpush import webpush, WebPushException
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'rench_estoque_2026_segredo')
+app.secret_key = os.environ.get('SECRET_KEY')
+if not app.secret_key:
+    raise RuntimeError('A variável de ambiente SECRET_KEY precisa ser configurada.')
 
 VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
 VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
@@ -25,8 +27,9 @@ PLANILHA_PADRAO = os.path.join(os.path.dirname(BASE_DIR), 'data_atual.xlsx')
 # Usar Supabase/Postgres via variavel de ambiente DATABASE_URL.
 # ATENCAO: o fallback abaixo aponta para o banco de PRODUCAO. Se DATABASE_URL nao
 # estiver definida, qualquer script rodado localmente escreve direto em producao.
-DATABASE_URL_FALLBACK_PRODUCAO = 'postgresql://postgres.yfxfmwrasjukbsjjqbzs:kaio82046697@aws-1-us-west-2.pooler.supabase.com:6543/postgres'
-DATABASE_URL = os.environ.get('DATABASE_URL') or DATABASE_URL_FALLBACK_PRODUCAO
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if not DATABASE_URL:
+    raise RuntimeError('A variável de ambiente DATABASE_URL precisa ser configurada.')
 USANDO_BANCO_PRODUCAO_POR_FALLBACK = not os.environ.get('DATABASE_URL')
 
 if USANDO_BANCO_PRODUCAO_POR_FALLBACK:
