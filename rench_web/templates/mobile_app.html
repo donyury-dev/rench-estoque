@@ -373,7 +373,6 @@
                   <option value="" disabled selected>Selecione...</option>
                   <option value="Toner">Toner</option>
                   <option value="Drum">Drum</option>
-                  <option value="Drum para Transformar">Drum para Transformar</option>
                   <option value="Fusor">Fusor</option>
                   <option value="Transfer">Transfer</option>
                   <option value="Coletor">Coletor</option>
@@ -839,8 +838,9 @@
               </div>
 
               <div class="form-group">
-                <label>Observações</label>
-                <textarea name="observacoes" rows="2" placeholder="Observações gerais"></textarea>
+                <label>Forma de envio / observações *</label>
+                <select id="tipo-observacao-mobile" required><option value="">Selecione uma opção...</option><option>Enviado via motoboy</option><option>Enviado via correio</option><option>Deixado na unidade</option><option>Retirado no local</option><option>Outro</option></select>
+                <textarea name="observacoes" id="observacoes-entrega-mobile" rows="2" placeholder="Detalhes adicionais da entrega" required></textarea>
               </div>
             </div>
             <button type="submit" class="btn-block">Salvar Equipamento</button>

@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block title %}Nova Entrega - RENCH Estoque{% endblock %}
-
 {% block content %}
 <div class="page-header">
   <div>
@@ -43,8 +42,8 @@
           </select>
         </div>
         <div class="mb-0">
-          <label class="form-label fw-bold">Observações gerais</label>
-          <textarea class="form-control" name="observacoes" rows="4" placeholder="Ex: atendimento urgente, chamado #123..." required></textarea>
+          <label class="form-label fw-bold">Forma de envio / observações</label>
+          <select class="form-select mb-2" id="tipo-observacao" required><option value="">Selecione uma opção...</option><option value="Enviado via motoboy">Enviado via motoboy</option><option value="Enviado via correio">Enviado via correio</option><option value="Deixado na unidade">Deixado na unidade</option><option value="Retirado no local">Retirado no local</option><option value="Outro">Outro</option></select><textarea class="form-control" name="observacoes" id="observacoes-entrega" rows="3" placeholder="Detalhes adicionais da entrega" required></textarea>
         </div>
       </div>
     </div>
@@ -66,7 +65,6 @@
                 <option value="" disabled selected>Selecione...</option>
                 <option value="Toner">Toner</option>
                 <option value="Drum">Drum</option>
-                <option value="Drum para Transformar">Drum para Transformar</option>
                 <option value="Fusor">Fusor</option>
                 <option value="Transfer">Transfer</option>
                 <option value="Coletor">Coletor</option>
