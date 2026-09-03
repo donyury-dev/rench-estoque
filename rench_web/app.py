@@ -3084,12 +3084,20 @@ def controle_estoque():
     for chave in grupos:
         grupos[chave].sort(key=_chave_ordenacao)
 
-    # Agrupar itens de cada modelo por categoria
+    # Modelos com mais de 8 itens e variacoes de Toner/Drum usam grupos
+    # consolidados por tipo, mantendo as cores como linhas internas.
     grupos_categorizados = {}
     for modelo, itens in grupos.items():
         cats = {}
+        tipos_com_variacao = {
+            _tipo_base(item['tipo_suprimento'])
+            for item in itens
+            if _tipo_base(item['tipo_suprimento']) in ('Toner', 'Drum')
+        }
+        agrupar_variacoes = len(itens) > 8 and len(tipos_com_variacao) > 0
         for item in itens:
-            cat = _categoria(item['tipo_suprimento'])
+            base = _tipo_base(item['tipo_suprimento'])
+            cat = base if agrupar_variacoes and base in ('Toner', 'Drum') else _categoria(item['tipo_suprimento'])
             cats.setdefault(cat, []).append(item)
         grupos_categorizados[modelo] = cats
 

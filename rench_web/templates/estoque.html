@@ -163,7 +163,16 @@
           </tr>
           {% for item in itens_categoria %}
           <tr>
-            <td><span class="badge bg-soft-primary">{{item.nome_exibicao or item.tipo_suprimento}}</span></td>
+            <td>
+              <span class="badge bg-soft-primary">{{item.nome_exibicao or item.tipo_suprimento}}</span>
+              {% if categoria in ('Toner', 'Drum') %}
+                {% set ns = namespace(cor='') %}
+                {% for cor in ('Black', 'Ciano', 'Magenta', 'Amarelo', 'Yellow') %}
+                  {% if cor in (item.tipo_suprimento or '') %}{% set ns.cor = cor %}{% endif %}
+                {% endfor %}
+                {% if ns.cor %}<span class="text-muted small ms-1">({{ns.cor}})</span>{% endif %}
+              {% endif %}
+            </td>
             <td>{% if item.marca %}<span class="badge bg-light text-dark border">{{item.marca}}</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
             <td class="text-center fw-bold">{{item.quantidade}}</td>
             <td class="text-center">{{item.estoque_minimo}}</td>
