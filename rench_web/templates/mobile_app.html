@@ -282,7 +282,7 @@
                 <option value="Retirado no local">Retirado no local</option>
                 <option value="Outro">Outro</option>
               </select>
-              <textarea name="observacoes" id="observacoes-entrega-mobile" rows="2" placeholder="Detalhes adicionais da entrega" required></textarea>
+              <textarea name="observacoes" id="observacoes-entrega-mobile" rows="2" placeholder="Detalhes adicionais da entrega"></textarea>
             </div>
           </div>
 
@@ -1755,13 +1755,16 @@
       converterPapelEntrega();
       const tipoObservacao = document.getElementById('tipo-observacao-mobile');
       const observacoes = document.getElementById('observacoes-entrega-mobile');
-      if(!tipoObservacao?.value || !observacoes?.value.trim()){
-        alert('Selecione a forma de envio e informe os detalhes da entrega.');
+      if(!tipoObservacao?.value){
+        alert('Selecione a forma de envio.');
         return false;
       }
-      if(tipoObservacao.value === 'Outro' && !observacoes.value.trim()){
+      if(tipoObservacao.value === 'Outro' && !observacoes?.value.trim()){
         alert('Descreva a forma de envio em observações.');
         return false;
+      }
+      if(tipoObservacao.value !== 'Outro' && !observacoes.value.trim()){
+        observacoes.value = tipoObservacao.value;
       }
       if(tipoObservacao.value !== 'Outro' && !observacoes.value.trim()){
         observacoes.value = tipoObservacao.value;

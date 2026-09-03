@@ -51,7 +51,7 @@
             <option value="Retirado no local">Retirado no local</option>
             <option value="Outro">Outro</option>
           </select>
-          <textarea class="form-control" name="observacoes" id="observacoes-entrega" rows="3" placeholder="Detalhes adicionais da entrega" required></textarea>
+          <textarea class="form-control" name="observacoes" id="observacoes-entrega" rows="3" placeholder="Detalhes adicionais da entrega"></textarea>
         </div>
       </div>
     </div>
@@ -309,8 +309,13 @@ document.getElementById('form-suprimento').addEventListener('submit', function(e
     tipoObservacao.focus();
     return;
   }
-  if(!observacoes.value.trim()){
+  if(tipoObservacao.value !== 'Outro' && !observacoes.value.trim()){
     observacoes.value = tipoObservacao.value;
+  }
+  if(tipoObservacao.value === 'Outro' && !observacoes.value.trim()){
+    e.preventDefault();
+    observacoes.focus();
+    return;
   }
   container.querySelectorAll('.item-row').forEach(row => {
     normalizarCampoModelo(row.querySelector('.modelo-input'));
