@@ -273,7 +273,15 @@
 
             <div class="card">
               <div class="card-title"><i class="bi bi-journal-text"></i> Observações *</div>
-              <textarea name="observacoes" rows="2" placeholder="Algo importante sobre a entrega" required></textarea>
+              <select id="tipo-observacao-mobile" required>
+                <option value="">Selecione a forma de envio...</option>
+                <option value="Enviado via motoboy">Enviado via motoboy</option>
+                <option value="Enviado via correio">Enviado via correio</option>
+                <option value="Deixado na unidade">Deixado na unidade</option>
+                <option value="Retirado no local">Retirado no local</option>
+                <option value="Outro">Outro</option>
+              </select>
+              <textarea name="observacoes" id="observacoes-entrega-mobile" rows="2" placeholder="Detalhes adicionais da entrega" required></textarea>
             </div>
           </div>
 
@@ -839,8 +847,8 @@
 
               <div class="form-group">
                 <label>Forma de envio / observações *</label>
-                <select id="tipo-observacao-mobile" required><option value="">Selecione uma opção...</option><option>Enviado via motoboy</option><option>Enviado via correio</option><option>Deixado na unidade</option><option>Retirado no local</option><option>Outro</option></select>
-                <textarea name="observacoes" id="observacoes-entrega-mobile" rows="2" placeholder="Detalhes adicionais da entrega" required></textarea>
+              <select id="tipo-observacao-equipamento" required><option value="">Selecione uma opção...</option><option>Enviado via motoboy</option><option>Enviado via correio</option><option>Deixado na unidade</option><option>Retirado no local</option><option>Outro</option></select>
+                <textarea name="observacoes" rows="2" placeholder="Observações do equipamento"></textarea>
               </div>
             </div>
             <button type="submit" class="btn-block">Salvar Equipamento</button>
@@ -1733,6 +1741,19 @@
 
     function enviarEntregaUnica(form){
       converterPapelEntrega();
+      const tipoObservacao = document.getElementById('tipo-observacao-mobile');
+      const observacoes = document.getElementById('observacoes-entrega-mobile');
+      if(!tipoObservacao?.value || !observacoes?.value.trim()){
+        alert('Selecione a forma de envio e informe os detalhes da entrega.');
+        return false;
+      }
+      if(tipoObservacao.value === 'Outro' && !observacoes.value.trim()){
+        alert('Descreva a forma de envio em observações.');
+        return false;
+      }
+      if(tipoObservacao.value !== 'Outro' && !observacoes.value.trim()){
+        observacoes.value = tipoObservacao.value;
+      }
       const btn = form.querySelector('button[type="submit"]');
       if(btn.disabled) return false;
       btn.disabled = true;

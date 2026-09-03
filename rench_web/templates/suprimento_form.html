@@ -43,7 +43,15 @@
         </div>
         <div class="mb-0">
           <label class="form-label fw-bold">Forma de envio / observações</label>
-          <select class="form-select mb-2" id="tipo-observacao" required><option value="">Selecione uma opção...</option><option value="Enviado via motoboy">Enviado via motoboy</option><option value="Enviado via correio">Enviado via correio</option><option value="Deixado na unidade">Deixado na unidade</option><option value="Retirado no local">Retirado no local</option><option value="Outro">Outro</option></select><textarea class="form-control" name="observacoes" id="observacoes-entrega" rows="3" placeholder="Detalhes adicionais da entrega" required></textarea>
+          <select class="form-select mb-2" id="tipo-observacao" required>
+            <option value="">Selecione a forma de envio...</option>
+            <option value="Enviado via motoboy">Enviado via motoboy</option>
+            <option value="Enviado via correio">Enviado via correio</option>
+            <option value="Deixado na unidade">Deixado na unidade</option>
+            <option value="Retirado no local">Retirado no local</option>
+            <option value="Outro">Outro</option>
+          </select>
+          <textarea class="form-control" name="observacoes" id="observacoes-entrega" rows="3" placeholder="Detalhes adicionais da entrega" required></textarea>
         </div>
       </div>
     </div>
@@ -294,6 +302,16 @@ function atualizarLinha(sel){
 
 // ao enviar, combina tipo + cor se houver e converte papel para folhas
 document.getElementById('form-suprimento').addEventListener('submit', function(e){
+  const tipoObservacao = document.getElementById('tipo-observacao');
+  const observacoes = document.getElementById('observacoes-entrega');
+  if(!tipoObservacao.value){
+    e.preventDefault();
+    tipoObservacao.focus();
+    return;
+  }
+  if(!observacoes.value.trim()){
+    observacoes.value = tipoObservacao.value;
+  }
   container.querySelectorAll('.item-row').forEach(row => {
     normalizarCampoModelo(row.querySelector('.modelo-input'));
     const tipoSelect = row.querySelector('[name="tipo_suprimento[]"]');
