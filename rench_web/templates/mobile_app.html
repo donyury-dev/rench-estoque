@@ -146,6 +146,7 @@
     .modelo-item .qtd.zerado{color:#850001;}
     .acoes-mini{display:flex;gap:5px;margin-top:4px;}
     .btn-mini{background:#fff;border:1px solid #850001;color:#850001;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:700;}
+    .mobile-categoria{margin:8px 0 2px;padding:6px 8px;border-bottom:1px solid #eee;color:#850001;font-size:13px;font-weight:700;}
 
     .hist-item{background:#fff;border:1px solid #ddd;border-radius:10px;padding:10px 12px;margin-bottom:8px;}
     .hist-item .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
@@ -313,6 +314,7 @@
 
               {% for modelo in modelos|sort %}
               {% set itens_modelo = modelos[modelo] %}
+              {% set agrupar_variacoes = itens_modelo|length > 8 %}
               {% set qtd_zerado = itens_modelo|selectattr('quantidade','equalto',0)|list|length %}
               {% set qtd_baixo = itens_modelo|selectattr('quantidade','lessthan',2)|list|length %}
               {% set alerta_texto = '' %}
@@ -341,7 +343,16 @@
                   <i class="bi bi-chevron-down seta"></i>
                 </div>
                 <div class="modelo-itens" id="itens-{{loop.index}}">
-                  {% for e in itens_modelo|sort(attribute='tipo_suprimento') %}
+                  {% set ns = namespace(categorias={}) %}
+                  {% for e in itens_modelo %}
+                    {% set base = 'Toner' if e.tipo_suprimento.startswith('Toner') else ('Drum' if e.tipo_suprimento.startswith('Drum') else e.tipo_suprimento) %}
+                    {% set categoria = base if agrupar_variacoes and base in ('Toner', 'Drum') else e.tipo_suprimento %}
+                    {% if categoria not in ns.categorias %}{% set _ = ns.categorias.update({categoria: []}) %}{% endif %}
+                    {% set _ = ns.categorias[categoria].append(e) %}
+                  {% endfor %}
+                  {% for categoria, itens_categoria in ns.categorias.items() %}
+                  <div class="mobile-categoria">{{categoria}}</div>
+                  {% for e in itens_categoria|sort(attribute='tipo_suprimento') %}
                   <div class="modelo-item">
                     <div class="info">
                       <div class="nome">{{e.tipo_suprimento}}{% if e.marca %} <span style="font-size:11px;color:#850001;">({{e.marca}})</span>{% endif %}</div>
@@ -354,6 +365,7 @@
                       {{e.quantidade}}
                     </div>
                   </div>
+                  {% endfor %}
                   {% endfor %}
                 </div>
               </div>
