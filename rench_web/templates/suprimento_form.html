@@ -51,7 +51,7 @@
             <option value="Retirado no local">Retirado no local</option>
             <option value="Outro">Outro</option>
           </select>
-          <textarea class="form-control" name="observacoes" id="observacoes-entrega" rows="3" placeholder="Detalhes adicionais da entrega"></textarea>
+          <textarea class="form-control" name="observacoes" id="observacoes-entrega" rows="3" placeholder="Digite os detalhes somente se escolher Outro" style="display:none"></textarea>
         </div>
       </div>
     </div>
@@ -343,6 +343,13 @@ document.getElementById('form-suprimento').addEventListener('submit', function(e
       qtdInput.value = qtd * unidade;
     }
   });
+});
+document.getElementById('tipo-observacao').addEventListener('change', function(){
+  const observacoes = document.getElementById('observacoes-entrega');
+  const outro = this.value === 'Outro';
+  observacoes.style.display = outro ? 'block' : 'none';
+  observacoes.required = outro;
+  if(!outro) observacoes.value = '';
 });
 
 // Busca de unidade: sincroniza o input de texto com o hidden de unidade_id

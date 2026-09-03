@@ -282,7 +282,7 @@
                 <option value="Retirado no local">Retirado no local</option>
                 <option value="Outro">Outro</option>
               </select>
-              <textarea name="observacoes" id="observacoes-entrega-mobile" rows="2" placeholder="Detalhes adicionais da entrega"></textarea>
+              <textarea name="observacoes" id="observacoes-entrega-mobile" rows="2" placeholder="Digite os detalhes somente se escolher Outro" style="display:none"></textarea>
             </div>
           </div>
 
@@ -1775,6 +1775,16 @@
       btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Salvando...';
       return true;
     }
+
+    document.addEventListener('change', function(event){
+      if(event.target.id !== 'tipo-observacao-mobile') return;
+      const observacoes = document.getElementById('observacoes-entrega-mobile');
+      if(!observacoes) return;
+      const outro = event.target.value === 'Outro';
+      observacoes.style.display = outro ? 'block' : 'none';
+      observacoes.required = outro;
+      if(!outro) observacoes.value = '';
+    });
 
     function converterPapelEntrega(){
       document.querySelectorAll('#itens-container .item-box').forEach(card => {
