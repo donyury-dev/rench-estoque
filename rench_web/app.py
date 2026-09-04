@@ -1552,8 +1552,8 @@ def novo_equipamento():
             cur.execute("SELECT u.nome, e.nome FROM unidades u JOIN empresas e ON e.id=u.empresa_id WHERE u.id=%s", (unidade_id,))
             unidade = cur.fetchone()
             if unidade:
-                local_atual_nome = unidade[0]
-                cliente_atual = unidade[1]
+                local_atual_nome = unidade['nome']
+                cliente_atual = unidade['nome_1']
             else:
                 cliente_atual = None
         else:
@@ -4135,8 +4135,8 @@ def mobile_equipamento_novo():
             """, (unidade_id,))
             unidade = cur.fetchone()
             if unidade:
-                local_atual_nome = unidade[0]
-                cliente_atual = unidade[1]
+                local_atual_nome = unidade['nome']
+                cliente_atual = unidade['nome_1']
 
         campos = {
             'codigo': gerar_codigo_rastreio(cur, tipo),
