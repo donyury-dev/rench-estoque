@@ -38,6 +38,15 @@
           <option value="inativo" {{'selected' if equip.status=='inativo' else ''}}>Inativo</option>
         </select>
       </div>
+      <div class="col-md-3">
+        <label class="form-label fw-bold">Condição de uso *</label>
+        <select name="condicao_uso" class="form-select" required>
+          <option value="boa" {{'selected' if equip.condicao_uso=='boa' else ''}}>Boa — pronta para uso</option>
+          <option value="defeito" {{'selected' if equip.condicao_uso=='defeito' else ''}}>Com defeito</option>
+          <option value="manutencao" {{'selected' if equip.condicao_uso=='manutencao' else ''}}>Em manutenção</option>
+          <option value="nao_informada" {{'selected' if not equip.condicao_uso or equip.condicao_uso=='nao_informada' else ''}}>Não informada</option>
+        </select>
+      </div>
 
       <div class="col-md-4">
         <label class="form-label fw-bold">Fabricante</label>

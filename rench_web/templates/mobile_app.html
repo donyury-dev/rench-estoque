@@ -146,6 +146,11 @@
     .modelo-item .qtd.zerado{color:#850001;}
     .acoes-mini{display:flex;gap:5px;margin-top:4px;}
     .btn-mini{background:#fff;border:1px solid #850001;color:#850001;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:700;}
+    .condicao-mobile{display:inline-block;margin-top:5px;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700;}
+    .condicao-boa{background:#d1e7dd;color:#0f5132;}
+    .condicao-defeito{background:#f8d7da;color:#842029;}
+    .condicao-manutencao{background:#fff3cd;color:#664d03;}
+    .condicao-nao-informada{background:#e2e3e5;color:#41464b;}
     .mobile-categoria{margin:8px 0 2px;padding:6px 8px;border-bottom:1px solid #eee;color:#850001;font-size:13px;font-weight:700;}
 
     .hist-item{background:#fff;border:1px solid #ddd;border-radius:10px;padding:10px 12px;margin-bottom:8px;}
@@ -709,6 +714,9 @@
                     <span class="badge-tipo">{{e.tipo_equipamento}}</span>
                     <div class="modelo">{{e.modelo or 'Sem modelo'}}</div>
                     <div class="codigo">{{e.codigo}}</div>
+                    <div class="condicao-mobile {{'condicao-boa' if e.condicao_uso=='boa' else ('condicao-defeito' if e.condicao_uso=='defeito' else ('condicao-manutencao' if e.condicao_uso=='manutencao' else 'condicao-nao-informada'))}}">
+                      {{'Boa — pronta para uso' if e.condicao_uso=='boa' else ('Com defeito' if e.condicao_uso=='defeito' else ('Em manutenção' if e.condicao_uso=='manutencao' else 'Condição não informada'))}}
+                    </div>
                   </div>
                 </div>
                 <div class="info">
@@ -762,6 +770,15 @@
               <div class="form-group">
                 <label>Patrimônio</label>
                 <input type="text" name="patrimonio" placeholder="Nº patrimônio">
+              </div>
+              <div class="form-group">
+                <label>Condição de uso *</label>
+                <select name="condicao_uso" required>
+                  <option value="nao_informada" selected>Não informada</option>
+                  <option value="boa">Boa — pronta para uso</option>
+                  <option value="defeito">Com defeito</option>
+                  <option value="manutencao">Em manutenção</option>
+                </select>
               </div>
 
               <div class="form-group">
@@ -949,6 +966,7 @@
               <p><strong>Patrimônio:</strong> {{equip.patrimonio or '-'}}</p>
               <p><strong>Local:</strong> {{equip.local_nome or 'Não definido'}} {{' - ' + equip.setor_equipamento if equip.setor_equipamento else ''}}</p>
               <p><strong>Status:</strong> {{equip.status}}</p>
+              <p><strong>Condição de uso:</strong> <span class="condicao-mobile {{'condicao-boa' if equip.condicao_uso=='boa' else ('condicao-defeito' if equip.condicao_uso=='defeito' else ('condicao-manutencao' if equip.condicao_uso=='manutencao' else 'condicao-nao-informada'))}}">{{'Boa — pronta para uso' if equip.condicao_uso=='boa' else ('Com defeito' if equip.condicao_uso=='defeito' else ('Em manutenção' if equip.condicao_uso=='manutencao' else 'Condição não informada'))}}</span></p>
               {% if equip.tipo_equipamento == 'impressora' %}
                 <p><strong>Contador Mono:</strong> {{equip.contador_mono or 0}}</p>
                 <p><strong>Contador Color:</strong> {{equip.contador_color or 0}}</p>
@@ -1041,6 +1059,15 @@
                   <option value="ativo" {{'selected' if equip.status=='ativo' else ''}}>Ativo</option>
                   <option value="manutencao" {{'selected' if equip.status=='manutencao' else ''}}>Manutenção</option>
                   <option value="inativo" {{'selected' if equip.status=='inativo' else ''}}>Inativo</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Condição de uso *</label>
+                <select name="condicao_uso" required>
+                  <option value="boa" {{'selected' if equip.condicao_uso=='boa' else ''}}>Boa — pronta para uso</option>
+                  <option value="defeito" {{'selected' if equip.condicao_uso=='defeito' else ''}}>Com defeito</option>
+                  <option value="manutencao" {{'selected' if equip.condicao_uso=='manutencao' else ''}}>Em manutenção</option>
+                  <option value="nao_informada" {{'selected' if not equip.condicao_uso or equip.condicao_uso=='nao_informada' else ''}}>Não informada</option>
                 </select>
               </div>
 

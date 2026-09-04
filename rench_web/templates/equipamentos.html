@@ -109,6 +109,9 @@
             <td>
               <span class="badge badge-{{e.tipo_equipamento}} mb-1">{{e.tipo_equipamento}}</span><br>
               <strong>{{e.fabricante or '-'}} {{e.modelo}}</strong>
+              <div class="mt-1"><span class="badge {{'bg-success' if e.condicao_uso=='boa' else ('bg-danger' if e.condicao_uso=='defeito' else ('bg-warning text-dark' if e.condicao_uso=='manutencao' else 'bg-secondary'))}}">
+                {{'Boa — pronta para uso' if e.condicao_uso=='boa' else ('Com defeito' if e.condicao_uso=='defeito' else ('Em manutenção' if e.condicao_uso=='manutencao' else 'Condição não informada'))}}
+              </span></div>
             </td>
             <td>
               <code>{{e.numero_serie or '-'}}</code><br>

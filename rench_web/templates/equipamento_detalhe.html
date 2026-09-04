@@ -28,6 +28,7 @@
         <tr><td class="text-muted">Serial</td><td>{{equip.numero_serie or '-'}}</td></tr>
         <tr><td class="text-muted">Patrimônio/TAG</td><td>{{equip.patrimonio or '-'}}</td></tr>
         <tr><td class="text-muted">Status</td><td><span class="status-badge {{'s-estoque' if equip.status=='ativo' else 's-descartado'}}">{{equip.status}}</span></td></tr>
+        <tr><td class="text-muted">Condição de uso</td><td><span class="badge {{'bg-success' if equip.condicao_uso=='boa' else ('bg-danger' if equip.condicao_uso=='defeito' else ('bg-warning text-dark' if equip.condicao_uso=='manutencao' else 'bg-secondary'))}}">{{'Boa — pronta para uso' if equip.condicao_uso=='boa' else ('Com defeito' if equip.condicao_uso=='defeito' else ('Em manutenção' if equip.condicao_uso=='manutencao' else 'Condição não informada'))}}</span></td></tr>
         <tr><td class="text-muted">Local atual</td><td><strong>{{equip.local_atual_nome or '-'}}</strong></td></tr>
         <tr><td class="text-muted">Setor</td><td>{{equip.setor_equipamento or '-'}}</td></tr>
         <tr><td class="text-muted">Cliente atual</td><td>{{equip.cliente_atual or '-'}}</td></tr>
