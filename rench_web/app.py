@@ -4130,7 +4130,7 @@ def mobile_equipamento_novo():
         cliente_atual = None
         if unidade_id:
             cur.execute("""
-                SELECT u.nome, e.nome FROM unidades u
+                SELECT u.nome AS unidade_nome, e.nome AS empresa_nome FROM unidades u
                 JOIN empresas e ON e.id = u.empresa_id WHERE u.id=%s
             """, (unidade_id,))
             unidade = cur.fetchone()
@@ -4212,8 +4212,8 @@ def mobile_equipamento_editar(equip_id):
             """, (unidade_id,))
             unidade = cur.fetchone()
             if unidade:
-                local_atual_nome = unidade.get('nome') or unidade[0]
-                cliente_atual = unidade.get('nome_1') or unidade[1]
+                local_atual_nome = unidade['unidade_nome']
+                cliente_atual = unidade['empresa_nome']
 
         campos = {
             'fabricante': request.form.get('fabricante'),
