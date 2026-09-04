@@ -4212,8 +4212,8 @@ def mobile_equipamento_editar(equip_id):
             """, (unidade_id,))
             unidade = cur.fetchone()
             if unidade:
-                local_atual_nome = unidade[0]
-                cliente_atual = unidade[1]
+                local_atual_nome = unidade['nome']
+                cliente_atual = unidade['nome_1']
 
         campos = {
             'fabricante': request.form.get('fabricante'),
