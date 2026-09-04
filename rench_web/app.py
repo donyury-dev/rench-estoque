@@ -4207,7 +4207,7 @@ def mobile_equipamento_editar(equip_id):
         cliente_atual = None
         if unidade_id:
             cur.execute("""
-                SELECT u.nome, e.nome FROM unidades u
+                SELECT u.nome AS unidade_nome, e.nome AS empresa_nome FROM unidades u
                 JOIN empresas e ON e.id = u.empresa_id WHERE u.id=%s
             """, (unidade_id,))
             unidade = cur.fetchone()
