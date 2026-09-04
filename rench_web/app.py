@@ -195,6 +195,21 @@ def _executar_migrations():
     db.commit()
     cur.close()
 
+def _garantir_coluna_condicao_uso():
+    db = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            ALTER TABLE equipamentos
+            ADD COLUMN IF NOT EXISTS condicao_uso VARCHAR(30) DEFAULT 'nao_informada'
+        """)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Condition migration warning: {e}")
+    finally:
+        cur.close()
+
 
 def _normalizar_modelos_estoque():
     db = get_db()
@@ -4360,6 +4375,7 @@ def mobile_locais():
 # Inicializa o banco automaticamente se estiver vazio
 with app.app_context():
     init_db()
+    _garantir_coluna_condicao_uso()
     db = get_db()
     cur = db.cursor()
     cur.execute("SELECT COUNT(*) as count FROM equipamentos")
