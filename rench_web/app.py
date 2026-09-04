@@ -1686,8 +1686,17 @@ def editar_equipamento(equip_id):
 
         set_sql = ', '.join([f"{campo}=%s" for campo in campos])
         valores = list(campos.values()) + [equip_id]
-        cur.execute(f"UPDATE equipamentos SET {set_sql} WHERE id=%s", valores)
-        db.commit()
+        try:
+            cur.execute(f"UPDATE equipamentos SET {set_sql} WHERE id=%s", valores)
+            db.commit()
+        except Exception:
+            db.rollback()
+            cur.execute("ALTER TABLE equipamentos ADD COLUMN IF NOT EXISTS condicao_uso VARCHAR(30) DEFAULT 'nao_informada'")
+            db.commit()
+            campos.pop('condicao_uso', None)
+            set_sql = ', '.join([f"{campo}=%s" for campo in campos])
+            cur.execute(f"UPDATE equipamentos SET {set_sql} WHERE id=%s", list(campos.values()) + [equip_id])
+            db.commit()
 
         flash("Equipamento atualizado com sucesso!", "success")
         return redirect(url_for('detalhe_equipamento', equip_id=equip_id))
@@ -4233,8 +4242,17 @@ def mobile_equipamento_editar(equip_id):
             campos[k] = request.form.get(k)
 
         set_sql = ', '.join([f"{k}=%s" for k in campos])
-        cur.execute(f"UPDATE equipamentos SET {set_sql} WHERE id=%s", list(campos.values()) + [equip_id])
-        db.commit()
+        try:
+            cur.execute(f"UPDATE equipamentos SET {set_sql} WHERE id=%s", list(campos.values()) + [equip_id])
+            db.commit()
+        except Exception:
+            db.rollback()
+            cur.execute("ALTER TABLE equipamentos ADD COLUMN IF NOT EXISTS condicao_uso VARCHAR(30) DEFAULT 'nao_informada'")
+            db.commit()
+            campos.pop('condicao_uso', None)
+            set_sql = ', '.join([f"{k}=%s" for k in campos])
+            cur.execute(f"UPDATE equipamentos SET {set_sql} WHERE id=%s", list(campos.values()) + [equip_id])
+            db.commit()
         flash('Equipamento atualizado com sucesso!', 'success')
         return redirect(url_for('mobile_equipamento_detalhe', equip_id=equip_id))
 
