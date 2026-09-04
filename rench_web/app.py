@@ -187,7 +187,9 @@ def _executar_migrations():
     for sql in migracoes:
         try:
             cur.execute(sql)
+            db.commit()
         except Exception as e:
+            db.rollback()
             print(f"Migration warning: {e}")
 
     db.commit()
