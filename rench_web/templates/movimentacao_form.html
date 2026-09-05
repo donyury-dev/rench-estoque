@@ -226,6 +226,13 @@ document.addEventListener('DOMContentLoaded', function() {
 function ajustarMovimento(tipo) {
   const dica = document.getElementById('dica_movimento');
   const empSel = document.getElementById('destino_empresa_id');
+  const unidadeSel = document.getElementById('destino_unidade_id');
+  const buscaUnidade = document.getElementById('busca_destino_unidade');
+  const renchId = Object.keys(destEmpresas).find(id => destEmpresas[id].tipo === 'rench');
+  const assistenciaIds = Object.keys(destEmpresas).filter(id => destEmpresas[id].tipo === 'assistencia');
+  const clienteIds = Object.keys(destEmpresas).filter(id => destEmpresas[id].tipo === 'cliente');
+  const idsPermitidos = tipo === 'envio_manutencao' ? assistenciaIds :
+    (tipo === 'saida_cliente' ? clienteIds : (tipo === 'entrada_estoque' || tipo === 'retorno_cliente' || tipo === 'retorno_manutencao' ? (renchId ? [renchId] : []) : Object.keys(destEmpresas)));
   const mensagens = {
     entrada_estoque: 'Use quando um equipamento entra no controle interno da Rench. Selecione RENCH como empresa.',
     saida_cliente: 'Use quando o equipamento vai para uma empresa cliente, como SAMIR, AES, Porsche ou Mercadão.',
@@ -239,6 +246,28 @@ function ajustarMovimento(tipo) {
     dica.style.display = 'block';
   } else {
     dica.style.display = 'none';
+  }
+  if (tipo === 'entrada_estoque' || tipo === 'retorno_cliente' || tipo === 'retorno_manutencao') {
+    empSel.value = renchId || '';
+    empSel.disabled = true;
+    carregarDestinoUnidades();
+    unidadeSel.value = '';
+    unidadeSel.disabled = false;
+    if (buscaUnidade) buscaUnidade.disabled = false;
+  } else {
+    empSel.disabled = false;
+    Array.from(empSel.options).forEach(option => {
+      option.hidden = option.value && !idsPermitidos.includes(option.value);
+    });
+    if (empSel.value && !idsPermitidos.includes(empSel.value)) empSel.value = '';
+    carregarDestinoUnidades();
+  }
+  if (tipo === 'envio_manutencao') {
+    empSel.options[0].textContent = 'Selecione a assistência...';
+  } else if (tipo === 'saida_cliente') {
+    empSel.options[0].textContent = 'Selecione o cliente...';
+  } else {
+    empSel.options[0].textContent = 'Selecione...';
   }
 }
 </script>
