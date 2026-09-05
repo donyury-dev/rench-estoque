@@ -1791,6 +1791,8 @@ def movimentar(equip_id):
         tipo_mov = request.form['tipo_movimento']
         data_mov = request.form['data_movimentacao']
         destino_unidade_id = request.form.get('destino_unidade_id')
+        empresa_destino_id = request.form.get('empresa_destino_id')
+        empresa_destino_cliente_id = request.form.get('empresa_destino_cliente_id')
         responsavel = request.form.get('responsavel')
         obs = request.form.get('observacoes')
         setor_destino = request.form.get('setor_equipamento', '').strip() or None
@@ -1801,6 +1803,36 @@ def movimentar(equip_id):
         contador_color_anterior = int(equip['contador_color'] or 0)
         contador_mono_novo_int = int(contador_mono_novo) if contador_mono_novo else contador_mono_anterior
         contador_color_novo_int = int(contador_color_novo) if contador_color_novo else contador_color_anterior
+
+        if tipo_mov in ('entrada_estoque', 'retorno_cliente'):
+            cur.execute("""
+                SELECT u.id FROM unidades u
+                JOIN empresas e ON e.id=u.empresa_id
+                WHERE e.tipo='rench' AND u.ativo=1
+                ORDER BY CASE WHEN u.nome ILIKE '%estoque%' THEN 0 ELSE 1 END, u.id
+                LIMIT 1
+            """)
+            destino_unidade_id = cur.fetchone()['id']
+        elif tipo_mov == 'envio_manutencao':
+            if empresa_destino_id:
+                cur.execute("""
+                    SELECT u.id FROM unidades u
+                    JOIN empresas e ON e.id=u.empresa_id
+                    WHERE e.id=%s AND e.tipo='assistencia' AND u.ativo=1
+                    ORDER BY u.id LIMIT 1
+                """, (empresa_destino_id,))
+                row = cur.fetchone()
+                destino_unidade_id = row['id'] if row else destino_unidade_id
+        elif tipo_mov == 'saida_cliente':
+            if empresa_destino_cliente_id:
+                cur.execute("""
+                    SELECT u.id FROM unidades u
+                    JOIN empresas e ON e.id=u.empresa_id
+                    WHERE e.id=%s AND e.tipo='cliente' AND u.ativo=1
+                    ORDER BY u.id LIMIT 1
+                """, (empresa_destino_cliente_id,))
+                row = cur.fetchone()
+                destino_unidade_id = row['id'] if row else destino_unidade_id
 
         destino_unidade_nome = None
         if destino_unidade_id:

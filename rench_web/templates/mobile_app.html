@@ -1104,12 +1104,14 @@
 
               <div class="form-group">
                 <label>Tipo de Movimentação *</label>
-                <select name="tipo_movimento" required>
-                  <option value="transferencia">Transferência</option>
-                  <option value="instalacao">Instalação</option>
-                  <option value="retirada">Retirada</option>
-                  <option value="manutencao">Manutenção</option>
-                  <option value="outro">Outro</option>
+                <select name="tipo_movimento" id="tipo-movimento-equip" required onchange="atualizarDestinoMovimentacao()">
+                  <option value="">Selecione...</option>
+                  <option value="entrada_estoque">Entrada no estoque da Rench</option>
+                  <option value="saida_cliente">Saída para cliente / locação</option>
+                  <option value="retorno_cliente">Retorno do cliente para Rench</option>
+                  <option value="envio_manutencao">Envio para manutenção</option>
+                  <option value="retorno_manutencao">Retorno de manutenção</option>
+                  <option value="transferencia">Transferência entre locais/unidades</option>
                 </select>
               </div>
               <div class="form-group">
@@ -1117,7 +1119,19 @@
                 <input type="date" name="data_movimentacao" value="{{hoje}}" required>
               </div>
               <div class="form-group">
-                <label>Destino (Unidade) *</label>
+                <label id="destino-label-mov">Destino (Unidade) *</label>
+                <select name="empresa_destino_id" id="empresa-destino-mov" style="display:none">
+                  <option value="">Selecione a assistência...</option>
+                  {% for l in locais if l.empresa_tipo == 'assistencia' %}
+                    <option value="{{l.empresa_id}}">{{l.empresa_nome}}</option>
+                  {% endfor %}
+                </select>
+                <select name="empresa_destino_cliente_id" id="empresa-destino-cliente-mov" style="display:none">
+                  <option value="">Selecione o cliente...</option>
+                  {% for l in locais if l.empresa_tipo == 'cliente' %}
+                    <option value="{{l.empresa_id}}">{{l.empresa_nome}}</option>
+                  {% endfor %}
+                </select>
                 <input type="hidden" name="destino_unidade_id" id="destino_unidade_id" value="{{equip.unidade_id or ''}}" required>
                 <div class="selected-box" id="selectedBoxMov" onclick="abrirListaUnidadeGenerico('selectedBoxMov','selectListMov')">
                   <span id="selectedTextMov">{% if equip.unidade_id %}{{equip.unidade_nome or equip.local_atual_nome or 'Unidade selecionada'}}{% else %}Selecione a unidade de destino...{% endif %}</span>
@@ -1275,6 +1289,60 @@
     const container = document.getElementById('itens-container');
     const template = document.getElementById('item-template');
     const MODELOS = {{ modelos_impressora|default([])|tojson }};
+
+    function atualizarDestinoMovimentacao(){
+      const tipo = document.getElementById('tipo-movimento-equip')?.value;
+      const destino = document.getElementById('destino_unidade_id');
+      const destinoBox = document.getElementById('selectedBoxMov');
+      const lista = document.getElementById('selectListMov');
+      const assistencia = document.getElementById('empresa-destino-mov');
+      const cliente = document.getElementById('empresa-destino-cliente-mov');
+      const label = document.getElementById('destino-label-mov');
+      const rench = [...document.querySelectorAll('#listaUnidadesMov .select-item.unidade')]
+        .find(item => (item.dataset.empresa || '').toLowerCase().includes('rench'));
+      const automatico = tipo === 'entrada_estoque' || tipo === 'retorno_cliente';
+      if(automatico && rench){
+        destino.value = rench.dataset.unidade;
+        document.getElementById('selectedTextMov').textContent = rench.dataset.texto;
+        destinoBox.style.display = 'block';
+        lista.style.display = 'none';
+        if(assistencia) assistencia.style.display = 'none';
+        if(cliente) cliente.style.display = 'none';
+        label.textContent = 'Destino Rench (preenchido automaticamente)';
+        destino.required = true;
+        return;
+      }
+      if(tipo === 'envio_manutencao'){
+        destino.value = '';
+        destino.required = false;
+        destinoBox.style.display = 'none';
+        lista.style.display = 'none';
+        assistencia.style.display = 'block';
+        assistencia.required = true;
+        if(cliente) { cliente.style.display = 'none'; cliente.required = false; }
+        label.textContent = 'Assistência técnica *';
+        return;
+      }
+      if(assistencia) {
+        assistencia.style.display = 'none';
+        assistencia.required = false;
+      }
+      if(tipo === 'saida_cliente'){
+        destino.value = '';
+        destino.required = false;
+        destinoBox.style.display = 'none';
+        lista.style.display = 'none';
+        if(assistencia) { assistencia.style.display = 'none'; assistencia.required = false; }
+        cliente.style.display = 'block';
+        cliente.required = true;
+        label.textContent = 'Cliente *';
+        return;
+      }
+      if(cliente) { cliente.style.display = 'none'; cliente.required = false; }
+      destino.required = true;
+      destinoBox.style.display = 'block';
+      label.textContent = 'Destino (Unidade) *';
+    }
 
     function preencherModelos(card){
       const conteudo = card.querySelector('.modelo-opcoes-conteudo');
