@@ -151,6 +151,12 @@
     .condicao-defeito{background:#f8d7da;color:#842029;}
     .condicao-manutencao{background:#fff3cd;color:#664d03;}
     .condicao-nao-informada{background:#e2e3e5;color:#41464b;}
+    /* Modo app APK: apenas a aba Estoque do modulo de suprimentos */
+    body.app-estoque-only .nav-tab[onclick="mostrarAba('entrega')"],
+    body.app-estoque-only .nav-tab[onclick="mostrarAba('entrada')"],
+    body.app-estoque-only .nav-tab[onclick="mostrarAba('historico')"],
+    body.app-estoque-only .nav-tab[onclick="mostrarAba('auditoria')"]{display:none !important;}
+    body.app-estoque-only #aba-estoque .btn-block-outline{display:none !important;}
     .mobile-categoria{margin:8px 0 2px;padding:6px 8px;border-bottom:1px solid #eee;color:#850001;font-size:13px;font-weight:700;}
 
     .hist-item{background:#fff;border:1px solid #ddd;border-radius:10px;padding:10px 12px;margin-bottom:8px;}
@@ -1688,14 +1694,27 @@
       window.scrollTo(0,0);
     }
 
+    // Modo app APK: esconde abas extras e preserva o modo na navegacao
+    const RENCH_APP_PARAM = new URLSearchParams(location.search).get('app');
+    if(RENCH_APP_PARAM === '1'){
+      try { sessionStorage.setItem('rench_app', '1'); } catch(e){}
+    }
+    let renchAppMode = false;
+    try { renchAppMode = sessionStorage.getItem('rench_app') === '1'; } catch(e){ renchAppMode = RENCH_APP_PARAM === '1'; }
+    if(renchAppMode){
+      document.body.classList.add('app-estoque-only');
+    }
+
     function mostrarModulo(modulo){
       // Navega para a rota do modulo, garantindo que os dados sejam carregados
+      const sufixo = renchAppMode ? (modulo === 'equipamentos' ? '?app=1' : '&app=1') : '';
       if(modulo === 'equipamentos'){
-        window.location.href = '{{url_for("mobile_equipamentos")}}';
+        window.location.href = '{{url_for("mobile_equipamentos")}}' + sufixo;
         return;
       }
       if(modulo === 'estoque'){
-        window.location.href = '{{url_for("suprimento_mobile", aba="entrega")}}';
+        const abaInicial = renchAppMode ? 'estoque' : 'entrega';
+        window.location.href = '{{url_for("suprimento_mobile", aba="ABA_X")}}'.replace('ABA_X', abaInicial) + sufixo;
         return;
       }
       document.querySelectorAll('.modulo-tab').forEach(t=>t.classList.remove('active'));

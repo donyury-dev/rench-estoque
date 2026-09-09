@@ -1216,7 +1216,7 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('logado'):
-            return redirect(url_for('login'))
+            return redirect(url_for('login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -1364,6 +1364,9 @@ def login():
         if usuario == USUARIO_PADRAO and senha_hash == SENHA_PADRAO_HASH:
             session['logado'] = True
             session['usuario'] = usuario
+            next_url = request.form.get('next') or request.args.get('next')
+            if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+                return redirect(next_url)
             return redirect(url_for('index'))
         flash('Usuário ou senha incorretos.', 'danger')
     return render_template('login.html')
