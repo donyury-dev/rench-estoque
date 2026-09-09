@@ -152,10 +152,8 @@
     .condicao-manutencao{background:#fff3cd;color:#664d03;}
     .condicao-nao-informada{background:#e2e3e5;color:#41464b;}
     /* Modo app APK: apenas a aba Estoque do modulo de suprimentos */
-    body.app-estoque-only .nav-tab[onclick="mostrarAba('entrega')"],
-    body.app-estoque-only .nav-tab[onclick="mostrarAba('entrada')"],
-    body.app-estoque-only .nav-tab[onclick="mostrarAba('historico')"],
-    body.app-estoque-only .nav-tab[onclick="mostrarAba('auditoria')"]{display:none !important;}
+    body.app-estoque-only .modulo-tabs,
+    body.app-estoque-only #modulo-estoque .nav-tabs{display:none !important;}
     body.app-estoque-only #aba-estoque .btn-block-outline{display:none !important;}
     .mobile-categoria{margin:8px 0 2px;padding:6px 8px;border-bottom:1px solid #eee;color:#850001;font-size:13px;font-weight:700;}
 
