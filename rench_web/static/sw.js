@@ -1,10 +1,13 @@
-const CACHE_NAME = 'rench-mobile-v7';
+const CACHE_NAME = 'rench-mobile-v8';
 const URLS_TO_CACHE = [
   '/mobile',
   '/mobile?v=3',
+  '/app',
   '/suprimentos/mobile',
   '/static/manifest.json?v=3',
-  '/static/logo_rench.png'
+  '/static/manifest_app.json?v=1',
+  '/static/logo_rench.png',
+  '/static/logo_app.png'
 ];
 
 self.addEventListener('install', event => {
@@ -33,6 +36,7 @@ self.addEventListener('fetch', event => {
   // Sempre busca paginas dinamicas na rede primeiro
   if (event.request.mode === 'navigate' || 
       event.request.url.includes('/mobile') || 
+      event.request.url.includes('/app') ||
       event.request.url.includes('/suprimentos/mobile')) {
     event.respondWith(
       fetch(event.request)

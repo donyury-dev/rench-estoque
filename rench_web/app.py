@@ -4061,6 +4061,15 @@ def api_estoque_entrada():
 
 
 # ============================================================
+# APP SEPARADO - SUPRIMENTOS E EQUIPAMENTOS
+# ============================================================
+
+@app.route('/app')
+@login_required
+def app_home():
+    return render_template('app_home.html')
+
+# ============================================================
 # MOBILE - EQUIPAMENTOS
 # ============================================================
 
