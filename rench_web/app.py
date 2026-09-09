@@ -4064,6 +4064,10 @@ def api_estoque_entrada():
 # APP SEPARADO - SUPRIMENTOS E EQUIPAMENTOS
 # ============================================================
 
+@app.route('/.well-known/assetlinks.json')
+def assetlinks():
+    return app.send_static_file('assetlinks.json')
+
 @app.route('/app')
 @login_required
 def app_home():

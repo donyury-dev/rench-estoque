@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.rench.suprimentos",
+        "sha256_cert_fingerprints": ["61:88:99:13:CC:8C:10:F8:DB:D8:F2:E1:11:98:5E:11:B0:8E:BB:4D:F6:D5:DF:2B:97:81:A0:F7:6B:5F:40:C1"]
+      }
+    }]
