@@ -2222,7 +2222,7 @@ def lista_suprimentos():
     sql = """
         SELECT se.id, se.data_entrega, se.responsavel, se.observacoes,
                u.nome as unidade_nome, emp.nome as empresa_nome,
-               si.id as item_id, si.tipo_suprimento, si.modelo_impressora, si.quantidade,
+               si.id as item_id, si.tipo_suprimento, si.modelo_impressora, si.marca, si.quantidade,
                si.motivo_padrao, si.defeito, si.motivo
         FROM suprimentos_entregas se
         JOIN unidades u ON u.id = se.unidade_id
@@ -2273,6 +2273,7 @@ def lista_suprimentos():
             entregas[eid]['itens'].append({
                 'tipo': r['tipo_suprimento'],
                 'modelo': r['modelo_impressora'],
+                'marca': r['marca'],
                 'quantidade': r['quantidade'],
                 'motivo_padrao': r['motivo_padrao'],
                 'defeito': r['defeito'],
@@ -2746,7 +2747,7 @@ def relatorio_mensal():
     resultado_entregas = []
     for e in entregas:
         cur.execute("""
-            SELECT tipo_suprimento, modelo_impressora, quantidade, motivo_padrao, defeito, motivo
+            SELECT tipo_suprimento, modelo_impressora, marca, quantidade, motivo_padrao, defeito, motivo
             FROM suprimentos_itens WHERE entrega_id=%s
         """, (e['id'],))
         itens = cur.fetchall()
@@ -2755,6 +2756,8 @@ def relatorio_mensal():
             nome = item['tipo_suprimento']
             if item['modelo_impressora']:
                 nome += ' ' + item['modelo_impressora']
+            if item['marca']:
+                nome += ' (' + item['marca'] + ')'
             motivo = item['motivo'] or item['motivo_padrao'] or ''
             itens_fmt.append({
                 'nome': nome,
@@ -2913,7 +2916,7 @@ def relatorio_detalhes():
             item_where = " AND tipo_suprimento = 'Papel Fotografico'"
 
         cur.execute(f"""
-            SELECT tipo_suprimento, modelo_impressora, quantidade, motivo_padrao, defeito, motivo
+            SELECT tipo_suprimento, modelo_impressora, marca, quantidade, motivo_padrao, defeito, motivo
             FROM suprimentos_itens WHERE entrega_id=%s {item_where}
         """, item_params)
         itens = cur.fetchall()
@@ -2922,6 +2925,8 @@ def relatorio_detalhes():
             nome = item['tipo_suprimento']
             if item['modelo_impressora']:
                 nome += ' ' + item['modelo_impressora']
+            if item['marca']:
+                nome += ' (' + item['marca'] + ')'
             motivo = item['motivo'] or item['motivo_padrao'] or ''
             itens_fmt.append({
                 'nome': nome,
@@ -3683,7 +3688,7 @@ def api_suprimentos_historico():
     resultado = []
     for e in entregas:
         cur.execute("""
-            SELECT tipo_suprimento, modelo_impressora, quantidade, motivo_padrao, defeito, motivo
+            SELECT tipo_suprimento, modelo_impressora, marca, quantidade, motivo_padrao, defeito, motivo
             FROM suprimentos_itens
             WHERE entrega_id=%s
         """, (e['id'],))
@@ -3693,6 +3698,8 @@ def api_suprimentos_historico():
             nome = item['tipo_suprimento']
             if item['modelo_impressora']:
                 nome += ' ' + item['modelo_impressora']
+            if item['marca']:
+                nome += ' (' + item['marca'] + ')'
             motivo = item['motivo'] or item['motivo_padrao'] or ''
             itens_fmt.append({
                 'nome': nome,
