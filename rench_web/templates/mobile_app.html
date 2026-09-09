@@ -152,9 +152,7 @@
     .condicao-manutencao{background:#fff3cd;color:#664d03;}
     .condicao-nao-informada{background:#e2e3e5;color:#41464b;}
     /* Modo app APK: apenas a aba Estoque do modulo de suprimentos */
-    body.app-estoque-only .modulo-tabs,
     body.app-estoque-only #modulo-estoque .nav-tabs{display:none !important;}
-    body.app-estoque-only #aba-estoque .btn-block-outline{display:none !important;}
     .mobile-categoria{margin:8px 0 2px;padding:6px 8px;border-bottom:1px solid #eee;color:#850001;font-size:13px;font-weight:700;}
 
     .hist-item{background:#fff;border:1px solid #ddd;border-radius:10px;padding:10px 12px;margin-bottom:8px;}
@@ -1674,6 +1672,13 @@
     });
 
     function mostrarAba(aba){
+      // No modo app APK, mantem a navegacao interna na aba Estoque (ajuste, movimentacoes)
+      if(renchAppMode && aba !== 'estoque'){
+        document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+        const alvo = document.getElementById('aba-' + aba) || document.getElementById('modal-' + aba);
+        if(alvo){ alvo.classList.add('active'); window.scrollTo(0,0); return; }
+        return;
+      }
       // Dentro do modulo ativo, ativa a aba correspondente
       const moduloAtivo = document.querySelector('.modulo-content.active');
       if(moduloAtivo){
@@ -1724,7 +1729,7 @@
       if(modulo === 'equipamentos'){
         mostrarAbaEquip('equipamentos');
       } else {
-        mostrarAba('entrega');
+        mostrarAba(renchAppMode ? 'estoque' : 'entrega');
       }
     }
 
