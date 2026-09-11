@@ -13,7 +13,12 @@
       <h5 class="fw-bold mb-3"><i class="bi bi-person me-2"></i>Responsável pela viagem</h5>
       <div class="mb-3">
         <label class="form-label">Quem vai sair para o atendimento</label>
-        <input type="text" class="form-control" name="responsavel_atendimento" value="{{session.usuario or ''}}" required>
+        <select class="form-select" name="responsavel_atendimento" required>
+          <option value="">Selecione o responsável...</option>
+          {% for nome in ['Kaio', 'Renan', 'Gilvan'] %}
+          <option value="{{nome}}" {{'selected' if session.usuario == nome else ''}}>{{nome}}</option>
+          {% endfor %}
+        </select>
       </div>
       <div class="mb-2">
         <label class="form-label">Observações</label>
@@ -60,7 +65,7 @@
           <input type="text" class="form-control" id="buscaChamado" placeholder="Protocolo, descrição, unidade ou empresa...">
           <button class="btn btn-outline-primary" type="button" onclick="buscarChamados()"><i class="bi bi-search"></i> Buscar</button>
         </div>
-        <div id="resultadoChamados" class="list-group"></div>
+        <div id="resultadoChamados" class="d-grid gap-2"></div>
       </div>
     </div>
   </div>
@@ -132,14 +137,17 @@ function addItem(){
   itemIdx++;
   const div = document.createElement('div');
   div.className = 'border rounded p-2 mb-2 item-row';
-  let opcoes = '<option value="">Selecione o suprimento...</option>';
-  ESTOQUE.forEach(e => {
-    opcoes += `<option value="${e.id}" data-tipo="${e.tipo}" data-modelo="${e.modelo}" data-marca="${e.marca}">${e.tipo} — saldo ${e.saldo}</option>`;
-  });
   div.innerHTML = `
     <div class="d-flex gap-2 align-items-center">
-      <input class="form-control form-control-sm item-busca" list="lista-suprimentos-viagem"
-             placeholder="Digite tipo, modelo ou marca..." oninput="syncItem(this)" required>
+      <select class="form-select form-select-sm item-modelo" onchange="carregarTipos(this)" required>
+        <option value="">1. Modelo da impressora...</option>
+      </select>
+      <select class="form-select form-select-sm item-tipo" onchange="carregarItens(this)" required disabled>
+        <option value="">2. Tipo...</option>
+      </select>
+      <select class="form-select form-select-sm item-exato" onchange="syncItem(this)" required disabled>
+        <option value="">3. Item exato...</option>
+      </select>
       <input type="number" class="form-control form-control-sm text-center" style="max-width:90px" name="quantidade[]" value="1" min="1" required>
       <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.item-row').remove()"><i class="bi bi-x-lg"></i></button>
     </div>
@@ -147,15 +155,52 @@ function addItem(){
     <input type="hidden" name="modelo_impressora[]" value="">
     <input type="hidden" name="marca[]" value="">`;
   document.getElementById('lista-itens').appendChild(div);
+  const modelos = [...new Set(ESTOQUE.map(e => e.modelo).filter(Boolean))].sort();
+  const selectModelo = div.querySelector('.item-modelo');
+  modelos.forEach(modelo => {
+    const opt = document.createElement('option');
+    opt.value = modelo;
+    opt.textContent = modelo;
+    selectModelo.appendChild(opt);
+  });
 }
 
-function syncItem(input){
-  const texto = input.value.trim().toLowerCase();
-  const item = ESTOQUE.find(e => e.rotulo.toLowerCase() === texto);
-  const row = input.closest('.item-row');
-  row.querySelector('[name="tipo_suprimento[]"]').value = item?.tipo || '';
-  row.querySelector('[name="modelo_impressora[]"]').value = item?.modelo || '';
-  row.querySelector('[name="marca[]"]').value = item?.marca || '';
+function carregarTipos(modeloSelect){
+  const row = modeloSelect.closest('.item-row');
+  const tipoSelect = row.querySelector('.item-tipo');
+  const itemSelect = row.querySelector('.item-exato');
+  const tipos = [...new Set(ESTOQUE.filter(e => e.modelo === modeloSelect.value).map(e => e.tipo).filter(Boolean))].sort();
+  tipoSelect.innerHTML = '<option value="">2. Tipo...</option>';
+  tipos.forEach(tipo => tipoSelect.add(new Option(tipo, tipo)));
+  tipoSelect.disabled = !tipos.length;
+  itemSelect.innerHTML = '<option value="">3. Item exato...</option>';
+  itemSelect.disabled = true;
+  syncItem(itemSelect);
+}
+
+function carregarItens(tipoSelect){
+  const row = tipoSelect.closest('.item-row');
+  const modelo = row.querySelector('.item-modelo').value;
+  const itemSelect = row.querySelector('.item-exato');
+  const itens = ESTOQUE.filter(e => e.modelo === modelo && e.tipo === tipoSelect.value);
+  itemSelect.innerHTML = '<option value="">3. Item exato...</option>';
+  itens.forEach(e => {
+    const opt = new Option(`${e.tipo} ${e.modelo}${e.marca ? ' (' + e.marca + ')' : ''} — saldo ${e.saldo}`, e.rotulo);
+    opt.dataset.tipo = e.tipo;
+    opt.dataset.modelo = e.modelo;
+    opt.dataset.marca = e.marca;
+    itemSelect.add(opt);
+  });
+  itemSelect.disabled = !itens.length;
+  syncItem(itemSelect);
+}
+
+function syncItem(select){
+  const opt = select.selectedOptions[0];
+  const row = select.closest('.item-row');
+  row.querySelector('[name="tipo_suprimento[]"]').value = opt?.dataset.tipo || '';
+  row.querySelector('[name="modelo_impressora[]"]').value = opt?.dataset.modelo || '';
+  row.querySelector('[name="marca[]"]').value = opt?.dataset.marca || '';
 }
 
 function abrirChamados(btn){
@@ -184,14 +229,15 @@ async function buscarChamados(){
     dados.chamados.forEach(c => {
       const a = document.createElement('a');
       a.href = '#';
-      a.className = 'list-group-item list-group-item-action';
+      a.className = 'btn btn-outline-secondary text-start p-3';
       a.innerHTML = `
-        <div class="d-flex w-100 justify-content-between">
-          <strong>Chamado ${c.protocolo}</strong>
+        <div class="d-flex justify-content-between gap-2">
+          <strong><i class="bi bi-ticket-perforated me-1"></i>Chamado ${c.protocolo || c.id}</strong>
           <small>${c.aberto_em || ''}</small>
         </div>
-        <div class="small text-muted">${c.empresa || ''} — ${c.unidade || ''}</div>
-        <div class="small">${c.descricao || ''}</div>`;
+        <div class="small mt-1"><strong>${c.empresa || 'Empresa não identificada'}</strong> · ${c.unidade || 'Unidade não identificada'}</div>
+        <div class="small text-muted mt-1">${c.categoria || ''}${c.equipamento ? ' · ' + c.equipamento : ''}</div>
+        <div class="small mt-1">${c.descricao || 'Sem descrição'}</div>`;
       a.onclick = (ev) => {
         ev.preventDefault();
         if(paradaAtiva){

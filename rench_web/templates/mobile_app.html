@@ -1266,7 +1266,12 @@
           <div class="scroll-area">
             <div class="card">
               <div class="card-title"><i class="bi bi-person"></i> Responsável pela viagem</div>
-              <input type="text" name="responsavel_atendimento" value="{{session.usuario or ''}}" required>
+              <select name="responsavel_atendimento" required>
+                <option value="">Selecione o responsável...</option>
+                {% for nome in ['Kaio', 'Renan', 'Gilvan'] %}
+                <option value="{{nome}}" {{'selected' if session.usuario == nome else ''}}>{{nome}}</option>
+                {% endfor %}
+              </select>
               <textarea name="observacoes" rows="2" placeholder="Observações (opcional)" class="mt-2"></textarea>
             </div>
 
@@ -1590,12 +1595,15 @@
         if(chamados.length === 1){ vjSelecionarChamado(row, chamados[0]); return; }
         info.innerHTML = '';
         chamados.slice(0, 8).forEach(c => {
-          const a = document.createElement('a');
-          a.href = '#';
-          a.className = 'd-block small';
-          a.style.cssText = 'padding:4px 0;text-decoration:none';
-          a.textContent = c.protocolo + ' — ' + (c.empresa || '') + ' / ' + (c.unidade || '') + ' — ' + (c.descricao || '').slice(0, 50);
-          a.onclick = (ev) => { ev.preventDefault(); vjSelecionarChamado(row, c); };
+          const a = document.createElement('button');
+          a.type = 'button';
+          a.className = 'btn btn-outline-secondary text-start w-100 mb-1';
+          a.innerHTML =
+            '<strong>Chamado ' + (c.protocolo || c.id) + '</strong>' +
+            '<br><small>' + (c.empresa || 'Empresa não identificada') + ' · ' +
+            (c.unidade || 'Unidade não identificada') + '</small>' +
+            '<br><small>' + (c.descricao || 'Sem descrição').slice(0, 90) + '</small>';
+          a.onclick = () => vjSelecionarChamado(row, c);
           info.appendChild(a);
         });
       } catch(e){
@@ -1627,25 +1635,63 @@
       div.className = 'item-box';
       div.style.cssText = 'border:1px solid #ddd;border-radius:8px;padding:8px;margin-bottom:8px';
       div.innerHTML = `
-        <div class="d-flex gap-1">
-          <input class="vj-item-busca" list="vj-lista-suprimentos"
-                 placeholder="Digite tipo, modelo ou marca..." style="flex:1"
-                 oninput="vjSyncItem(this)" required>
+        <select class="vj-item-modelo" onchange="vjCarregarTipos(this)" required>
+          <option value="">1. Modelo da impressora...</option>
+        </select>
+        <select class="vj-item-tipo mt-1" onchange="vjCarregarItens(this)" required disabled>
+          <option value="">2. Tipo...</option>
+        </select>
+        <div class="d-flex gap-1 mt-1">
+          <select class="vj-item-exato" onchange="vjSyncItem(this)" required disabled style="flex:1">
+            <option value="">3. Item exato...</option>
+          </select>
           <input type="number" name="quantidade[]" value="1" min="1" style="width:70px;text-align:center">
         </div>
         <input type="hidden" name="tipo_suprimento[]" value="">
         <input type="hidden" name="modelo_impressora[]" value="">
         <input type="hidden" name="marca[]" value="">`;
       box.appendChild(div);
+      const modelos = [...new Set(VJ_ESTOQUE.map(e => e.modelo).filter(Boolean))].sort();
+      const modeloSelect = div.querySelector('.vj-item-modelo');
+      modelos.forEach(modelo => modeloSelect.add(new Option(modelo, modelo)));
     }
 
-    function vjSyncItem(sel){
-      const texto = sel.value.trim().toLowerCase();
-      const e = VJ_ESTOQUE.find(item => item.rotulo.toLowerCase() === texto);
-      const row = sel.closest('.item-box');
-      row.querySelector('[name="tipo_suprimento[]"]').value = e ? e.tipo : '';
-      row.querySelector('[name="modelo_impressora[]"]').value = e ? e.modelo : '';
-      row.querySelector('[name="marca[]"]').value = e ? e.marca : '';
+    function vjCarregarTipos(modeloSelect){
+      const row = modeloSelect.closest('.item-box');
+      const tipoSelect = row.querySelector('.vj-item-tipo');
+      const itemSelect = row.querySelector('.vj-item-exato');
+      const tipos = [...new Set(VJ_ESTOQUE.filter(e => e.modelo === modeloSelect.value).map(e => e.tipo).filter(Boolean))].sort();
+      tipoSelect.innerHTML = '<option value="">2. Tipo...</option>';
+      tipos.forEach(tipo => tipoSelect.add(new Option(tipo, tipo)));
+      tipoSelect.disabled = !tipos.length;
+      itemSelect.innerHTML = '<option value="">3. Item exato...</option>';
+      itemSelect.disabled = true;
+      vjSyncItem(itemSelect);
+    }
+
+    function vjCarregarItens(tipoSelect){
+      const row = tipoSelect.closest('.item-box');
+      const modelo = row.querySelector('.vj-item-modelo').value;
+      const itemSelect = row.querySelector('.vj-item-exato');
+      const itens = VJ_ESTOQUE.filter(e => e.modelo === modelo && e.tipo === tipoSelect.value);
+      itemSelect.innerHTML = '<option value="">3. Item exato...</option>';
+      itens.forEach(e => {
+        const opt = new Option(`${e.tipo} ${e.modelo}${e.marca ? ' (' + e.marca + ')' : ''} — saldo ${e.saldo}`, e.rotulo);
+        opt.dataset.tipo = e.tipo;
+        opt.dataset.modelo = e.modelo;
+        opt.dataset.marca = e.marca;
+        itemSelect.add(opt);
+      });
+      itemSelect.disabled = !itens.length;
+      vjSyncItem(itemSelect);
+    }
+
+    function vjSyncItem(select){
+      const opt = select.selectedOptions[0];
+      const row = select.closest('.item-box');
+      row.querySelector('[name="tipo_suprimento[]"]').value = opt?.dataset.tipo || '';
+      row.querySelector('[name="modelo_impressora[]"]').value = opt?.dataset.modelo || '';
+      row.querySelector('[name="marca[]"]').value = opt?.dataset.marca || '';
     }
 
     function mobAddColetaItem(){
