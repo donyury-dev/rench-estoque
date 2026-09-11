@@ -1137,7 +1137,7 @@
                     <option value="{{l.empresa_id}}">{{l.empresa_nome}}</option>
                   {% endfor %}
                 </select>
-                <select name="empresa_destino_cliente_id" id="empresa-destino-cliente-mov" style="display:none">
+                <select name="empresa_destino_cliente_id" id="empresa-destino-cliente-mov" style="display:none" onchange="carregarUnidadesDestinoCliente(this.value)">
                   <option value="">Selecione o cliente...</option>
                   {% for l in locais if l.empresa_tipo == 'cliente' %}
                     <option value="{{l.empresa_id}}">{{l.empresa_nome}}</option>
@@ -1160,11 +1160,14 @@
                           <div class="grupo-unidades">
                           {% set empresa_atual.val = l.empresa_nome %}
                         {% endif %}
-                        <div class="select-item unidade" data-unidade="{{l.unidade_id}}" data-texto="{{l.unidade_nome}}" data-empresa="{{l.empresa_nome}}" onclick="selecionarUnidadeGenerico(this,'destino_unidade_id','selectedTextMov','selectListMov')">{{l.unidade_nome}}</div>
+                        <div class="select-item unidade" data-unidade="{{l.unidade_id}}" data-texto="{{l.unidade_nome}}" data-empresa="{{l.empresa_nome}}" data-empresa-id="{{l.empresa_id}}" onclick="selecionarUnidadeGenerico(this,'destino_unidade_id','selectedTextMov','selectListMov')">{{l.unidade_nome}}</div>
                       {% endif %}
                     {% endfor %}
                     {% if locais %}</div>{% endif %}
                   </div>
+                </div>
+                <div id="avisoUnidadesClienteMov" class="small text-muted mt-1" style="display:none">
+                  Selecione primeiro o cliente para carregar as unidades.
                 </div>
               </div>
               <div class="form-group">
@@ -1801,12 +1804,35 @@
         cliente.style.display = 'block';
         cliente.required = true;
         label.textContent = 'Cliente *';
+        document.getElementById('selectedTextMov').textContent = 'Selecione o cliente acima';
         return;
       }
       if(cliente) { cliente.style.display = 'none'; cliente.required = false; }
       destino.required = true;
       destinoBox.style.display = 'block';
       label.textContent = 'Destino (Unidade) *';
+    }
+
+    function carregarUnidadesDestinoCliente(empresaId){
+      const lista = document.getElementById('listaUnidadesMov');
+      const destino = document.getElementById('destino_unidade_id');
+      const destinoBox = document.getElementById('selectedBoxMov');
+      const aviso = document.getElementById('avisoUnidadesClienteMov');
+      destino.value = '';
+      document.getElementById('selectedTextMov').textContent = 'Selecione a unidade do cliente...';
+      lista.querySelectorAll('.select-item.unidade').forEach(item => {
+        const visivel = !!empresaId && item.dataset.empresaId === String(empresaId);
+        item.style.display = visivel ? '' : 'none';
+      });
+      lista.querySelectorAll('.select-item.empresa').forEach(item => {
+        item.style.display = 'none';
+      });
+      const unidades = [...lista.querySelectorAll('.select-item.unidade')].filter(item => item.style.display !== 'none');
+      aviso.style.display = empresaId && !unidades.length ? 'block' : 'none';
+      destinoBox.style.display = empresaId ? 'block' : 'none';
+      if(empresaId){
+        lista.style.display = 'block';
+      }
     }
 
     function preencherModelos(card){
