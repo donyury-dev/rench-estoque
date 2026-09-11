@@ -1140,8 +1140,8 @@
                 <label id="cliente-label-mov" style="display:none">Cliente *</label>
                 <input type="text" id="busca-cliente-mov" class="search-input" style="display:none"
                        placeholder="Digite para buscar o cliente..." oninput="filtrarClientesMov(this.value)">
-                <select name="empresa_destino_cliente_id" id="empresa-destino-cliente-mov" style="display:none" onchange="carregarUnidadesDestinoCliente(this.value)">
-                  <option value="">Selecione o cliente...</option>
+                <div id="lista-clientes-mov" class="select-list" style="display:none;max-height:180px;overflow-y:auto"></div>
+                <input type="hidden" name="empresa_destino_cliente_id" id="empresa-destino-cliente-mov">
                   {% set clientes_mostrados = [] %}
                   {% for l in locais if l.empresa_tipo == 'cliente' %}
                     {% if l.empresa_id not in clientes_mostrados %}
@@ -1815,6 +1815,7 @@
         cliente.required = true;
         document.getElementById('cliente-label-mov').style.display = 'block';
         document.getElementById('busca-cliente-mov').style.display = 'block';
+        filtrarClientesMov('');
         label.textContent = 'Cliente *';
         document.getElementById('selectedTextMov').textContent = 'Selecione o cliente acima';
         return;
@@ -1849,13 +1850,30 @@
 
     function filtrarClientesMov(termo){
       const busca = (termo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const select = document.getElementById('empresa-destino-cliente-mov');
-      [...select.options].forEach(option => {
-        if(!option.value){ option.hidden = false; return; }
-        const texto = option.textContent.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        option.hidden = !texto.includes(busca);
+      const lista = document.getElementById('lista-clientes-mov');
+      const clientes = [...new Map({{ locais | selectattr('empresa_tipo', 'equalto', 'cliente') | map(attribute='empresa_id') | list | tojson }}.map((id, index) => [id, id])).values()];
+      const nomes = {{ locais | selectattr('empresa_tipo', 'equalto', 'cliente') | map(attribute='empresa_nome') | list | tojson }};
+      const ids = {{ locais | selectattr('empresa_tipo', 'equalto', 'cliente') | map(attribute='empresa_id') | list | tojson }};
+      const unicos = [];
+      ids.forEach((id, index) => {
+        if(!unicos.some(item => String(item.id) === String(id))) unicos.push({id, nome: nomes[index]});
       });
-      select.size = busca ? Math.min(6, Math.max(2, [...select.options].filter(option => !option.hidden).length)) : 1;
+      lista.innerHTML = '';
+      unicos.filter(item => !busca || item.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(busca))
+        .forEach(item => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'select-item unidade';
+          button.textContent = item.nome;
+          button.onclick = () => {
+            document.getElementById('empresa-destino-cliente-mov').value = item.id;
+            document.getElementById('busca-cliente-mov').value = item.nome;
+            lista.style.display = 'none';
+            carregarUnidadesDestinoCliente(item.id);
+          };
+          lista.appendChild(button);
+        });
+      lista.style.display = unicos.length ? 'block' : 'none';
     }
 
     function preencherModelos(card){
