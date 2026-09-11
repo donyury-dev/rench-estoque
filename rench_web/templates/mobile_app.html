@@ -1139,8 +1139,10 @@
                 </select>
                 <select name="empresa_destino_cliente_id" id="empresa-destino-cliente-mov" style="display:none" onchange="carregarUnidadesDestinoCliente(this.value)">
                   <option value="">Selecione o cliente...</option>
-                  {% for l in locais if l.empresa_tipo == 'cliente' %}
+                  {% for l in locais if l.empresa_tipo == 'cliente' and l.empresa_id not in [] %}
+                    {% if loop.first or l.empresa_id != locais[loop.index0 - 1].empresa_id %}
                     <option value="{{l.empresa_id}}">{{l.empresa_nome}}</option>
+                    {% endif %}
                   {% endfor %}
                 </select>
               <input type="hidden" name="destino_unidade_id" id="destino_unidade_id" value="{{equip.unidade_id or ''}}">
@@ -1833,9 +1835,7 @@
       const unidades = [...lista.querySelectorAll('.select-item.unidade')].filter(item => item.style.display !== 'none');
       aviso.style.display = empresaId && !unidades.length ? 'block' : 'none';
       destinoBox.style.display = empresaId ? 'block' : 'none';
-      if(empresaId){
-        lista.style.display = 'block';
-      }
+      lista.style.display = 'block';
     }
 
     function preencherModelos(card){
