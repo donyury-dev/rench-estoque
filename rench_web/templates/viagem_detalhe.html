@@ -1,0 +1,308 @@
+{% extends 'base.html' %}
+{% block title %}Viagem {{viagem.numero}} - RENCH{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1><i class="bi bi-signpost-split me-2"></i>Viagem {{viagem.numero}}</h1>
+    <span class="text-muted">
+      Criada em {{viagem.data_criacao.strftime('%d/%m/%Y %H:%M') if viagem.data_criacao else '-'}} ·
+      Separação: {{viagem.responsavel_separacao or '-'}} ·
+      Atendimento: {{viagem.responsavel_atendimento or '-'}}
+    </span>
+  </div>
+  <a href="{{url_for('lista_viagens')}}" class="btn btn-rench-primary"><i class="bi bi-arrow-left me-1"></i>Voltar</a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-auto">
+    {% if viagem.status=='separacao' %}<span class="status-badge s-manutencao fs-6">Em separação</span>
+    {% elif viagem.status=='conferido' %}<span class="status-badge s-locado fs-6">Conferido</span>
+    {% elif viagem.status=='em_rota' %}<span class="status-badge badge-impressora fs-6">Em rota</span>
+    {% elif viagem.status=='aguardando_retorno' %}<span class="status-badge s-manutencao fs-6">Aguardando retorno</span>
+    {% elif viagem.status=='concluido' %}<span class="status-badge s-estoque fs-6">Concluída</span>
+    {% else %}<span class="status-badge s-descartado fs-6">Cancelada</span>{% endif %}
+  </div>
+
+  {% if viagem.status == 'separacao' %}
+  <div class="col-auto">
+    <form method="POST" action="{{url_for('viagem_conferir', viagem_id=viagem.id)}}" class="d-flex gap-2"
+          onsubmit="return confirm('Confirmar que os itens separados foram conferidos?')">
+      <input type="text" class="form-control form-control-sm" name="responsavel_conferencia" placeholder="Conferido por" style="max-width:200px">
+      <button class="btn btn-sm btn-outline-primary"><i class="bi bi-clipboard-check me-1"></i>Registrar conferência</button>
+    </form>
+  </div>
+  {% elif viagem.status == 'conferido' %}
+  <div class="col-auto">
+    <form method="POST" action="{{url_for('viagem_iniciar', viagem_id=viagem.id)}}">
+      <button class="btn btn-sm btn-outline-primary"><i class="bi bi-truck me-1"></i>Iniciar rota</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if viagem.status in ('separacao', 'conferido') %}
+  <div class="col-auto">
+    <form method="POST" action="{{url_for('viagem_cancelar', viagem_id=viagem.id)}}" onsubmit="return confirm('Cancelar esta viagem?')">
+      <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle me-1"></i>Cancelar</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if viagem.status in ('em_rota', 'aguardando_retorno') %}
+  <div class="col-auto">
+    <a href="{{url_for('viagem_retorno', viagem_id=viagem.id)}}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-arrow-return-left me-1"></i>Conferir retorno
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+{% if viagem.observacoes %}
+<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>{{viagem.observacoes}}</div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card card-dashboard p-3 mb-4">
+      <h5 class="fw-bold mb-3"><i class="bi bi-box-seam me-2"></i>Itens no carro (pool)</h5>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th>Suprimento</th>
+              <th>Origem</th>
+              <th class="text-center">Levou</th>
+              <th class="text-center">Entregue</th>
+              <th class="text-center">Usado</th>
+              <th class="text-center">Esperado retorno</th>
+              <th class="text-center">Retornou</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for i in itens %}
+            {% set esperado = (i.quantidade_carregada or 0) - (i.quantidade_entregue or 0) - (i.quantidade_usada_manual or 0) %}
+            <tr class="{{'table-danger' if i.divergencia}}">
+              <td>
+                <strong>{{i.tipo_suprimento}}</strong>
+                {% if i.modelo_impressora %}<span class="text-muted">{{i.modelo_impressora}}</span>{% endif %}
+                {% if i.marca %}<span class="badge badge-impressora">{{i.marca}}</span>{% endif %}
+                {% if i.divergencia %}<div class="small text-danger"><i class="bi bi-exclamation-triangle me-1"></i>{{i.divergencia}}</div>{% endif %}
+              </td>
+              <td>
+                {% if i.origem == 'rench' %}
+                <span class="badge bg-secondary">Rench</span>
+                {% else %}
+                <span class="badge bg-warning text-dark">{{i.fornecedor or 'Fornecedor'}}</span>
+                {% if not i.pode_usar_cliente %}<div class="small text-muted">não usar no cliente</div>{% endif %}
+                {% endif %}
+              </td>
+              <td class="text-center fw-bold">{{i.quantidade_carregada}}</td>
+              <td class="text-center">{{i.quantidade_entregue}}</td>
+              <td class="text-center">{{i.quantidade_usada_manual}}</td>
+              <td class="text-center fw-bold {{'text-success' if esperado > 0 else 'text-muted'}}">{{esperado}}</td>
+              <td class="text-center">{{i.quantidade_retornada if i.quantidade_retornada is not none else '—'}}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-muted py-4">Nenhum item na viagem.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if viagem.status in ('conferido','em_rota','aguardando_retorno') %}
+      <hr>
+      <h6 class="fw-bold"><i class="bi bi-tools me-1"></i>Registrar uso de item de fornecedor no cliente</h6>
+      <form method="POST" action="{{url_for('viagem_uso_item', viagem_id=viagem.id)}}" class="row g-2 align-items-end">
+        <div class="col-md-7">
+          <select name="item_id" class="form-select form-select-sm" required>
+            <option value="">Selecione o item...</option>
+            {% for i in itens if i.origem == 'fornecedor' %}
+            <option value="{{i.id}}">{{i.tipo_suprimento}} {{i.modelo_impressora or ''}} ({{i.fornecedor or 'fornecedor'}})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-4 col-md-2">
+          <input type="number" name="quantidade" class="form-control form-control-sm" placeholder="Qtd" min="1" required>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-sm btn-outline-primary">Registrar uso</button>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+
+    {% if coletas %}
+    <div class="card card-dashboard p-3 mb-4">
+      <h5 class="fw-bold mb-3"><i class="bi bi-shop me-2"></i>Coletas em fornecedores</h5>
+      <table class="table table-sm mb-0">
+        <thead><tr><th>Fornecedor</th><th>Data</th><th>Responsável</th><th>Documento</th><th>Observações</th></tr></thead>
+        <tbody>
+          {% for c in coletas %}
+          <tr>
+            <td class="fw-bold">{{c.fornecedor}}</td>
+            <td>{{c.data_coleta or '-'}}</td>
+            <td>{{c.responsavel or '-'}}</td>
+            <td>{{c.documento or '-'}}</td>
+            <td>{{c.observacoes or '-'}}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    {% if entregas %}
+    <div class="card card-dashboard p-3">
+      <h5 class="fw-bold mb-3"><i class="bi bi-arrow-up-right-circle me-2"></i>Saídas vinculadas</h5>
+      <table class="table table-sm mb-0">
+        <thead><tr><th>Entrega</th><th>Data</th><th>Unidade</th><th>Responsável</th><th>Chamado</th></tr></thead>
+        <tbody>
+          {% for e in entregas %}
+          <tr>
+            <td>#{{e.id}}</td>
+            <td>{{e.data_entrega}}</td>
+            <td>{{e.unidade_nome or '-'}}</td>
+            <td>{{e.responsavel or '-'}}</td>
+            <td>
+              {% if e.chamado_protocolo %}
+              <a href="https://chamado.rench.com.br/tickets/{{e.chamado_id}}" target="_blank" class="badge badge-impressora text-decoration-none">
+                <i class="bi bi-ticket-perforated me-1"></i>{{e.chamado_protocolo}}
+              </a>
+              {% else %}-{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card card-dashboard p-3 mb-4">
+      <h5 class="fw-bold mb-3"><i class="bi bi-geo-alt me-2"></i>Paradas</h5>
+      <table class="table table-sm mb-0">
+        <thead><tr><th>#</th><th>Unidade</th><th>Chamado</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for p in paradas %}
+          <tr>
+            <td>{{p.ordem}}</td>
+            <td>
+              <strong>{{p.unidade_nome or 'Sem unidade'}}</strong>
+              <div class="small text-muted">{{p.empresa_nome or ''}}</div>
+            </td>
+            <td>
+              {% if p.chamado_protocolo %}
+              <a href="https://chamado.rench.com.br/tickets/{{p.chamado_id}}" target="_blank" class="badge badge-impressora text-decoration-none">
+                <i class="bi bi-ticket-perforated me-1"></i>{{p.chamado_protocolo}}
+              </a>
+              {% else %}-{% endif %}
+            </td>
+            <td>
+              {% if p.status == 'atendida' %}
+              <span class="status-badge s-estoque">Atendida</span>
+              {% else %}
+              <span class="status-badge s-manutencao">Planejada</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-muted py-4">Nenhuma parada cadastrada.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <hr>
+      <small class="text-muted">A saída de cada unidade continua sendo registrada normalmente em Estoque. Ao escolher a parada/viagem no formulário de saída, o vínculo é automático.</small>
+    </div>
+
+    {% if viagem.status in ('conferido','em_rota','aguardando_retorno') %}
+    <div class="card card-dashboard p-3">
+      <h5 class="fw-bold mb-3"><i class="bi bi-shop me-2"></i>Registrar coleta de fornecedor</h5>
+      <form method="POST" action="{{url_for('viagem_coleta', viagem_id=viagem.id)}}">
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="form-label small">Fornecedor *</label>
+            <input type="text" class="form-control form-control-sm" name="fornecedor" placeholder="Ex.: R10, Distrifilm" required>
+          </div>
+          <div class="col-6">
+            <label class="form-label small">Data</label>
+            <input type="date" class="form-control form-control-sm" name="data_coleta">
+          </div>
+        </div>
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="form-label small">Responsável</label>
+            <input type="text" class="form-control form-control-sm" name="responsavel" value="{{session.usuario or ''}}">
+          </div>
+          <div class="col-6">
+            <label class="form-label small">Documento (opcional)</label>
+            <input type="text" class="form-control form-control-sm" name="documento" placeholder="NF, pedido...">
+          </div>
+        </div>
+        <div id="coleta-itens"></div>
+        <div class="d-flex gap-2 mb-2">
+          <button type="button" class="btn btn-sm btn-rench-primary" onclick="addColetaItem()"><i class="bi bi-plus-lg"></i> Item coletado</button>
+          <label class="form-check-label small align-self-center ms-2">
+            <input type="checkbox" class="form-check-input me-1 coleta-usar" checked> pode usar no cliente
+          </label>
+        </div>
+        <input type="hidden" name="pode_usar_cliente[]" class="coleta-usar-valor" value="1">
+        <button class="btn btn-outline-primary btn-sm w-100"><i class="bi bi-check-circle me-1"></i>Registrar coleta</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const ESTOQUE_COLETA = [
+  {% for e in estoque %}
+  {id: {{e.id}}, tipo: {{ (e.tipo_suprimento ~ ' ' ~ (e.modelo_impressora or '') ~ (' (' ~ e.marca ~ ')' if e.marca else '')) | tojson }}, modelo: {{ (e.modelo_impressora or '') | tojson }}, marca: {{ (e.marca or '') | tojson }}}{{ ',' if not loop.last }}
+  {% endfor %}
+];
+
+function addColetaItem(){
+  const box = document.getElementById('coleta-itens');
+  const div = document.createElement('div');
+  div.className = 'border rounded p-2 mb-2 coleta-item-row';
+  let opcoes = '<option value="">Suprimento...</option>';
+  ESTOQUE_COLETA.forEach(e => {
+    opcoes += `<option value="${e.id}" data-tipo="${e.tipo}" data-modelo="${e.modelo}" data-marca="${e.marca}">${e.tipo}</option>`;
+  });
+  div.innerHTML = `
+    <div class="d-flex gap-2 align-items-center">
+      <select class="form-select form-select-sm coleta-select" onchange="syncColeta(this)">${opcoes}</select>
+      <input type="number" class="form-control form-control-sm text-center" style="max-width:80px" name="quantidade[]" value="1" min="1">
+      <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.coleta-item-row').remove()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <input type="hidden" name="tipo_suprimento[]" value="">
+    <input type="hidden" name="modelo_impressora[]" value="">
+    <input type="hidden" name="marca[]" value="">`;
+  box.appendChild(div);
+  // sincroniza flag "pode usar" com o checkbox global
+  const usar = document.querySelector('.coleta-usar').checked ? '1' : '0';
+  document.querySelector('.coleta-usar-valor').value = usar;
+}
+
+function syncColeta(sel){
+  const opt = sel.selectedOptions[0];
+  const row = sel.closest('.coleta-item-row');
+  row.querySelector('[name="tipo_suprimento[]"]').value = opt?.dataset.tipo || '';
+  row.querySelector('[name="modelo_impressora[]"]').value = opt?.dataset.modelo || '';
+  row.querySelector('[name="marca[]"]').value = opt?.dataset.marca || '';
+}
+
+document.querySelector('.coleta-usar')?.addEventListener('change', function(){
+  document.querySelector('.coleta-usar-valor').value = this.checked ? '1' : '0';
+});
+
+// Remove linhas de coleta vazias antes de enviar
+document.querySelectorAll('form').forEach(f => {
+  f.addEventListener('submit', () => {
+    document.querySelectorAll('.coleta-item-row').forEach(row => {
+      if(!row.querySelector('[name="tipo_suprimento[]"]').value) row.remove();
+    });
+  });
+});
+</script>
+{% endblock %}

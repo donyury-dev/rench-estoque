@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}Viagens de Suprimentos - RENCH{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-signpost-split me-2"></i>Viagens de Suprimentos</h1>
+  <a href="{{url_for('nova_viagem')}}" class="btn btn-rench-primary">
+    <i class="bi bi-plus-lg me-1"></i> Nova Viagem
+  </a>
+</div>
+
+{% if not helpdesk_ok %}
+<div class="alert alert-warning">
+  <i class="bi bi-exclamation-triangle me-2"></i>
+  A integração com o sistema de chamados não está configurada neste ambiente.
+  As viagens funcionam normalmente, mas a busca de chamados fica indisponível.
+</div>
+{% endif %}
+
+<div class="filter-bar">
+  <span class="fw-bold text-muted"><i class="bi bi-funnel me-1"></i>Status:</span>
+  <a class="btn btn-sm {{'btn-dark' if not status_filtro else 'btn-outline-secondary'}}" href="{{url_for('lista_viagens')}}">Todas</a>
+  {% for st, label in [('separacao','Separação'),('conferido','Conferido'),('em_rota','Em rota'),('aguardando_retorno','Aguardando retorno'),('concluido','Concluídas'),('cancelado','Canceladas')] %}
+  <a class="btn btn-sm {{'btn-dark' if status_filtro==st else 'btn-outline-secondary'}}" href="{{url_for('lista_viagens', status=st)}}">{{label}}</a>
+  {% endfor %}
+</div>
+
+<div class="table-responsive table-rench">
+  <table class="table mb-0">
+    <thead>
+      <tr>
+        <th>Número</th>
+        <th>Data</th>
+        <th>Responsável</th>
+        <th>Paradas</th>
+        <th>Itens</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in viagens %}
+      <tr>
+        <td class="fw-bold">{{v.numero}}</td>
+        <td>{{v.data_criacao.strftime('%d/%m/%Y %H:%M') if v.data_criacao else '-'}}</td>
+        <td>{{v.responsavel_atendimento or '-'}}</td>
+        <td>
+          <span class="badge bg-secondary">{{v.paradas_atendidas}}/{{v.total_paradas}} atendidas</span>
+        </td>
+        <td>{{v.total_itens}}</td>
+        <td>
+          {% if v.status=='separacao' %}<span class="status-badge s-manutencao">Em separação</span>
+          {% elif v.status=='conferido' %}<span class="status-badge s-locado">Conferido</span>
+          {% elif v.status=='em_rota' %}<span class="status-badge badge-impressora">Em rota</span>
+          {% elif v.status=='aguardando_retorno' %}<span class="status-badge s-manutencao">Aguardando retorno</span>
+          {% elif v.status=='concluido' %}<span class="status-badge s-estoque">Concluída</span>
+          {% else %}<span class="status-badge s-descartado">Cancelada</span>{% endif %}
+        </td>
+        <td class="text-end">
+          <a href="{{url_for('viagem_detalhe', viagem_id=v.id)}}" class="btn btn-sm btn-rench-primary">
+            <i class="bi bi-eye me-1"></i>Detalhes
+          </a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="text-center py-5 text-muted">Nenhuma viagem encontrada.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

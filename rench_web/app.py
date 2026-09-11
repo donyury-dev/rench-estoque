@@ -10,6 +10,8 @@ from datetime import datetime, date, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, g, session
 from functools import wraps
 from urllib.parse import urlparse
+import urllib.request
+import urllib.error
 from pywebpush import webpush, WebPushException
 
 app = Flask(__name__)
@@ -152,6 +154,10 @@ def _executar_migrations():
 
     migracoes = []
     for tabela, coluna, tipo in [
+        ('suprimentos_entregas', 'viagem_id', 'INTEGER'),
+        ('suprimentos_entregas', 'parada_id', 'INTEGER'),
+        ('suprimentos_entregas', 'chamado_id', 'BIGINT'),
+        ('suprimentos_entregas', 'chamado_protocolo', 'VARCHAR(30)'),
         ('unidades', 'setor', 'TEXT'),
         ('equipamentos', 'funcao', 'VARCHAR(50)'),
         ('equipamentos', 'tipo_impressao', 'VARCHAR(50)'),
@@ -743,6 +749,79 @@ def init_db():
     """)
 
     cur.execute("""
+        CREATE TABLE IF NOT EXISTS viagens (
+            id SERIAL PRIMARY KEY,
+            numero VARCHAR(30) UNIQUE NOT NULL,
+            responsavel_separacao VARCHAR(255),
+            responsavel_atendimento VARCHAR(255),
+            status VARCHAR(30) NOT NULL DEFAULT 'separacao',
+            observacoes TEXT,
+            responsavel_conferencia VARCHAR(255),
+            data_conferencia TIMESTAMP,
+            responsavel_retorno VARCHAR(255),
+            data_retorno TIMESTAMP,
+            observacoes_retorno TEXT,
+            assinatura_retorno TEXT,
+            data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS viagens_paradas (
+            id SERIAL PRIMARY KEY,
+            viagem_id INTEGER NOT NULL REFERENCES viagens(id) ON DELETE CASCADE,
+            ordem INTEGER NOT NULL DEFAULT 1,
+            unidade_id INTEGER REFERENCES unidades(id),
+            chamado_id BIGINT,
+            chamado_protocolo VARCHAR(30),
+            status VARCHAR(30) NOT NULL DEFAULT 'planejada',
+            observacoes TEXT,
+            data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS viagens_coletas (
+            id SERIAL PRIMARY KEY,
+            viagem_id INTEGER NOT NULL REFERENCES viagens(id) ON DELETE CASCADE,
+            fornecedor VARCHAR(255) NOT NULL,
+            data_coleta DATE,
+            responsavel VARCHAR(255),
+            documento VARCHAR(255),
+            observacoes TEXT,
+            data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS viagens_itens (
+            id SERIAL PRIMARY KEY,
+            viagem_id INTEGER NOT NULL REFERENCES viagens(id) ON DELETE CASCADE,
+            coleta_id INTEGER REFERENCES viagens_coletas(id) ON DELETE SET NULL,
+            tipo_suprimento VARCHAR(100) NOT NULL,
+            modelo_impressora VARCHAR(255),
+            marca VARCHAR(100),
+            origem VARCHAR(20) NOT NULL DEFAULT 'rench',
+            fornecedor VARCHAR(255),
+            pode_usar_cliente BOOLEAN NOT NULL DEFAULT TRUE,
+            quantidade_carregada INTEGER NOT NULL DEFAULT 0,
+            quantidade_entregue INTEGER NOT NULL DEFAULT 0,
+            quantidade_usada_manual INTEGER NOT NULL DEFAULT 0,
+            quantidade_retornada INTEGER,
+            divergencia TEXT,
+            observacoes TEXT
+        )
+    """)
+
+    cur.execute("CREATE SEQUENCE IF NOT EXISTS viagem_numero_seq START 1")
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_viagens_paradas_viagem ON viagens_paradas(viagem_id)
+    """)
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_viagens_itens_viagem ON viagens_itens(viagem_id)
+    """)
+
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS estoque (
             id SERIAL PRIMARY KEY,
             tipo_suprimento VARCHAR(100) NOT NULL,
@@ -1044,6 +1123,198 @@ def debitar_estoque_entrega(cur, entrega_id, itens, responsavel=None):
             entrega_id=entrega_id
         )
     return []
+
+
+def vincular_entrega_a_viagem(cur, entrega_id):
+    """Vincula uma entrega (saida) a viagem/parada correspondente.
+
+    - Se a entrega ja tem parada_id (selecionado no formulario), usa-a.
+    - Senao, tenta vincular automaticamente a parada pendente da unidade em
+      viagens ativas; se houver mais de uma candidata, nao vincula.
+    - Soma a quantidade entregue nos itens da viagem (origem Rench) e marca a
+      parada como atendida. Nao cria nenhuma movimentacao de estoque extra.
+    Retorna dict com os dados do vinculo (ou None).
+    """
+    cur.execute("""
+        SELECT id, unidade_id, viagem_id, parada_id, chamado_id, chamado_protocolo
+        FROM suprimentos_entregas WHERE id=%s
+    """, (entrega_id,))
+    entrega = cur.fetchone()
+    if not entrega:
+        return None
+
+    parada_id = entrega['parada_id']
+    if not parada_id:
+        cur.execute("""
+            SELECT vp.id, vp.viagem_id
+            FROM viagens_paradas vp
+            JOIN viagens v ON v.id = vp.viagem_id
+            WHERE vp.unidade_id = %s
+              AND v.status IN ('conferido', 'em_rota')
+              AND vp.status = 'planejada'
+              AND NOT EXISTS (
+                  SELECT 1 FROM suprimentos_entregas se WHERE se.parada_id = vp.id
+              )
+            ORDER BY vp.ordem
+            LIMIT 2
+        """, (entrega['unidade_id'],))
+        candidatas = cur.fetchall()
+        if len(candidatas) == 1:
+            parada_id = candidatas[0]['id']
+            cur.execute("""
+                UPDATE suprimentos_entregas
+                SET parada_id=%s, viagem_id=%s
+                WHERE id=%s
+            """, (parada_id, candidatas[0]['viagem_id'], entrega_id))
+        elif len(candidatas) > 1:
+            return None  # ambiguo: exige selecao explicita no formulario
+
+    if not parada_id:
+        return None
+
+    cur.execute("""
+        SELECT vp.viagem_id, vp.chamado_id, vp.chamado_protocolo
+        FROM viagens_paradas vp WHERE vp.id=%s
+    """, (parada_id,))
+    parada = cur.fetchone()
+    if not parada:
+        return None
+
+    viagem_id = parada['viagem_id']
+
+    cur.execute("""
+        UPDATE suprimentos_entregas
+        SET viagem_id=%s, chamado_id=%s, chamado_protocolo=%s
+        WHERE id=%s
+    """, (viagem_id, parada['chamado_id'], parada['chamado_protocolo'], entrega_id))
+
+    # Soma quantidades nos itens do pool (origem Rench) desta viagem
+    cur.execute("""
+        SELECT si.tipo_suprimento, si.modelo_impressora, si.marca, si.quantidade
+        FROM suprimentos_itens si WHERE si.entrega_id=%s
+    """, (entrega_id,))
+    for item in cur.fetchall():
+        cur.execute("""
+            UPDATE viagens_itens
+            SET quantidade_entregue = quantidade_entregue + %s
+            WHERE viagem_id=%s AND origem='rench'
+              AND tipo_suprimento=%s
+              AND COALESCE(modelo_impressora,'') = COALESCE(%s,'')
+              AND COALESCE(marca,'') = COALESCE(%s,'')
+        """, (item['quantidade'], viagem_id, item['tipo_suprimento'],
+              item['modelo_impressora'], item['marca']))
+
+    cur.execute("UPDATE viagens_paradas SET status='atendida' WHERE id=%s", (parada_id,))
+
+    # Se todas as paradas foram atendidas, viagem aguarda retorno
+    cur.execute("""
+        SELECT COUNT(*) AS total,
+               COUNT(*) FILTER (WHERE status='atendida') AS atendidas
+        FROM viagens_paradas WHERE viagem_id=%s
+    """, (viagem_id,))
+    totais = cur.fetchone()
+    if totais['total'] > 0 and totais['total'] == totais['atendidas']:
+        cur.execute("""
+            UPDATE viagens SET status='aguardando_retorno'
+            WHERE id=%s AND status='em_rota'
+        """, (viagem_id,))
+
+    return {
+        'viagem_id': viagem_id,
+        'parada_id': parada_id,
+        'chamado_id': parada['chamado_id'],
+        'chamado_protocolo': parada['chamado_protocolo'],
+    }
+
+
+# ─── Integracao com o sistema de chamados (Rench Helpdesk / Supabase) ────────
+
+HELPDESK_SUPABASE_URL = os.environ.get('HELPDESK_SUPABASE_URL')
+HELPDESK_SUPABASE_SERVICE_KEY = os.environ.get('HELPDESK_SUPABASE_SERVICE_KEY')
+HELPDESK_STATUS_ABERTOS = ('aberto', 'em_atendimento', 'em_andamento',
+                           'aguardando_cliente', 'aguardando_peca')
+
+
+def helpdesk_configurado():
+    return bool(HELPDESK_SUPABASE_URL and HELPDESK_SUPABASE_SERVICE_KEY)
+
+
+def _helpdesk_request(caminho, metodo='GET', payload=None, timeout=6):
+    """Chamada REST (PostgREST) ao Supabase do helpdesk. Retorna (status, dados)."""
+    if not helpdesk_configurado():
+        return 503, {'erro': 'Integração com o sistema de chamados não configurada.'}
+    url = HELPDESK_SUPABASE_URL.rstrip('/') + caminho
+    dados = None
+    if payload is not None:
+        dados = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(url, data=dados, method=metodo)
+    req.add_header('apikey', HELPDESK_SUPABASE_SERVICE_KEY)
+    req.add_header('Authorization', 'Bearer ' + HELPDESK_SUPABASE_SERVICE_KEY)
+    req.add_header('Content-Type', 'application/json')
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            corpo = resp.read().decode('utf-8')
+            return resp.status, (json.loads(corpo) if corpo else None)
+    except urllib.error.HTTPError as e:
+        try:
+            return e.code, json.loads(e.read().decode('utf-8') or '{}')
+        except Exception:
+            return e.code, {'erro': str(e)}
+    except Exception as e:
+        return 0, {'erro': str(e)}
+
+
+def helpdesk_buscar_chamados(busca='', limite=50):
+    """Lista chamados abertos com unidade/empresa. Degrada sem crash."""
+    params = [
+        'select=id,protocolo,status,categoria,prioridade,descricao,equipamento,'
+        'modelo_impressora,solicitante_nome,opened_at,units(nome),companies(nome)',
+        'order=opened_at.desc',
+        f'limit={int(limite)}',
+        'status=in.(' + ','.join(HELPDESK_STATUS_ABERTOS) + ')',
+    ]
+    termo = (busca or '').strip()
+    if termo:
+        seguro = termo.replace('(', '').replace(')', '').replace(',', ' ')
+        params.append('or=(protocolo.ilike.*' + seguro + '*,'
+                      'descricao.ilike.*' + seguro + '*,'
+                      'units.nome.ilike.*' + seguro + '*,'
+                      'companies.nome.ilike.*' + seguro + '*)')
+    status, dados = _helpdesk_request('/rest/v1/tickets?' + '&'.join(params))
+    if status != 200 or not isinstance(dados, list):
+        return []
+    resultado = []
+    for t in dados:
+        unidade = (t.get('units') or {}).get('nome') if isinstance(t.get('units'), dict) else None
+        empresa = (t.get('companies') or {}).get('nome') if isinstance(t.get('companies'), dict) else None
+        resultado.append({
+            'id': t.get('id'),
+            'protocolo': t.get('protocolo'),
+            'status': t.get('status'),
+            'categoria': t.get('categoria'),
+            'prioridade': t.get('prioridade'),
+            'descricao': (t.get('descricao') or '')[:200],
+            'equipamento': t.get('equipamento'),
+            'modelo_impressora': t.get('modelo_impressora'),
+            'solicitante': t.get('solicitante_nome'),
+            'unidade': unidade,
+            'empresa': empresa,
+            'aberto_em': (t.get('opened_at') or '')[:10],
+        })
+    return resultado
+
+
+def helpdesk_registrar_evento_suprimentos(chamado_id, descricao):
+    """Adiciona evento no historico do chamado. Falha silenciosa (best-effort)."""
+    if not chamado_id or not helpdesk_configurado():
+        return False
+    status, _ = _helpdesk_request(
+        '/rest/v1/ticket_events', metodo='POST',
+        payload={'ticket_id': int(chamado_id), 'tipo': 'comentario',
+                 'descricao': descricao},
+    )
+    return status in (200, 201)
+
 
 
 def estornar_estoque_entrega(cur, entrega_id, responsavel=None):
@@ -2431,10 +2702,11 @@ def suprimento_mobile():
             modelos = cur.fetchall()
             return render_template('mobile_app.html', modulo='estoque', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega', vapid_public_key=VAPID_PUBLIC_KEY)
 
+        parada_id = request.form.get('parada_id', '').strip() or None
         cur.execute("""
-            INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes)
-            VALUES (%s, %s, %s, %s) RETURNING id
-        """, (unidade_id, data_entrega, responsavel, observacoes))
+            INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes, parada_id)
+            VALUES (%s, %s, %s, %s, %s) RETURNING id
+        """, (unidade_id, data_entrega, responsavel, observacoes, parada_id))
         entrega_id = cur.fetchone()['id']
 
         if itens:
@@ -2481,12 +2753,20 @@ def suprimento_mobile():
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (entrega_id, item['tipo_suprimento'], item['modelo_impressora'].strip() or None, item.get('cor_selecionada'), item.get('marca'), item['quantidade'], mp or None, defeito.strip() or None, motivo_texto))
 
+        vinculo = vincular_entrega_a_viagem(cur, entrega_id)
         db.commit()
         flash('Entrega salva com sucesso!', 'success')
         cur.execute("SELECT u.nome FROM unidades u WHERE u.id=%s", (unidade_id,))
         unidade_row = cur.fetchone()
         unidade_nome = unidade_row['nome'] if unidade_row else 'Unidade'
         enviar_notificacao_push('Saida de suprimento', f'Entrega registrada para {unidade_nome}', url_for('suprimento_mobile'))
+        if vinculo and vinculo.get('chamado_id'):
+            resumo = '; '.join(
+                f"{i['quantidade']}x {i['tipo_suprimento']} {i['modelo_impressora'] or ''}".strip()
+                for i in itens)
+            helpdesk_registrar_evento_suprimentos(
+                vinculo['chamado_id'],
+                f"[Suprimentos] Saída vinculada à viagem (entrega #{entrega_id}): {resumo}")
         return redirect(url_for('suprimento_mobile'))
 
     cur.execute("""
@@ -2532,10 +2812,11 @@ def novo_suprimento():
             flash('Adicione pelo menos um suprimento antes de salvar a entrega.', 'danger')
             return redirect(url_for('novo_suprimento'))
 
+        parada_id = request.form.get('parada_id', '').strip() or None
         cur.execute("""
-            INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes)
-            VALUES (%s, %s, %s, %s) RETURNING id
-        """, (unidade_id, data_entrega, responsavel, observacoes))
+            INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes, parada_id)
+            VALUES (%s, %s, %s, %s, %s) RETURNING id
+        """, (unidade_id, data_entrega, responsavel, observacoes, parada_id))
         entrega_id = cur.fetchone()['id']
 
         if itens:
@@ -2580,12 +2861,20 @@ def novo_suprimento():
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (entrega_id, item['tipo_suprimento'], item['modelo_impressora'].strip() or None, item.get('cor_selecionada'), item.get('marca'), item['quantidade'], mp or None, defeito.strip() or None, motivo_texto))
 
+        vinculo = vincular_entrega_a_viagem(cur, entrega_id)
         db.commit()
         flash('Entrega de suprimentos registrada com sucesso!', 'success')
         cur.execute("SELECT u.nome FROM unidades u WHERE u.id=%s", (unidade_id,))
         unidade_row = cur.fetchone()
         unidade_nome = unidade_row['nome'] if unidade_row else 'Unidade'
         enviar_notificacao_push('Saida de suprimento', f'Entrega registrada para {unidade_nome}', url_for('lista_suprimentos'))
+        if vinculo and vinculo.get('chamado_id'):
+            resumo = '; '.join(
+                f"{i['quantidade']}x {i['tipo_suprimento']} {i['modelo_impressora'] or ''}".strip()
+                for i in itens)
+            helpdesk_registrar_evento_suprimentos(
+                vinculo['chamado_id'],
+                f"[Suprimentos] Saída vinculada à viagem (entrega #{entrega_id}): {resumo}")
         return redirect(url_for('lista_suprimentos'))
 
     cur.execute("""
@@ -2618,6 +2907,509 @@ def excluir_suprimento(entrega_id):
     db.commit()
     flash('Registro excluido e estoque estornado com sucesso!', 'success')
     return redirect(url_for('lista_suprimentos'))
+
+
+# ======================= VIAGENS / CHECKLIST DE SUPRIMENTOS =======================
+
+def _coletar_itens_viagem(form):
+    """Le linhas de itens (tipo, modelo, marca, quantidade) do formulario."""
+    tipos = form.getlist('tipo_suprimento[]')
+    modelos = form.getlist('modelo_impressora[]')
+    marcas = form.getlist('marca[]')
+    quantidades = form.getlist('quantidade[]')
+
+    def campo(lista, idx):
+        return lista[idx] if idx < len(lista) else ''
+
+    itens = []
+    for idx, tipo in enumerate(tipos):
+        tipo = (tipo or '').strip()
+        if not tipo:
+            continue
+        try:
+            quantidade = int(campo(quantidades, idx) or 0)
+        except (TypeError, ValueError):
+            quantidade = 0
+        if quantidade <= 0:
+            continue
+        itens.append({
+            'tipo_suprimento': tipo,
+            'modelo_impressora': (campo(modelos, idx) or '').strip() or None,
+            'marca': (campo(marcas, idx) or '').strip() or None,
+            'quantidade': quantidade,
+        })
+    return itens
+
+
+def _coletar_paradas_viagem(form):
+    """Le linhas de paradas (unidade, chamado) do formulario."""
+    unidade_ids = form.getlist('parada_unidade_id[]')
+    chamado_ids = form.getlist('parada_chamado_id[]')
+    protocolos = form.getlist('parada_chamado_protocolo[]')
+
+    def campo(lista, idx):
+        return lista[idx] if idx < len(lista) else ''
+
+    paradas = []
+    for idx, unidade_id in enumerate(unidade_ids):
+        unidade_id = (unidade_id or '').strip()
+        if not unidade_id:
+            continue
+        try:
+            unidade_id = int(unidade_id)
+        except (TypeError, ValueError):
+            continue
+        chamado_raw = (campo(chamado_ids, idx) or '').strip()
+        protocolo = (campo(protocolos, idx) or '').strip() or None
+        chamado_id = None
+        if chamado_raw:
+            try:
+                chamado_id = int(chamado_raw)
+            except (TypeError, ValueError):
+                chamado_id = None
+        if not chamado_id:
+            protocolo = None
+        paradas.append({
+            'unidade_id': unidade_id,
+            'chamado_id': chamado_id,
+            'chamado_protocolo': protocolo,
+        })
+    return paradas
+
+
+def _redirect_viagem(viagem_id):
+    if request.form.get('origem') == 'mobile':
+        return redirect(url_for('mobile_viagem_detalhe', viagem_id=viagem_id))
+    return redirect(url_for('viagem_detalhe', viagem_id=viagem_id))
+
+
+@app.route('/api/chamados')
+@login_required
+def api_chamados():
+    if not helpdesk_configurado():
+        return jsonify({'erro': 'Integracao com o sistema de chamados nao configurada.',
+                        'configurado': False}), 503
+    busca = request.args.get('busca', '').strip()
+    chamados = helpdesk_buscar_chamados(busca=busca)
+    return jsonify({'chamados': chamados, 'configurado': True})
+
+
+@app.route('/api/viagens/paradas-ativas')
+@login_required
+def api_paradas_ativas():
+    unidade_id = request.args.get('unidade_id', type=int)
+    db = get_db()
+    cur = db.cursor()
+    sql = """
+        SELECT vp.id, vp.viagem_id, v.numero, vp.chamado_id, vp.chamado_protocolo,
+               u.nome AS unidade_nome, emp.nome AS empresa_nome
+        FROM viagens_paradas vp
+        JOIN viagens v ON v.id = vp.viagem_id
+        LEFT JOIN unidades u ON u.id = vp.unidade_id
+        LEFT JOIN empresas emp ON emp.id = u.empresa_id
+        WHERE v.status IN ('conferido', 'em_rota') AND vp.status = 'planejada'
+    """
+    params = []
+    if unidade_id:
+        sql += " AND vp.unidade_id=%s"
+        params.append(unidade_id)
+    sql += " ORDER BY v.numero, vp.ordem"
+    cur.execute(sql, params)
+    rows = cur.fetchall()
+    paradas = [{
+        'id': r['id'],
+        'viagem_id': r['viagem_id'],
+        'viagem_numero': r['numero'],
+        'chamado_protocolo': r['chamado_protocolo'],
+        'unidade_nome': r['unidade_nome'],
+        'empresa_nome': r['empresa_nome'],
+    } for r in rows]
+    return jsonify({'paradas': paradas})
+
+
+def _carregar_locais(cur):
+    cur.execute("""
+        SELECT emp.id as empresa_id, emp.nome as empresa_nome, emp.tipo as empresa_tipo,
+               u.id as unidade_id, u.nome as unidade_nome, u.setor
+        FROM empresas emp
+        LEFT JOIN unidades u ON u.empresa_id = emp.id AND u.ativo=1
+        WHERE emp.ativo=1
+        ORDER BY emp.tipo DESC, emp.nome, u.nome
+    """)
+    return cur.fetchall()
+
+
+def _carregar_estoque(cur):
+    cur.execute("""
+        SELECT id, tipo_suprimento, modelo_impressora, marca, quantidade, estoque_minimo
+        FROM estoque WHERE ativo=TRUE
+        ORDER BY tipo_suprimento, modelo_impressora, marca
+    """)
+    return cur.fetchall()
+
+
+@app.route('/viagens')
+@login_required
+def lista_viagens():
+    db = get_db()
+    cur = db.cursor()
+    status_filtro = request.args.get('status', '').strip()
+    sql = """
+        SELECT v.*,
+               (SELECT COUNT(*) FROM viagens_paradas vp WHERE vp.viagem_id = v.id) AS total_paradas,
+               (SELECT COUNT(*) FROM viagens_paradas vp WHERE vp.viagem_id = v.id
+                   AND vp.status='atendida') AS paradas_atendidas,
+               (SELECT COALESCE(SUM(vi.quantidade_carregada), 0) FROM viagens_itens vi
+                   WHERE vi.viagem_id = v.id) AS total_itens
+        FROM viagens v
+    """
+    params = []
+    if status_filtro:
+        sql += " WHERE v.status=%s"
+        params.append(status_filtro)
+    sql += " ORDER BY v.id DESC LIMIT 100"
+    cur.execute(sql, params)
+    viagens = cur.fetchall()
+    return render_template('viagens.html', viagens=viagens, status_filtro=status_filtro,
+                           helpdesk_ok=helpdesk_configurado())
+
+
+@app.route('/viagens/nova', methods=['GET', 'POST'])
+@login_required
+def nova_viagem():
+    db = get_db()
+    cur = db.cursor()
+    if request.method == 'POST':
+        responsavel_atendimento = request.form.get('responsavel_atendimento', '').strip()
+        observacoes = request.form.get('observacoes', '').strip() or None
+        paradas = _coletar_paradas_viagem(request.form)
+        itens = _coletar_itens_viagem(request.form)
+
+        if not itens:
+            flash('Adicione pelo menos um suprimento à viagem.', 'danger')
+            return redirect(url_for('nova_viagem'))
+
+        cur.execute("SELECT nextval('viagem_numero_seq') AS seq")
+        seq = int(cur.fetchone()['seq'])
+        numero = f"VJ-{seq:06d}"
+
+        cur.execute("""
+            INSERT INTO viagens (numero, responsavel_separacao, responsavel_atendimento, observacoes)
+            VALUES (%s, %s, %s, %s) RETURNING id
+        """, (numero, session.get('usuario'), responsavel_atendimento or session.get('usuario'), observacoes))
+        viagem_id = cur.fetchone()['id']
+
+        for idx, parada in enumerate(paradas):
+            cur.execute("""
+                INSERT INTO viagens_paradas (viagem_id, ordem, unidade_id, chamado_id, chamado_protocolo)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (viagem_id, idx + 1, parada['unidade_id'], parada['chamado_id'], parada['chamado_protocolo']))
+
+        for item in itens:
+            cur.execute("""
+                INSERT INTO viagens_itens (viagem_id, tipo_suprimento, modelo_impressora, marca,
+                                           origem, quantidade_carregada)
+                VALUES (%s, %s, %s, %s, 'rench', %s)
+            """, (viagem_id, item['tipo_suprimento'], item['modelo_impressora'], item['marca'], item['quantidade']))
+
+        db.commit()
+        flash(f'Viagem {numero} criada com sucesso!', 'success')
+        return _redirect_viagem(viagem_id)
+
+    locais = _carregar_locais(cur)
+    estoque = _carregar_estoque(cur)
+    return render_template('viagem_form.html', locais=locais, estoque=estoque,
+                           helpdesk_ok=helpdesk_configurado())
+
+
+def _buscar_viagem(cur, viagem_id):
+    cur.execute("SELECT * FROM viagens WHERE id=%s", (viagem_id,))
+    return cur.fetchone()
+
+
+def _carregar_detalhes_viagem(cur, viagem_id):
+    cur.execute("""
+        SELECT vp.*, u.nome AS unidade_nome, emp.nome AS empresa_nome
+        FROM viagens_paradas vp
+        LEFT JOIN unidades u ON u.id = vp.unidade_id
+        LEFT JOIN empresas emp ON emp.id = u.empresa_id
+        WHERE vp.viagem_id=%s ORDER BY vp.ordem
+    """, (viagem_id,))
+    paradas = cur.fetchall()
+
+    cur.execute("""
+        SELECT * FROM viagens_itens WHERE viagem_id=%s
+        ORDER BY origem DESC, tipo_suprimento, modelo_impressora, marca
+    """, (viagem_id,))
+    itens = cur.fetchall()
+
+    cur.execute("""
+        SELECT * FROM viagens_coletas WHERE viagem_id=%s ORDER BY id
+    """, (viagem_id,))
+    coletas = cur.fetchall()
+
+    cur.execute("""
+        SELECT se.id, se.data_entrega, se.responsavel, se.chamado_protocolo,
+               u.nome AS unidade_nome
+        FROM suprimentos_entregas se
+        LEFT JOIN unidades u ON u.id = se.unidade_id
+        WHERE se.viagem_id=%s ORDER BY se.id
+    """, (viagem_id,))
+    entregas = cur.fetchall()
+    return paradas, itens, coletas, entregas
+
+
+@app.route('/viagens/<int:viagem_id>')
+@login_required
+def viagem_detalhe(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        flash('Viagem nao encontrada.', 'danger')
+        return redirect(url_for('lista_viagens'))
+    paradas, itens, coletas, entregas = _carregar_detalhes_viagem(cur, viagem_id)
+    return render_template('viagem_detalhe.html', viagem=viagem, paradas=paradas,
+                           itens=itens, coletas=coletas, entregas=entregas,
+                           estoque=_carregar_estoque(cur))
+
+
+@app.route('/viagens/<int:viagem_id>/conferir', methods=['POST'])
+@login_required
+def viagem_conferir(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    responsavel = request.form.get('responsavel_conferencia', '').strip() or session.get('usuario')
+    cur.execute("""
+        UPDATE viagens SET status='conferido', responsavel_conferencia=%s,
+            data_conferencia=CURRENT_TIMESTAMP
+        WHERE id=%s AND status='separacao'
+    """, (responsavel, viagem_id))
+    db.commit()
+    flash('Conferencia registrada.', 'success')
+    return _redirect_viagem(viagem_id)
+
+
+@app.route('/viagens/<int:viagem_id>/iniciar', methods=['POST'])
+@login_required
+def viagem_iniciar(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("UPDATE viagens SET status='em_rota' WHERE id=%s AND status='conferido'", (viagem_id,))
+    db.commit()
+    flash('Viagem em rota.', 'success')
+    return _redirect_viagem(viagem_id)
+
+
+@app.route('/viagens/<int:viagem_id>/cancelar', methods=['POST'])
+@login_required
+def viagem_cancelar(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("UPDATE viagens SET status='cancelado' WHERE id=%s AND status IN ('separacao','conferido')", (viagem_id,))
+    db.commit()
+    flash('Viagem cancelada.', 'success')
+    return redirect(url_for('lista_viagens'))
+
+
+@app.route('/viagens/<int:viagem_id>/coleta', methods=['POST'])
+@login_required
+def viagem_coleta(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        flash('Viagem nao encontrada.', 'danger')
+        return redirect(url_for('lista_viagens'))
+    if viagem['status'] not in ('conferido', 'em_rota', 'aguardando_retorno'):
+        flash('Coletas so podem ser registradas em viagens ativas.', 'danger')
+        return _redirect_viagem(viagem_id)
+
+    fornecedor = request.form.get('fornecedor', '').strip()
+    data_coleta = request.form.get('data_coleta', '').strip() or None
+    responsavel = request.form.get('responsavel', '').strip() or session.get('usuario')
+    documento = request.form.get('documento', '').strip() or None
+    observacoes = request.form.get('observacoes', '').strip() or None
+
+    if not fornecedor:
+        flash('Informe o fornecedor da coleta.', 'danger')
+        return _redirect_viagem(viagem_id)
+
+    itens = _coletar_itens_viagem(request.form)
+    if not itens:
+        flash('Adicione pelo menos um item coletado.', 'danger')
+        return _redirect_viagem(viagem_id)
+
+    cur.execute("""
+        INSERT INTO viagens_coletas (viagem_id, fornecedor, data_coleta, responsavel, documento, observacoes)
+        VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+    """, (viagem_id, fornecedor, data_coleta, responsavel, documento, observacoes))
+    coleta_id = cur.fetchone()['id']
+
+    pode_usar = request.form.getlist('pode_usar_cliente[]')
+    for idx, item in enumerate(itens):
+        usar = (pode_usar[idx] if idx < len(pode_usar) else '1') not in ('0', 'false', '')
+        cur.execute("""
+            INSERT INTO viagens_itens (viagem_id, coleta_id, tipo_suprimento, modelo_impressora,
+                                       marca, origem, fornecedor, pode_usar_cliente, quantidade_carregada)
+            VALUES (%s, %s, %s, %s, %s, 'fornecedor', %s, %s, %s)
+        """, (viagem_id, coleta_id, item['tipo_suprimento'], item['modelo_impressora'],
+              item['marca'], fornecedor, usar, item['quantidade']))
+
+    db.commit()
+    flash(f'Coleta de {fornecedor} registrada.', 'success')
+    return _redirect_viagem(viagem_id)
+
+
+@app.route('/viagens/<int:viagem_id>/uso', methods=['POST'])
+@login_required
+def viagem_uso_item(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    item_id = request.form.get('item_id', type=int)
+    quantidade = request.form.get('quantidade', type=int)
+    if not item_id or not quantidade or quantidade <= 0:
+        flash('Informe o item e a quantidade utilizada.', 'danger')
+        return _redirect_viagem(viagem_id)
+    cur.execute("""
+        UPDATE viagens_itens SET quantidade_usada_manual = quantidade_usada_manual + %s
+        WHERE id=%s AND viagem_id=%s
+    """, (quantidade, item_id, viagem_id))
+    db.commit()
+    flash('Uso registrado no item.', 'success')
+    return _redirect_viagem(viagem_id)
+
+
+@app.route('/viagens/<int:viagem_id>/retorno', methods=['GET', 'POST'])
+@login_required
+def viagem_retorno(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        flash('Viagem nao encontrada.', 'danger')
+        return redirect(url_for('lista_viagens'))
+    if viagem['status'] not in ('em_rota', 'aguardando_retorno'):
+        flash('O retorno so pode ser conferido em viagens em andamento.', 'danger')
+        return _redirect_viagem(viagem_id)
+
+    if request.method == 'POST':
+        responsavel_retorno = request.form.get('responsavel_retorno', '').strip() or session.get('usuario')
+        assinatura = request.form.get('assinatura_retorno', '').strip() or None
+        observacoes = request.form.get('observacoes_retorno', '').strip() or None
+
+        cur.execute("SELECT * FROM viagens_itens WHERE viagem_id=%s", (viagem_id,))
+        itens = cur.fetchall()
+        divergencias = []
+        for item in itens:
+            esperado = (item['quantidade_carregada'] or 0) - (item['quantidade_entregue'] or 0) - (item['quantidade_usada_manual'] or 0)
+            bruto = request.form.get(f'retorno_{item["id"]}', '')
+            try:
+                retornada = int(bruto) if bruto.strip() != '' else None
+            except (TypeError, ValueError):
+                retornada = None
+            if retornada is None:
+                continue
+            divergencia = None
+            if retornada != esperado:
+                divergencia = f'esperado {esperado}, retornou {retornada}'
+                divergencias.append(
+                    f"{item['tipo_suprimento']} {item['modelo_impressora'] or ''} "
+                    f"({item['fornecedor'] if item['origem'] == 'fornecedor' else 'Rench'}): {divergencia}")
+            cur.execute("""
+                UPDATE viagens_itens SET quantidade_retornada=%s, divergencia=%s WHERE id=%s
+            """, (retornada, divergencia, item['id']))
+
+        if divergencias and not observacoes:
+            flash('Existem divergencias no retorno. Informe uma observacao explicando: '
+                  + '; '.join(divergencias), 'danger')
+            db.rollback()
+            paradas, itens, coletas, entregas = _carregar_detalhes_viagem(cur, viagem_id)
+            return render_template('viagem_retorno.html', viagem=viagem, itens=itens,
+                                   paradas=paradas)
+
+        cur.execute("""
+            UPDATE viagens SET status='concluido', responsavel_retorno=%s,
+                data_retorno=CURRENT_TIMESTAMP, observacoes_retorno=%s, assinatura_retorno=%s
+            WHERE id=%s
+        """, (responsavel_retorno, observacoes, assinatura, viagem_id))
+        db.commit()
+        flash('Retorno conferido e viagem concluida!', 'success')
+        return redirect(url_for('lista_viagens'))
+
+    paradas, itens, coletas, entregas = _carregar_detalhes_viagem(cur, viagem_id)
+    return render_template('viagem_retorno.html', viagem=viagem, itens=itens, paradas=paradas)
+
+
+# ─── Paginas mobile das viagens (PWA) ─────────────────────────────────────────
+
+@app.route('/mobile/viagens')
+@login_required
+def mobile_viagens():
+    db = get_db()
+    cur = db.cursor()
+    status_filtro = request.args.get('status', '').strip()
+    sql = """
+        SELECT v.*,
+               (SELECT COUNT(*) FROM viagens_paradas vp WHERE vp.viagem_id = v.id) AS total_paradas,
+               (SELECT COUNT(*) FROM viagens_paradas vp WHERE vp.viagem_id = v.id
+                   AND vp.status='atendida') AS paradas_atendidas
+        FROM viagens v
+    """
+    params = []
+    if status_filtro:
+        sql += " WHERE v.status=%s"
+        params.append(status_filtro)
+    sql += " ORDER BY v.id DESC LIMIT 50"
+    cur.execute(sql, params)
+    viagens = cur.fetchall()
+    return render_template('mobile_app.html', modulo='viagens', aba='viagens',
+                           viagens=viagens, vapid_public_key=VAPID_PUBLIC_KEY)
+
+
+@app.route('/mobile/viagens/nova')
+@login_required
+def mobile_viagem_nova():
+    db = get_db()
+    cur = db.cursor()
+    locais = _carregar_locais(cur)
+    estoque = _carregar_estoque(cur)
+    return render_template('mobile_app.html', modulo='viagens', aba='viagem_nova',
+                           locais=locais, estoque=estoque,
+                           helpdesk_ok=helpdesk_configurado(),
+                           vapid_public_key=VAPID_PUBLIC_KEY)
+
+
+@app.route('/mobile/viagem/<int:viagem_id>')
+@login_required
+def mobile_viagem_detalhe(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        flash('Viagem nao encontrada.', 'danger')
+        return redirect(url_for('mobile_viagens'))
+    paradas, itens, coletas, entregas = _carregar_detalhes_viagem(cur, viagem_id)
+    return render_template('mobile_app.html', modulo='viagens', aba='viagem_detalhe',
+                           viagem=viagem, paradas=paradas, itens=itens,
+                           coletas=coletas, entregas=entregas,
+                           estoque=_carregar_estoque(cur),
+                           vapid_public_key=VAPID_PUBLIC_KEY)
+
+
+@app.route('/mobile/viagem/<int:viagem_id>/retorno')
+@login_required
+def mobile_viagem_retorno(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        flash('Viagem nao encontrada.', 'danger')
+        return redirect(url_for('mobile_viagens'))
+    paradas, itens, coletas, entregas = _carregar_detalhes_viagem(cur, viagem_id)
+    return render_template('mobile_app.html', modulo='viagens', aba='viagem_retorno',
+                           viagem=viagem, itens=itens, paradas=paradas,
+                           vapid_public_key=VAPID_PUBLIC_KEY)
 
 
 def _get_periodo_relatorio(request):

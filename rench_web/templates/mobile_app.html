@@ -193,6 +193,9 @@
       <button type="button" class="modulo-tab {{'active' if modulo=='equipamentos' else ''}}" onclick="mostrarModulo('equipamentos')">
         <i class="bi bi-pc-display"></i> Equipamentos
       </button>
+      <button type="button" class="modulo-tab {{'active' if modulo=='viagens' else ''}}" onclick="mostrarModulo('viagens')">
+        <i class="bi bi-signpost-split"></i> Viagens
+      </button>
     </div>
 
     <div id="modulo-estoque" class="modulo-content {{'active' if modulo=='estoque' else ''}}">
@@ -258,6 +261,12 @@
                     {% if locais %}</div>{% endif %}
                   </div>
                 </div>
+              </div>
+              <div class="mb-2" id="box-parada-mob" style="display:none">
+                <label><i class="bi bi-signpost-split"></i> Viagem / Parada</label>
+                <select name="parada_id" id="parada_id_mob">
+                  <option value="">Sem viagem / não vincular</option>
+                </select>
               </div>
               <div class="mb-0">
                 <label>Responsável *</label>
@@ -1200,6 +1209,222 @@
       </main>
     </div> <!-- /modulo-equipamentos -->
 
+    {% if modulo == 'viagens' %}
+    <div id="modulo-viagens" class="modulo-content active">
+      <div class="nav-tabs">
+        <button type="button" class="nav-tab {{'active' if aba=='viagens' else ''}}" onclick="location.href='{{url_for("mobile_viagens")}}'">
+          <i class="bi bi-signpost-split"></i> Viagens
+        </button>
+        <button type="button" class="nav-tab {{'active' if aba in ('viagem_nova','viagem_detalhe','viagem_retorno') else ''}}" onclick="location.href='{{url_for("mobile_viagem_nova")}}'">
+          <i class="bi bi-plus-lg"></i> Nova
+        </button>
+      </div>
+
+      <main>
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+        {% if msgs %}
+          {% for cat, msg in msgs %}
+            <div class="alert">{{msg}}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <!-- ABA LISTA DE VIAGENS -->
+      <div id="aba-viagens" class="tab-content {{'active' if aba=='viagens' else ''}}">
+        {% if viagens is defined %}
+        <div class="card">
+          <div class="card-title"><i class="bi bi-signpost-split"></i> Viagens de suprimentos</div>
+          <a href="{{url_for('mobile_viagem_nova')}}" class="btn-add" style="text-decoration:none;display:block;text-align:center;">
+            <i class="bi bi-plus-lg"></i> Nova viagem
+          </a>
+        </div>
+        {% for v in viagens %}
+        <div class="card" onclick="location.href='{{url_for('mobile_viagem_detalhe', viagem_id=v.id)}}'" style="cursor:pointer">
+          <div class="card-title">
+            <i class="bi bi-signpost-split"></i> {{v.numero}}
+            <span class="badge {{'bg-success' if v.status=='concluido' else 'bg-warning text-dark'}}" style="float:right">
+              {% if v.status=='separacao' %}Separação{% elif v.status=='conferido' %}Conferido{% elif v.status=='em_rota' %}Em rota{% elif v.status=='aguardando_retorno' %}Retorno{% elif v.status=='concluido' %}Concluída{% else %}Cancelada{% endif %}
+            </span>
+          </div>
+          <div class="small">
+            Paradas: {{v.paradas_atendidas}}/{{v.total_paradas}} atendidas ·
+            {{v.data_criacao.strftime('%d/%m/%Y') if v.data_criacao else '-'}}
+          </div>
+        </div>
+        {% else %}
+        <div class="card"><div class="text-muted text-center py-3">Nenhuma viagem encontrada.</div></div>
+        {% endfor %}
+        {% else %}
+        <div class="card"><div class="text-muted text-center py-3">Carregando...</div></div>
+        {% endif %}
+      </div>
+
+      <!-- ABA NOVA VIAGEM -->
+      <div id="aba-viagem_nova" class="tab-content {{'active' if aba=='viagem_nova' else ''}}">
+        <form method="POST" action="{{url_for('nova_viagem')}}">
+          <input type="hidden" name="origem" value="mobile">
+          <div class="scroll-area">
+            <div class="card">
+              <div class="card-title"><i class="bi bi-person"></i> Responsável pela viagem</div>
+              <input type="text" name="responsavel_atendimento" value="{{session.usuario or ''}}" required>
+              <textarea name="observacoes" rows="2" placeholder="Observações (opcional)" class="mt-2"></textarea>
+            </div>
+
+            <div class="card">
+              <div class="card-title"><i class="bi bi-geo-alt"></i> Paradas</div>
+              <div id="mob-lista-paradas"></div>
+              <button type="button" class="btn-add" onclick="mobAddParada()"><i class="bi bi-plus-lg"></i> Parada</button>
+            </div>
+
+            <div class="card">
+              <div class="card-title"><i class="bi bi-box-seam"></i> Suprimentos (Rench)</div>
+              <div id="mob-lista-itens"></div>
+              <button type="button" class="btn-add" onclick="mobAddItem()"><i class="bi bi-plus-lg"></i> Suprimento</button>
+            </div>
+          </div>
+          <div class="footer">
+            <button type="submit" class="btn-save"><i class="bi bi-check-lg"></i> Criar Viagem</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ABA DETALHE DA VIAGEM -->
+      <div id="aba-viagem_detalhe" class="tab-content {{'active' if aba=='viagem_detalhe' else ''}}">
+        {% if viagem is defined %}
+        <div class="card">
+          <div class="card-title">
+            <i class="bi bi-signpost-split"></i> {{viagem.numero}}
+            <span class="badge {{'bg-success' if viagem.status=='concluido' else 'bg-warning text-dark'}}" style="float:right">
+              {% if viagem.status=='separacao' %}Separação{% elif viagem.status=='conferido' %}Conferido{% elif viagem.status=='em_rota' %}Em rota{% elif viagem.status=='aguardando_retorno' %}Retorno{% elif viagem.status=='concluido' %}Concluída{% else %}Cancelada{% endif %}
+            </span>
+          </div>
+          <div class="small text-muted">
+            Atendimento: {{viagem.responsavel_atendimento or '-'}} ·
+            Conferida: {{viagem.responsavel_conferencia or 'não'}}
+          </div>
+          {% if viagem.status == 'separacao' %}
+          <form method="POST" action="{{url_for('viagem_conferir', viagem_id=viagem.id)}}" class="mt-2">
+            <input type="hidden" name="origem" value="mobile">
+            <button type="submit" class="btn-block"><i class="bi bi-clipboard-check"></i> Registrar conferência</button>
+          </form>
+          {% elif viagem.status == 'conferido' %}
+          <form method="POST" action="{{url_for('viagem_iniciar', viagem_id=viagem.id)}}" class="mt-2">
+            <input type="hidden" name="origem" value="mobile">
+            <button type="submit" class="btn-block"><i class="bi bi-truck"></i> Iniciar rota</button>
+          </form>
+          {% endif %}
+          {% if viagem.status in ('em_rota','aguardando_retorno') %}
+          <a href="{{url_for('mobile_viagem_retorno', viagem_id=viagem.id)}}" class="btn-block mt-2" style="text-decoration:none;display:block;text-align:center;">
+            <i class="bi bi-arrow-return-left"></i> Conferir retorno
+          </a>
+          {% endif %}
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="bi bi-geo-alt"></i> Paradas</div>
+          {% for p in paradas %}
+          <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <div>
+              <strong>{{p.ordem}}. {{p.unidade_nome or 'Sem unidade'}}</strong>
+              <div class="small text-muted">{{p.empresa_nome or ''}}
+                {% if p.chamado_protocolo %} · chamado {{p.chamado_protocolo}}{% endif %}
+              </div>
+            </div>
+            <span class="badge {{'bg-success' if p.status=='atendida' else 'bg-secondary'}}">
+              {{'Atendida' if p.status=='atendida' else 'Planejada'}}
+            </span>
+          </div>
+          {% else %}
+          <div class="text-muted text-center py-2">Nenhuma parada.</div>
+          {% endfor %}
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="bi bi-box-seam"></i> Itens no carro</div>
+          {% for i in itens %}
+          {% set esperado = (i.quantidade_carregada or 0) - (i.quantidade_entregue or 0) - (i.quantidade_usada_manual or 0) %}
+          <div class="border-bottom py-2">
+            <div class="d-flex justify-content-between">
+              <strong>{{i.tipo_suprimento}} {{i.modelo_impressora or ''}}</strong>
+              <span>{{i.quantidade_carregada}}x</span>
+            </div>
+            <div class="small text-muted">
+              {% if i.origem == 'rench' %}Rench{% else %}{{i.fornecedor or 'Fornecedor'}}{% endif %}
+              · entregue {{i.quantidade_entregue}} · retorno esperado {{esperado}}
+            </div>
+            {% if i.divergencia %}<div class="small text-danger"><i class="bi bi-exclamation-triangle"></i> {{i.divergencia}}</div>{% endif %}
+          </div>
+          {% else %}
+          <div class="text-muted text-center py-2">Nenhum item.</div>
+          {% endfor %}
+        </div>
+
+        {% if viagem.status in ('conferido','em_rota','aguardando_retorno') %}
+        <div class="card">
+          <div class="card-title"><i class="bi bi-shop"></i> Registrar coleta de fornecedor</div>
+          <form method="POST" action="{{url_for('viagem_coleta', viagem_id=viagem.id)}}">
+            <input type="hidden" name="origem" value="mobile">
+            <input type="text" name="fornecedor" placeholder="Fornecedor (ex.: R10, Distrifilm)" required>
+            <input type="date" name="data_coleta" class="mt-2">
+            <div id="mob-coleta-itens" class="mt-2"></div>
+            <button type="button" class="btn-add" onclick="mobAddColetaItem()"><i class="bi bi-plus-lg"></i> Item coletado</button>
+            <label class="small mt-2" style="display:block">
+              <input type="checkbox" class="mob-coleta-usar" checked> pode usar no cliente
+            </label>
+            <input type="hidden" name="pode_usar_cliente[]" class="mob-coleta-usar-valor" value="1">
+            <button type="submit" class="btn-block mt-2"><i class="bi bi-check-lg"></i> Registrar coleta</button>
+          </form>
+        </div>
+        {% endif %}
+        {% endif %}
+      </div>
+
+      <!-- ABA RETORNO -->
+      <div id="aba-viagem_retorno" class="tab-content {{'active' if aba=='viagem_retorno' else ''}}">
+        {% if viagem is defined %}
+        <form method="POST" action="{{url_for('viagem_retorno', viagem_id=viagem.id)}}">
+          <input type="hidden" name="origem" value="mobile">
+          <div class="scroll-area">
+            <div class="card">
+              <div class="card-title"><i class="bi bi-arrow-return-left"></i> Retorno {{viagem.numero}}</div>
+              <small class="text-muted">Ajuste o que realmente voltou. Diferenças geram divergência.</small>
+            </div>
+            {% for i in itens %}
+            {% set esperado = (i.quantidade_carregada or 0) - (i.quantidade_entregue or 0) - (i.quantidade_usada_manual or 0) %}
+            <div class="card">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <strong>{{i.tipo_suprimento}} {{i.modelo_impressora or ''}}</strong>
+                  <div class="small text-muted">
+                    {% if i.origem == 'rench' %}Rench{% else %}{{i.fornecedor or 'Fornecedor'}}{% endif %}
+                    · esperado <strong>{{esperado}}</strong>
+                  </div>
+                </div>
+                <input type="number" name="retorno_{{i.id}}" value="{{esperado if esperado >= 0 else 0}}"
+                       min="0" style="width:80px;text-align:center" required>
+              </div>
+            </div>
+            {% endfor %}
+            <div class="card">
+              <div class="card-title"><i class="bi bi-person-check"></i> Recebimento</div>
+              <label>Recebido por *</label>
+              <input type="text" name="responsavel_retorno" value="{{session.usuario or ''}}" required>
+              <label class="mt-2">Assinatura / confirmação *</label>
+              <input type="text" name="assinatura_retorno" placeholder="Nome de quem confirma" required>
+              <label class="mt-2">Observações</label>
+              <input type="text" name="observacoes_retorno" placeholder="Obrigatória se houver divergência">
+            </div>
+          </div>
+          <div class="footer">
+            <button type="submit" class="btn-save"><i class="bi bi-check-lg"></i> Concluir viagem</button>
+          </div>
+        </form>
+        {% endif %}
+      </div>
+      </main>
+    </div> <!-- /modulo-viagens -->
+    {% endif %}
+
   </div> <!-- /app -->
 
   <template id="item-template">
@@ -1291,6 +1516,163 @@
     const container = document.getElementById('itens-container');
     const template = document.getElementById('item-template');
     const MODELOS = {{ modelos_impressora|default([])|tojson }};
+
+    // ─── Modulo Viagens (checklist) ────────────────────────────────────────
+    const VJ_ESTOQUE = [
+      {% for e in estoque|default([]) %}
+      {tipo: {{ (e.tipo_suprimento ~ ' ' ~ (e.modelo_impressora or '') ~ (' (' ~ e.marca ~ ')' if e.marca else '')) | tojson }},
+       modelo: {{ (e.modelo_impressora or '') | tojson }}, marca: {{ (e.marca or '') | tojson }}, saldo: {{e.quantidade}}}{{ ',' if not loop.last }}
+      {% endfor %}
+    ];
+    const VJ_LOCAIS = [
+      {% for l in locais|default([]) %}
+      {% if l.unidade_id %}
+      {unidade_id: {{l.unidade_id}}, empresa: {{ (l.empresa_nome or '') | tojson }}, unidade: {{ (l.unidade_nome or '') | tojson }}, setor: {{ (l.setor or '') | tojson }}}{{ ',' if not loop.last }}
+      {% endif %}
+      {% endfor %}
+    ];
+
+    function vjOpcoesEstoque(){
+      let html = '<option value="">Suprimento...</option>';
+      VJ_ESTOQUE.forEach((e, i) => {
+        html += `<option value="${i}">${e.tipo} — saldo ${e.saldo}</option>`;
+      });
+      return html;
+    }
+
+    function vjOpcoesUnidades(){
+      let html = '<option value="">Unidade...</option>';
+      let empresa = null;
+      VJ_LOCAIS.forEach(l => {
+        if(l.empresa !== empresa){ html += '<optgroup label="' + l.empresa + '">'; empresa = l.empresa; }
+        html += `<option value="${l.unidade_id}">${l.unidade}${l.setor ? ' - ' + l.setor : ''}</option>`;
+      });
+      if(empresa !== null) html += '</optgroup>';
+      return html;
+    }
+
+    function mobAddParada(){
+      const box = document.getElementById('mob-lista-paradas');
+      if(!box) return;
+      const div = document.createElement('div');
+      div.className = 'item-box';
+      div.style.cssText = 'border:1px solid #ddd;border-radius:8px;padding:8px;margin-bottom:8px';
+      div.innerHTML = `
+        <select class="vj-parada-unidade" name="parada_unidade_id[]" style="width:100%">${vjOpcoesUnidades()}</select>
+        <div class="d-flex gap-1 mt-1">
+          <input type="text" class="vj-parada-busca" placeholder="Buscar chamado (protocolo/descrição)" style="flex:1">
+          <button type="button" class="btn-add" style="padding:6px 10px" onclick="vjBuscarChamado(this)">OK</button>
+        </div>
+        <input type="hidden" class="vj-chamado-id" name="parada_chamado_id[]" value="">
+        <input type="hidden" class="vj-protocolo" name="parada_chamado_protocolo[]" value="">
+        <div class="vj-parada-info small text-muted">Sem chamado vinculado.</div>`;
+      box.appendChild(div);
+    }
+
+    async function vjBuscarChamado(btn){
+      const row = btn.closest('.item-box');
+      const termo = row.querySelector('.vj-parada-busca').value.trim();
+      const info = row.querySelector('.vj-parada-info');
+      info.textContent = 'Buscando...';
+      try {
+        const resp = await fetch('{{url_for("api_chamados")}}?busca=' + encodeURIComponent(termo));
+        if(resp.status === 503){ info.textContent = 'Integração com chamados não configurada.'; return; }
+        const dados = await resp.json();
+        const chamados = dados.chamados || [];
+        if(!chamados.length){ info.textContent = 'Nenhum chamado encontrado.'; return; }
+        if(chamados.length === 1){ vjSelecionarChamado(row, chamados[0]); return; }
+        info.innerHTML = '';
+        chamados.slice(0, 8).forEach(c => {
+          const a = document.createElement('a');
+          a.href = '#';
+          a.className = 'd-block small';
+          a.style.cssText = 'padding:4px 0;text-decoration:none';
+          a.textContent = c.protocolo + ' — ' + (c.empresa || '') + ' / ' + (c.unidade || '') + ' — ' + (c.descricao || '').slice(0, 50);
+          a.onclick = (ev) => { ev.preventDefault(); vjSelecionarChamado(row, c); };
+          info.appendChild(a);
+        });
+      } catch(e){
+        info.textContent = 'Falha na busca.';
+      }
+    }
+
+    function vjSelecionarChamado(row, c){
+      row.querySelector('.vj-chamado-id').value = c.id;
+      row.querySelector('.vj-protocolo').value = c.protocolo;
+      row.querySelector('.vj-parada-info').innerHTML =
+        '<span style="color:#0a7d33">Chamado <strong>' + c.protocolo + '</strong> — ' + (c.descricao || '').slice(0, 60) + '</span>';
+      const sel = row.querySelector('.vj-parada-unidade');
+      const alvo = (c.unidade || '').trim().toLowerCase();
+      if(alvo){
+        for(const opt of sel.options){
+          if(opt.textContent.trim().toLowerCase().startsWith(alvo)){ sel.value = opt.value; break; }
+        }
+      }
+    }
+
+    function mobAddItem(){
+      const box = document.getElementById('mob-lista-itens');
+      if(!box) return;
+      const div = document.createElement('div');
+      div.className = 'item-box';
+      div.style.cssText = 'border:1px solid #ddd;border-radius:8px;padding:8px;margin-bottom:8px';
+      div.innerHTML = `
+        <div class="d-flex gap-1">
+          <select class="vj-item-select" style="flex:1" onchange="vjSyncItem(this)">${vjOpcoesEstoque()}</select>
+          <input type="number" name="quantidade[]" value="1" min="1" style="width:70px;text-align:center">
+        </div>
+        <input type="hidden" name="tipo_suprimento[]" value="">
+        <input type="hidden" name="modelo_impressora[]" value="">
+        <input type="hidden" name="marca[]" value="">`;
+      box.appendChild(div);
+    }
+
+    function vjSyncItem(sel){
+      const opt = sel.selectedOptions[0];
+      const e = VJ_ESTOQUE[parseInt(opt?.value, 10)];
+      const row = sel.closest('.item-box');
+      row.querySelector('[name="tipo_suprimento[]"]').value = e ? e.tipo : '';
+      row.querySelector('[name="modelo_impressora[]"]').value = e ? e.modelo : '';
+      row.querySelector('[name="marca[]"]').value = e ? e.marca : '';
+    }
+
+    function mobAddColetaItem(){
+      const box = document.getElementById('mob-coleta-itens');
+      if(!box) return;
+      const div = document.createElement('div');
+      div.className = 'item-box';
+      div.style.cssText = 'border:1px solid #ddd;border-radius:8px;padding:8px;margin-bottom:8px';
+      div.innerHTML = `
+        <div class="d-flex gap-1">
+          <select class="vj-coleta-select" style="flex:1" onchange="vjSyncColeta(this)">${vjOpcoesEstoque()}</select>
+          <input type="number" name="quantidade[]" value="1" min="1" style="width:70px;text-align:center">
+        </div>
+        <input type="hidden" name="tipo_suprimento[]" value="">
+        <input type="hidden" name="modelo_impressora[]" value="">
+        <input type="hidden" name="marca[]" value="">`;
+      box.appendChild(div);
+      const usar = document.querySelector('.mob-coleta-usar');
+      if(usar) document.querySelector('.mob-coleta-usar-valor').value = usar.checked ? '1' : '0';
+    }
+
+    function vjSyncColeta(sel){
+      const opt = sel.selectedOptions[0];
+      const e = VJ_ESTOQUE[parseInt(opt?.value, 10)];
+      const row = sel.closest('.item-box');
+      row.querySelector('[name="tipo_suprimento[]"]').value = e ? e.tipo : '';
+      row.querySelector('[name="modelo_impressora[]"]').value = e ? e.modelo : '';
+      row.querySelector('[name="marca[]"]').value = e ? e.marca : '';
+    }
+
+    document.querySelector('.mob-coleta-usar')?.addEventListener('change', function(){
+      document.querySelector('.mob-coleta-usar-valor').value = this.checked ? '1' : '0';
+    });
+
+    // Inicializa o modulo viagens quando presente
+    if(document.getElementById('aba-viagem_nova')?.classList.contains('active')){
+      mobAddParada();
+      mobAddItem();
+    }
 
     function atualizarDestinoMovimentacao(){
       const tipo = document.getElementById('tipo-movimento-equip')?.value;
@@ -1651,6 +2033,26 @@
 
     function selecionarUnidade(el){
       selecionarUnidadeGenerico(el,'unidade_id','selectedText','selectList');
+      carregarParadasMobile(el.dataset.unidade);
+    }
+
+    async function carregarParadasMobile(unidadeId){
+      const box = document.getElementById('box-parada-mob');
+      const sel = document.getElementById('parada_id_mob');
+      if(!box || !sel || !unidadeId) return;
+      try {
+        const resp = await fetch('/api/viagens/paradas-ativas?unidade_id=' + unidadeId);
+        const dados = await resp.json();
+        sel.innerHTML = '<option value="">Sem viagem / não vincular</option>';
+        (dados.paradas || []).forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = 'Viagem ' + p.viagem_numero +
+            (p.chamado_protocolo ? ' — chamado ' + p.chamado_protocolo : '');
+          sel.appendChild(opt);
+        });
+        box.style.display = (dados.paradas || []).length ? 'block' : 'none';
+      } catch(e){ /* silencioso */ }
     }
 
     document.addEventListener('click', function(e){
@@ -1718,6 +2120,10 @@
       if(modulo === 'estoque'){
         const abaInicial = renchAppMode ? 'estoque' : 'entrega';
         window.location.href = '{{url_for("suprimento_mobile", aba="ABA_X")}}'.replace('ABA_X', abaInicial) + sufixo;
+        return;
+      }
+      if(modulo === 'viagens'){
+        window.location.href = '{{url_for("mobile_viagens")}}' + (renchAppMode ? '?app=1' : '');
         return;
       }
       document.querySelectorAll('.modulo-tab').forEach(t=>t.classList.remove('active'));

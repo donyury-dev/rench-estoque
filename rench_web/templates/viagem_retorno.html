@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}Retorno Viagem {{viagem.numero}} - RENCH{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1><i class="bi bi-arrow-return-left me-2"></i>Retorno — Viagem {{viagem.numero}}</h1>
+    <span class="text-muted">Confira o que voltou para o escritório. O esperado de cada item é calculado automaticamente (levou − entregue − usado).</span>
+  </div>
+  <a href="{{url_for('viagem_detalhe', viagem_id=viagem.id)}}" class="btn btn-rench-primary"><i class="bi bi-arrow-left me-1"></i>Voltar</a>
+</div>
+
+<form method="POST">
+  <div class="card card-dashboard p-3 mb-4">
+    <h5 class="fw-bold mb-3"><i class="bi bi-box-seam me-2"></i>Conferência por item</h5>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Suprimento</th>
+            <th>Origem</th>
+            <th class="text-center">Levou</th>
+            <th class="text-center">Entregue</th>
+            <th class="text-center">Usado</th>
+            <th class="text-center">Esperado retorno</th>
+            <th style="width:140px">Voltou</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i in itens %}
+          {% set esperado = (i.quantidade_carregada or 0) - (i.quantidade_entregue or 0) - (i.quantidade_usada_manual or 0) %}
+          <tr>
+            <td>
+              <strong>{{i.tipo_suprimento}}</strong>
+              {% if i.modelo_impressora %}<span class="text-muted">{{i.modelo_impressora}}</span>{% endif %}
+              {% if i.marca %}<span class="badge badge-impressora">{{i.marca}}</span>{% endif %}
+            </td>
+            <td>
+              {% if i.origem == 'rench' %}<span class="badge bg-secondary">Rench</span>
+              {% else %}<span class="badge bg-warning text-dark">{{i.fornecedor or 'Fornecedor'}}</span>{% endif %}
+            </td>
+            <td class="text-center">{{i.quantidade_carregada}}</td>
+            <td class="text-center">{{i.quantidade_entregue}}</td>
+            <td class="text-center">{{i.quantidade_usada_manual}}</td>
+            <td class="text-center fw-bold {{'text-success' if esperado > 0 else 'text-muted'}}">{{esperado}}</td>
+            <td>
+              <input type="number" class="form-control form-control-sm text-center" name="retorno_{{i.id}}"
+                     value="{{esperado if esperado >= 0 else 0}}" min="0" required>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="text-center text-muted py-4">Nenhum item na viagem.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <small class="text-muted">Ajuste a quantidade que realmente voltou. Diferenças geram divergência e exigem observação.</small>
+  </div>
+
+  <div class="card card-dashboard p-3 mb-4">
+    <h5 class="fw-bold mb-3"><i class="bi bi-person-check me-2"></i>Recebimento no escritório</h5>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Recebido por (funcionário) *</label>
+        <input type="text" class="form-control" name="responsavel_retorno" value="{{session.usuario or ''}}" required>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Assinatura / confirmação (nome) *</label>
+        <input type="text" class="form-control" name="assinatura_retorno" placeholder="Nome de quem confirma o recebimento" required>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Observações</label>
+        <input type="text" class="form-control" name="observacoes_retorno" placeholder="Obrigatória se houver divergência">
+      </div>
+    </div>
+  </div>
+
+  <div class="d-grid gap-2">
+    <button class="btn btn-outline-primary btn-lg"><i class="bi bi-check-circle me-2"></i>Concluir viagem</button>
+  </div>
+</form>
+{% endblock %}

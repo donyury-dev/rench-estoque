@@ -31,6 +31,13 @@
           </datalist>
           <div class="invalid-feedback" id="erro_unidade">Selecione uma unidade válida.</div>
         </div>
+        <div class="mb-3" id="box-parada" style="display:none">
+          <label class="form-label fw-bold"><i class="bi bi-signpost-split me-1"></i>Viagem / Parada</label>
+          <select class="form-select" name="parada_id" id="parada_id">
+            <option value="">Sem viagem / não vincular</option>
+          </select>
+          <small class="text-muted">Vincule a saída à parada da viagem em andamento para o checklist atualizar sozinho.</small>
+        </div>
         <div class="mb-3">
           <label class="form-label fw-bold">Responsável</label>
           <select class="form-select" name="responsavel">
@@ -380,6 +387,30 @@ document.getElementById('tipo-observacao').addEventListener('change', function()
 
   busca.addEventListener('input', validarUnidade);
   busca.addEventListener('change', validarUnidade);
+
+  // Paradas de viagens ativas: carrega ao validar a unidade
+  const selParada = document.getElementById('parada_id');
+  const boxParada = document.getElementById('box-parada');
+  async function carregarParadas(){
+    if(!selParada || !hidden.value){ return; }
+    try {
+      const resp = await fetch('{{url_for("api_paradas_ativas")}}?unidade_id=' + hidden.value);
+      const dados = await resp.json();
+      selParada.innerHTML = '<option value="">Sem viagem / não vincular</option>';
+      (dados.paradas || []).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = 'Viagem ' + p.viagem_numero +
+          (p.chamado_protocolo ? ' — chamado ' + p.chamado_protocolo : '') +
+          ' (' + (p.empresa_nome || '') + (p.unidade_nome ? ' / ' + p.unidade_nome : '') + ')';
+        selParada.appendChild(opt);
+      });
+      if(boxParada){
+        boxParada.style.display = (dados.paradas || []).length ? 'block' : 'none';
+      }
+    } catch(e){ /* silencioso */ }
+  }
+  busca.addEventListener('change', carregarParadas);
 
   const form = document.getElementById('form-suprimento');
   if(form){

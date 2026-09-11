@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% block title %}Nova Viagem - RENCH{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-signpost-split me-2"></i>Nova Viagem de Suprimentos</h1>
+  <a href="{{url_for('lista_viagens')}}" class="btn btn-rench-primary"><i class="bi bi-arrow-left me-1"></i>Voltar</a>
+</div>
+
+<form method="POST" id="form-viagem">
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card card-dashboard p-3 mb-4">
+      <h5 class="fw-bold mb-3"><i class="bi bi-person me-2"></i>Responsável pela viagem</h5>
+      <div class="mb-3">
+        <label class="form-label">Quem vai sair para o atendimento</label>
+        <input type="text" class="form-control" name="responsavel_atendimento" value="{{session.usuario or ''}}" required>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Observações</label>
+        <textarea class="form-control" name="observacoes" rows="2" placeholder="Opcional"></textarea>
+      </div>
+    </div>
+
+    <div class="card card-dashboard p-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0"><i class="bi bi-geo-alt me-2"></i>Paradas (unidades)</h5>
+        <button type="button" class="btn btn-sm btn-rench-primary" onclick="addParada()"><i class="bi bi-plus-lg"></i> Parada</button>
+      </div>
+      <div id="lista-paradas"></div>
+      <small class="text-muted">Opcional. Vincule o chamado de cada parada para puxar os dados automaticamente.</small>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card card-dashboard p-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0"><i class="bi bi-box-seam me-2"></i>Suprimentos levados (Rench)</h5>
+        <button type="button" class="btn btn-sm btn-rench-primary" onclick="addItem()"><i class="bi bi-plus-lg"></i> Item</button>
+      </div>
+      <div id="lista-itens"></div>
+      <small class="text-muted">Materiais coletados em fornecedores durante a rota são registrados depois, na página da viagem.</small>
+    </div>
+
+    <div class="d-grid gap-2 mt-4">
+      <button type="submit" class="btn btn-outline-primary btn-lg"><i class="bi bi-check-circle me-2"></i>Criar Viagem</button>
+    </div>
+  </div>
+</div>
+</form>
+
+<div class="modal fade" id="modalChamado" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-ticket me-2"></i>Buscar Chamado</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group mb-3">
+          <input type="text" class="form-control" id="buscaChamado" placeholder="Protocolo, descrição, unidade ou empresa...">
+          <button class="btn btn-outline-primary" type="button" onclick="buscarChamados()"><i class="bi bi-search"></i> Buscar</button>
+        </div>
+        <div id="resultadoChamados" class="list-group"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+const ESTOQUE = {{ estoque | map(attribute='id') | list | length }} ? [
+  {% for e in estoque %}
+  {id: {{e.id}}, tipo: {{ (e.tipo_suprimento ~ ' ' ~ (e.modelo_impressora or '') ~ (' (' ~ e.marca ~ ')' if e.marca else '')) | tojson }}, modelo: {{ (e.modelo_impressora or '') | tojson }}, marca: {{ (e.marca or '') | tojson }}, saldo: {{e.quantidade}} }{{ ',' if not loop.last }}
+  {% endfor %}
+] : [];
+
+const LOCAIS = [
+  {% for l in locais %}
+  {% if l.unidade_id %}
+  {unidade_id: {{l.unidade_id}}, empresa: {{ (l.empresa_nome or '') | tojson }}, unidade: {{ (l.unidade_nome or '') | tojson }}, setor: {{ (l.setor or '') | tojson }}}{{ ',' if not loop.last }}
+  {% endif %}
+  {% endfor %}
+];
+
+let paradaIdx = 0, itemIdx = 0, paradaAtiva = null;
+
+function optgroupsLocais(){
+  let html = '<option value="">Selecione a unidade...</option>';
+  let empresaAtual = null;
+  LOCAIS.forEach(l => {
+    if(l.empresa !== empresaAtual){
+      if(empresaAtual !== null) html += '</optgroup>';
+      html += '<optgroup label="' + l.empresa.replace(/"/g,'&quot;') + '">';
+      empresaAtual = l.empresa;
+    }
+    const setor = l.setor ? ' - ' + l.setor : '';
+    html += '<option value="' + l.unidade_id + '" data-unidade="' + l.unidade.replace(/"/g,'&quot;') + '">' + l.unidade + setor + '</option>';
+  });
+  if(empresaAtual !== null) html += '</optgroup>';
+  return html;
+}
+
+function addParada(){
+  paradaIdx++;
+  const div = document.createElement('div');
+  div.className = 'border rounded p-2 mb-2 parada-row';
+  div.innerHTML = `
+    <div class="d-flex gap-2 align-items-center mb-2">
+      <span class="badge bg-secondary">${paradaIdx}ª</span>
+      <select class="form-select form-select-sm parada-unidade" name="parada_unidade_id[]">
+        ${optgroupsLocais()}
+      </select>
+      <button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirChamados(this)"><i class="bi bi-ticket"></i> Chamado</button>
+      <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.parada-row').remove()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <input type="hidden" class="parada-chamado-id" name="parada_chamado_id[]" value="">
+    <input type="hidden" class="parada-protocolo" name="parada_chamado_protocolo[]" value="">
+    <div class="parada-info small text-muted">Sem chamado vinculado.</div>`;
+  document.getElementById('lista-paradas').appendChild(div);
+}
+
+function addItem(){
+  itemIdx++;
+  const div = document.createElement('div');
+  div.className = 'border rounded p-2 mb-2 item-row';
+  let opcoes = '<option value="">Selecione o suprimento...</option>';
+  ESTOQUE.forEach(e => {
+    opcoes += `<option value="${e.id}" data-tipo="${e.tipo}" data-modelo="${e.modelo}" data-marca="${e.marca}">${e.tipo} — saldo ${e.saldo}</option>`;
+  });
+  div.innerHTML = `
+    <div class="d-flex gap-2 align-items-center">
+      <select class="form-select form-select-sm item-select" onchange="syncItem(this)" required>
+        ${opcoes}
+      </select>
+      <input type="number" class="form-control form-control-sm text-center" style="max-width:90px" name="quantidade[]" value="1" min="1" required>
+      <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.item-row').remove()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <input type="hidden" name="tipo_suprimento[]" value="">
+    <input type="hidden" name="modelo_impressora[]" value="">
+    <input type="hidden" name="marca[]" value="">`;
+  document.getElementById('lista-itens').appendChild(div);
+}
+
+function syncItem(sel){
+  const opt = sel.selectedOptions[0];
+  const row = sel.closest('.item-row');
+  row.querySelector('[name="tipo_suprimento[]"]').value = opt?.dataset.tipo || '';
+  row.querySelector('[name="modelo_impressora[]"]').value = opt?.dataset.modelo || '';
+  row.querySelector('[name="marca[]"]').value = opt?.dataset.marca || '';
+}
+
+function abrirChamados(btn){
+  paradaAtiva = btn.closest('.parada-row');
+  const modal = new bootstrap.Modal(document.getElementById('modalChamado'));
+  modal.show();
+  setTimeout(() => { if(!document.getElementById('resultadoChamados').children.length) buscarChamados(); }, 300);
+}
+
+async function buscarChamados(){
+  const termo = document.getElementById('buscaChamado').value.trim();
+  const box = document.getElementById('resultadoChamados');
+  box.innerHTML = '<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-2"></span>Buscando...</div>';
+  try {
+    const resp = await fetch('{{url_for("api_chamados")}}?busca=' + encodeURIComponent(termo));
+    if(resp.status === 503){
+      box.innerHTML = '<div class="alert alert-warning mb-0">Integração com o sistema de chamados não configurada.</div>';
+      return;
+    }
+    const dados = await resp.json();
+    if(!dados.chamados || !dados.chamados.length){
+      box.innerHTML = '<div class="text-center text-muted py-3">Nenhum chamado aberto encontrado.</div>';
+      return;
+    }
+    box.innerHTML = '';
+    dados.chamados.forEach(c => {
+      const a = document.createElement('a');
+      a.href = '#';
+      a.className = 'list-group-item list-group-item-action';
+      a.innerHTML = `
+        <div class="d-flex w-100 justify-content-between">
+          <strong>Chamado ${c.protocolo}</strong>
+          <small>${c.aberto_em || ''}</small>
+        </div>
+        <div class="small text-muted">${c.empresa || ''} — ${c.unidade || ''}</div>
+        <div class="small">${c.descricao || ''}</div>`;
+      a.onclick = (ev) => {
+        ev.preventDefault();
+        if(paradaAtiva){
+          paradaAtiva.querySelector('.parada-chamado-id').value = c.id;
+          paradaAtiva.querySelector('.parada-protocolo').value = c.protocolo;
+          paradaAtiva.querySelector('.parada-info').innerHTML =
+            '<span class="text-success"><i class="bi bi-ticket-perforated me-1"></i>Chamado <strong>' + c.protocolo + '</strong> — ' + (c.descricao || '').slice(0,80) + '</span>';
+          // tenta selecionar a unidade correspondente pelo nome
+          const sel = paradaAtiva.querySelector('.parada-unidade');
+          const alvo = (c.unidade || '').trim().toLowerCase();
+          if(alvo){
+            for(const opt of sel.options){
+              if(opt.dataset.unidade && opt.dataset.unidade.trim().toLowerCase() === alvo){
+                sel.value = opt.value; break;
+              }
+            }
+          }
+        }
+        bootstrap.Modal.getInstance(document.getElementById('modalChamado')).hide();
+      };
+      box.appendChild(a);
+    });
+  } catch(e){
+    box.innerHTML = '<div class="alert alert-danger mb-0">Falha ao buscar chamados.</div>';
+  }
+}
+
+document.getElementById('buscaChamado').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ e.preventDefault(); buscarChamados(); }
+});
+
+document.getElementById('form-viagem').addEventListener('submit', (e) => {
+  document.querySelectorAll('.item-row').forEach(row => {
+    if(!row.querySelector('[name="tipo_suprimento[]"]').value){
+      row.remove();
+    }
+  });
+  if(!document.querySelector('.item-row')){
+    e.preventDefault();
+    alert('Adicione pelo menos um suprimento à viagem.');
+  }
+});
+
+addParada();
+addItem();
+</script>
+{% endblock %}
