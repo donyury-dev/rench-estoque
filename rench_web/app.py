@@ -779,6 +779,15 @@ def init_db():
             data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS viagens_paradas_chamados (
+            id SERIAL PRIMARY KEY,
+            parada_id INTEGER NOT NULL REFERENCES viagens_paradas(id) ON DELETE CASCADE,
+            chamado_id BIGINT NOT NULL,
+            chamado_protocolo VARCHAR(30),
+            UNIQUE (parada_id, chamado_id)
+        )
+    """)
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS viagens_coletas (
@@ -3031,6 +3040,7 @@ def _coletar_paradas_viagem(form):
     unidade_ids = form.getlist('parada_unidade_id[]')
     chamado_ids = form.getlist('parada_chamado_id[]')
     protocolos = form.getlist('parada_chamado_protocolo[]')
+    chamados_por_parada = form.getlist('parada_chamados_json[]')
 
     def campo(lista, idx):
         return lista[idx] if idx < len(lista) else ''
@@ -3058,7 +3068,19 @@ def _coletar_paradas_viagem(form):
             'unidade_id': unidade_id,
             'chamado_id': chamado_id,
             'chamado_protocolo': protocolo,
+            'chamados': [],
         })
+        try:
+            import json
+            extras = json.loads(campo(chamados_por_parada, idx) or '[]')
+            paradas[-1]['chamados'] = [
+                (int(item['id']), item.get('protocolo'))
+                for item in extras if item.get('id')
+            ]
+        except (TypeError, ValueError, KeyError):
+            pass
+        if chamado_id and (chamado_id, protocolo) not in paradas[-1]['chamados']:
+            paradas[-1]['chamados'].insert(0, (chamado_id, protocolo))
     return paradas
 
 
@@ -3211,8 +3233,16 @@ def nova_viagem():
         for idx, parada in enumerate(paradas):
             cur.execute("""
                 INSERT INTO viagens_paradas (viagem_id, ordem, unidade_id, chamado_id, chamado_protocolo)
-                VALUES (%s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s) RETURNING id
             """, (viagem_id, idx + 1, parada['unidade_id'], parada['chamado_id'], parada['chamado_protocolo']))
+            parada_id = cur.fetchone()['id']
+            for chamado_id, protocolo in parada['chamados']:
+                cur.execute("""
+                    INSERT INTO viagens_paradas_chamados
+                        (parada_id, chamado_id, chamado_protocolo)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (parada_id, chamado_id) DO NOTHING
+                """, (parada_id, chamado_id, protocolo))
 
         for item in itens:
             cur.execute("""

@@ -1581,6 +1581,7 @@
         </div>
         <input type="hidden" class="vj-chamado-id" name="parada_chamado_id[]" value="">
         <input type="hidden" class="vj-protocolo" name="parada_chamado_protocolo[]" value="">
+        <input type="hidden" class="vj-chamados-json" name="parada_chamados_json[]" value="[]">
         <div class="vj-parada-info small text-muted">Sem chamado vinculado.</div>`;
       box.appendChild(div);
     }
@@ -1625,10 +1626,14 @@
     }
 
     function vjSelecionarChamado(row, c){
+      const chamados = JSON.parse(row.querySelector('.vj-chamados-json').value || '[]');
+      if(!chamados.some(item => String(item.id) === String(c.id))) chamados.push({id:c.id, protocolo:c.protocolo});
+      row.querySelector('.vj-chamados-json').value = JSON.stringify(chamados);
       row.querySelector('.vj-chamado-id').value = c.id;
       row.querySelector('.vj-protocolo').value = c.protocolo;
       row.querySelector('.vj-parada-info').innerHTML =
-        '<span style="color:#0a7d33">Chamado <strong>' + c.protocolo + '</strong> — ' + (c.descricao || '').slice(0, 60) + '</span>';
+        '<span style="color:#0a7d33">Chamados: ' +
+        chamados.map(item => '<strong>' + item.protocolo + '</strong>').join(' · ') + '</span>';
       const sel = row.querySelector('.vj-parada-unidade-busca');
       const alvo = (c.unidade || '').trim().toLowerCase();
       if(alvo){

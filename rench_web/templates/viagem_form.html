@@ -121,6 +121,7 @@ function addParada(){
     </div>
     <input type="hidden" class="parada-chamado-id" name="parada_chamado_id[]" value="">
     <input type="hidden" class="parada-protocolo" name="parada_chamado_protocolo[]" value="">
+    <input type="hidden" class="parada-chamados-json" name="parada_chamados_json[]" value="[]">
     <div class="parada-info small text-muted">Sem chamado vinculado.</div>`;
   document.getElementById('lista-paradas').appendChild(div);
 }
@@ -227,8 +228,8 @@ async function buscarChamados(){
     }
     box.innerHTML = '';
     dados.chamados.forEach(c => {
-      const a = document.createElement('a');
-      a.href = '#';
+      const a = document.createElement('button');
+      a.type = 'button';
       a.className = 'btn btn-outline-secondary text-start p-3';
       a.innerHTML = `
         <div class="d-flex justify-content-between gap-2">
@@ -238,21 +239,26 @@ async function buscarChamados(){
         <div class="small mt-1"><strong>${c.empresa || 'Empresa não identificada'}</strong> · ${c.unidade || 'Unidade não identificada'}</div>
         <div class="small text-muted mt-1">${c.categoria || ''}${c.equipamento ? ' · ' + c.equipamento : ''}</div>
         <div class="small mt-1">${c.descricao || 'Sem descrição'}</div>`;
-      a.onclick = (ev) => {
-        ev.preventDefault();
+      a.onclick = () => {
         if(paradaAtiva){
+          const chamados = JSON.parse(paradaAtiva.querySelector('.parada-chamados-json').value || '[]');
+          if(!chamados.some(item => String(item.id) === String(c.id))) chamados.push({id:c.id, protocolo:c.protocolo});
+          paradaAtiva.querySelector('.parada-chamados-json').value = JSON.stringify(chamados);
           paradaAtiva.querySelector('.parada-chamado-id').value = c.id;
           paradaAtiva.querySelector('.parada-protocolo').value = c.protocolo;
           paradaAtiva.querySelector('.parada-info').innerHTML =
-            '<span class="text-success"><i class="bi bi-ticket-perforated me-1"></i>Chamado <strong>' + c.protocolo + '</strong> — ' + (c.descricao || '').slice(0,80) + '</span>';
+            '<span class="text-success"><i class="bi bi-ticket-perforated me-1"></i>' +
+            chamados.map(item => '<strong>' + item.protocolo + '</strong>').join(' · ') +
+            '</span>';
           // tenta selecionar a unidade correspondente pelo nome
-          const sel = paradaAtiva.querySelector('.parada-unidade');
+          const sel = paradaAtiva.querySelector('.parada-unidade-busca');
           const alvo = (c.unidade || '').trim().toLowerCase();
           if(alvo){
-            for(const opt of sel.options){
-              if(opt.dataset.unidade && opt.dataset.unidade.trim().toLowerCase() === alvo){
-                sel.value = opt.value; break;
-              }
+            const local = LOCAIS.find(l => l.unidade.toLowerCase() === alvo ||
+              (l.unidade + ' — ' + l.empresa).toLowerCase() === alvo);
+            if(local){
+              sel.value = local.unidade + ' — ' + local.empresa;
+              paradaAtiva.querySelector('.parada-unidade').value = local.unidade_id;
             }
           }
         }
