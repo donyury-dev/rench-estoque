@@ -4,7 +4,7 @@
 <div class="page-header">
   <div>
     <h1><i class="bi bi-arrow-return-left me-2"></i>Retorno — Viagem {{viagem.numero}}</h1>
-    <span class="text-muted">Confira o que voltou para o escritório. O esperado de cada item é calculado automaticamente (levou − entregue − usado).</span>
+    <span class="text-muted">Confira o que voltou fisicamente. Coletas, trocas e itens deixados em unidades podem ser registrados nas observações da conferência.</span>
   </div>
   <a href="{{url_for('viagem_detalhe', viagem_id=viagem.id)}}" class="btn btn-rench-primary"><i class="bi bi-arrow-left me-1"></i>Voltar</a>
 </div>
@@ -53,7 +53,7 @@
         </tbody>
       </table>
     </div>
-    <small class="text-muted">Ajuste a quantidade que realmente voltou. Diferenças geram divergência e exigem observação.</small>
+    <small class="text-muted">Ajuste a quantidade que realmente voltou. O alerta vermelho é somente da conferência da viagem; ele não altera o estoque automaticamente.</small>
   </div>
 
   <div class="card card-dashboard p-3 mb-4">
@@ -69,7 +69,7 @@
       </div>
       <div class="col-md-4">
         <label class="form-label">Observações</label>
-        <input type="text" class="form-control" name="observacoes_retorno" placeholder="Obrigatória se houver divergência">
+        <input type="text" class="form-control" name="observacoes_retorno" placeholder="Ex.: toner deixado na UPA; drum retirada na R10; impressora retornou da manutenção">
       </div>
     </div>
   </div>

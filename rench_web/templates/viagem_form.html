@@ -62,8 +62,8 @@
       </div>
       <div class="modal-body">
         <div class="input-group mb-3">
-          <input type="text" class="form-control" id="buscaChamado" placeholder="Protocolo, descrição, unidade ou empresa...">
-          <button class="btn btn-outline-primary" type="button" onclick="buscarChamados()"><i class="bi bi-search"></i> Buscar</button>
+          <input type="text" class="form-control" id="buscaChamado" placeholder="Digite o nome da unidade ou empresa...">
+          <button class="btn btn-outline-primary" type="button" onclick="buscarChamados()"><i class="bi bi-search"></i> Buscar unidade</button>
         </div>
         <div id="resultadoChamados" class="d-grid gap-2"></div>
       </div>
@@ -213,7 +213,7 @@ function abrirChamados(btn){
 async function buscarChamados(){
   const termo = document.getElementById('buscaChamado').value.trim();
   const box = document.getElementById('resultadoChamados');
-  box.innerHTML = '<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-2"></span>Buscando...</div>';
+  box.innerHTML = '<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-2"></span>Buscando chamados da unidade...</div>';
   try {
     const resp = await fetch('{{url_for("api_chamados")}}?busca=' + encodeURIComponent(termo));
     if(resp.status === 503){

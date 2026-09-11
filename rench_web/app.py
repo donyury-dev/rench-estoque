@@ -2079,12 +2079,50 @@ def movimentar(equip_id):
         contador_mono_novo = request.form.get('contador_mono_novo', '').strip()
         contador_color_novo = request.form.get('contador_color_novo', '').strip()
 
+        if tipo_mov in ('entrada_estoque', 'retorno_cliente', 'retorno_manutencao'):
+            cur.execute("""
+                SELECT u.id FROM unidades u
+                JOIN empresas e ON e.id=u.empresa_id
+                WHERE e.tipo='rench' AND u.ativo=1
+                ORDER BY CASE WHEN u.nome ILIKE '%estoque%' THEN 0 ELSE 1 END, u.id
+                LIMIT 1
+            """)
+            row = cur.fetchone()
+            destino_unidade_id = row['id'] if row else None
+        elif tipo_mov == 'envio_manutencao':
+            empresa_id = request.form.get('empresa_destino_id')
+            if empresa_id:
+                cur.execute("""
+                    SELECT u.id FROM unidades u
+                    JOIN empresas e ON e.id=u.empresa_id
+                    WHERE e.id=%s AND e.tipo='assistencia' AND u.ativo=1
+                    ORDER BY u.id LIMIT 1
+                """, (empresa_id,))
+                row = cur.fetchone()
+                destino_unidade_id = row['id'] if row else None
+        elif tipo_mov == 'saida_cliente':
+            empresa_id = request.form.get('empresa_destino_cliente_id')
+            if empresa_id:
+                cur.execute("""
+                    SELECT u.id FROM unidades u
+                    JOIN empresas e ON e.id=u.empresa_id
+                    WHERE e.id=%s AND e.tipo='cliente' AND u.ativo=1
+                    ORDER BY u.id LIMIT 1
+                """, (empresa_id,))
+                row = cur.fetchone()
+                destino_unidade_id = row['id'] if row else None
+
+        if tipo_mov in ('envio_manutencao', 'saida_cliente') and not destino_unidade_id:
+            flash('Selecione o destino antes de registrar a movimentação.', 'danger')
+            db.rollback()
+            return redirect(url_for('mobile_equipamento_movimentar', equip_id=equip_id))
+
         contador_mono_anterior = int(equip['contador_mono'] or 0)
         contador_color_anterior = int(equip['contador_color'] or 0)
         contador_mono_novo_int = int(contador_mono_novo) if contador_mono_novo else contador_mono_anterior
         contador_color_novo_int = int(contador_color_novo) if contador_color_novo else contador_color_anterior
 
-        if tipo_mov in ('entrada_estoque', 'retorno_cliente'):
+        if tipo_mov in ('entrada_estoque', 'retorno_cliente', 'retorno_manutencao'):
             cur.execute("""
                 SELECT u.id FROM unidades u
                 JOIN empresas e ON e.id=u.empresa_id
@@ -2113,6 +2151,47 @@ def movimentar(equip_id):
                 """, (empresa_destino_cliente_id,))
                 row = cur.fetchone()
                 destino_unidade_id = row['id'] if row else destino_unidade_id
+
+        if tipo_mov == 'envio_manutencao' and not destino_unidade_id:
+            flash("Selecione a assistência técnica.", "danger")
+            db.rollback()
+            return redirect(url_for('movimentar', equip_id=equip_id))
+        if tipo_mov == 'saida_cliente' and not destino_unidade_id:
+            flash("Selecione o cliente e a unidade de destino.", "danger")
+            db.rollback()
+            return redirect(url_for('movimentar', equip_id=equip_id))
+
+        if tipo_mov in ('entrada_estoque', 'retorno_cliente', 'retorno_manutencao'):
+            cur.execute("""
+                SELECT u.id FROM unidades u
+                JOIN empresas e ON e.id=u.empresa_id
+                WHERE e.tipo='rench' AND u.ativo=1
+                ORDER BY CASE WHEN u.nome ILIKE '%estoque%' THEN 0 ELSE 1 END, u.id
+                LIMIT 1
+            """)
+            destino_unidade_id = cur.fetchone()['id']
+        elif tipo_mov == 'envio_manutencao':
+            empresa_id = request.form.get('empresa_destino_id')
+            if empresa_id:
+                cur.execute("""
+                    SELECT u.id FROM unidades u
+                    JOIN empresas e ON e.id=u.empresa_id
+                    WHERE e.id=%s AND e.tipo='assistencia' AND u.ativo=1
+                    ORDER BY u.id LIMIT 1
+                """, (empresa_id,))
+                row = cur.fetchone()
+                destino_unidade_id = row['id'] if row else None
+        elif tipo_mov == 'saida_cliente':
+            empresa_id = request.form.get('empresa_destino_cliente_id')
+            if empresa_id:
+                cur.execute("""
+                    SELECT u.id FROM unidades u
+                    JOIN empresas e ON e.id=u.empresa_id
+                    WHERE e.id=%s AND e.tipo='cliente' AND u.ativo=1
+                    ORDER BY u.id LIMIT 1
+                """, (empresa_id,))
+                row = cur.fetchone()
+                destino_unidade_id = row['id'] if row else None
 
         destino_unidade_nome = None
         if destino_unidade_id:
@@ -2148,7 +2227,7 @@ def movimentar(equip_id):
                u.id as unidade_id, u.nome as unidade_nome, u.setor
         FROM empresas e
         LEFT JOIN unidades u ON u.empresa_id = e.id AND u.ativo=1
-        WHERE e.ativo=1
+        WHERE e.ativo=1 AND (u.ativo=1 OR u.id IS NULL)
         ORDER BY e.tipo DESC, e.nome, u.nome
     """)
     locais = cur.fetchall()
@@ -3006,6 +3085,14 @@ def api_chamados():
         }), 503
     busca = request.args.get('busca', '').strip()
     chamados = helpdesk_buscar_chamados(busca=busca)
+    termo = _remover_acentos(busca).casefold()
+    if termo:
+        chamados.sort(key=lambda chamado: (
+            0 if termo in _remover_acentos(chamado.get('unidade', '')).casefold() else
+            1 if termo in _remover_acentos(chamado.get('empresa', '')).casefold() else
+            2 if termo in _remover_acentos(chamado.get('descricao', '')).casefold() else 3,
+            chamado.get('protocolo', '')
+        ))
     return jsonify({'chamados': chamados, 'configurado': True})
 
 
@@ -3317,7 +3404,11 @@ def viagem_retorno(viagem_id):
         itens = cur.fetchall()
         divergencias = []
         for item in itens:
-            esperado = (item['quantidade_carregada'] or 0) - (item['quantidade_entregue'] or 0) - (item['quantidade_usada_manual'] or 0)
+            esperado = (
+                (item['quantidade_carregada'] or 0)
+                - (item['quantidade_entregue'] or 0)
+                - (item['quantidade_usada_manual'] or 0)
+            )
             bruto = request.form.get(f'retorno_{item["id"]}', '')
             try:
                 retornada = int(bruto) if bruto.strip() != '' else None
@@ -3326,6 +3417,8 @@ def viagem_retorno(viagem_id):
             if retornada is None:
                 continue
             divergencia = None
+            if retornada < 0:
+                retornada = 0
             if retornada != esperado:
                 divergencia = f'esperado {esperado}, retornou {retornada}'
                 divergencias.append(
@@ -3336,12 +3429,11 @@ def viagem_retorno(viagem_id):
             """, (retornada, divergencia, item['id']))
 
         if divergencias and not observacoes:
-            flash('Existem divergencias no retorno. Informe uma observacao explicando: '
-                  + '; '.join(divergencias), 'danger')
+            flash('Existem diferenças no retorno. Informe o que aconteceu em cada item ou ajuste a quantidade retornada.', 'danger')
             db.rollback()
             paradas, itens, coletas, entregas = _carregar_detalhes_viagem(cur, viagem_id)
             return render_template('viagem_retorno.html', viagem=viagem, itens=itens,
-                                   paradas=paradas)
+                                   paradas=paradas, divergencias=divergencias)
 
         cur.execute("""
             UPDATE viagens SET status='concluido', responsavel_retorno=%s,

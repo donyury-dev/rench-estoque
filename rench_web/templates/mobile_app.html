@@ -1143,7 +1143,7 @@
                     <option value="{{l.empresa_id}}">{{l.empresa_nome}}</option>
                   {% endfor %}
                 </select>
-                <input type="hidden" name="destino_unidade_id" id="destino_unidade_id" value="{{equip.unidade_id or ''}}" required>
+              <input type="hidden" name="destino_unidade_id" id="destino_unidade_id" value="{{equip.unidade_id or ''}}">
                 <div class="selected-box" id="selectedBoxMov" onclick="abrirListaUnidadeGenerico('selectedBoxMov','selectListMov')">
                   <span id="selectedTextMov">{% if equip.unidade_id %}{{equip.unidade_nome or equip.local_atual_nome or 'Unidade selecionada'}}{% else %}Selecione a unidade de destino...{% endif %}</span>
                   <small><i class="bi bi-chevron-down"></i></small>
@@ -1563,8 +1563,8 @@
                oninput="vjSyncParadaUnidade(this)" required>
         <input type="hidden" class="vj-parada-unidade" name="parada_unidade_id[]">
         <div class="d-flex gap-1 mt-1">
-          <input type="text" class="vj-parada-busca" placeholder="Buscar chamado (protocolo/descrição)" style="flex:1">
-          <button type="button" class="btn-add" style="padding:6px 10px" onclick="vjBuscarChamado(this)">OK</button>
+          <input type="text" class="vj-parada-busca" placeholder="Nome da unidade ou empresa" style="flex:1">
+          <button type="button" class="btn-add" style="padding:6px 10px" onclick="vjBuscarChamado(this)">Buscar unidade</button>
         </div>
         <input type="hidden" class="vj-chamado-id" name="parada_chamado_id[]" value="">
         <input type="hidden" class="vj-protocolo" name="parada_chamado_protocolo[]" value="">
