@@ -1268,18 +1268,15 @@ def helpdesk_buscar_chamados(busca='', limite=50):
     """Lista chamados abertos com unidade/empresa. Degrada sem crash."""
     params = [
         'select=id,protocolo,status,categoria,prioridade,descricao,equipamento,'
-        'modelo_impressora,solicitante_nome,opened_at,units(nome),companies(nome)',
+        'modelo_impressora,solicitante_nome,opened_at,unit_id,company_id,'
+        'units(nome),companies(nome)',
         'order=opened_at.desc',
-        f'limit={int(limite)}',
+        'limit=200',
         'status=in.(' + ','.join(HELPDESK_STATUS_ABERTOS) + ')',
     ]
-    termo = (busca or '').strip()
-    if termo:
-        seguro = termo.replace('(', '').replace(')', '').replace(',', ' ')
-        params.append('or=(protocolo.ilike.*' + seguro + '*,'
-                      'descricao.ilike.*' + seguro + '*,'
-                      'units.nome.ilike.*' + seguro + '*,'
-                      'companies.nome.ilike.*' + seguro + '*)')
+    # A busca por unidade/empresa dentro de `or` do PostgREST fica frágil
+    # quando há relações embutidas. Buscamos os chamados abertos e filtramos
+    # localmente, aceitando nomes diferentes entre os dois cadastros.
     status, dados = _helpdesk_request('/rest/v1/tickets?' + '&'.join(params))
     if status != 200 or not isinstance(dados, list):
         return []
@@ -1301,7 +1298,16 @@ def helpdesk_buscar_chamados(busca='', limite=50):
             'empresa': empresa,
             'aberto_em': (t.get('opened_at') or '')[:10],
         })
-    return resultado
+    termo = (busca or '').strip().casefold()
+    if not termo:
+        return resultado[:limite]
+    return [
+        item for item in resultado
+        if termo in ' '.join(str(item.get(c) or '') for c in (
+            'protocolo', 'descricao', 'categoria', 'equipamento',
+            'modelo_impressora', 'solicitante', 'unidade', 'empresa'
+        )).casefold()
+    ][:limite]
 
 
 def helpdesk_registrar_evento_suprimentos(chamado_id, descricao):
@@ -2987,8 +2993,17 @@ def _redirect_viagem(viagem_id):
 @login_required
 def api_chamados():
     if not helpdesk_configurado():
-        return jsonify({'erro': 'Integracao com o sistema de chamados nao configurada.',
-                        'configurado': False}), 503
+        faltantes = []
+        if not HELPDESK_SUPABASE_URL:
+            faltantes.append('HELPDESK_SUPABASE_URL')
+        if not HELPDESK_SUPABASE_SERVICE_KEY:
+            faltantes.append('HELPDESK_SUPABASE_SERVICE_KEY')
+        return jsonify({
+            'erro': 'Integração não configurada no serviço rench-estoque.',
+            'configurado': False,
+            'faltantes': faltantes,
+            'instrucao': 'Adicione as variáveis no Environment do serviço rench-estoque no Render.',
+        }), 503
     busca = request.args.get('busca', '').strip()
     chamados = helpdesk_buscar_chamados(busca=busca)
     return jsonify({'chamados': chamados, 'configurado': True})

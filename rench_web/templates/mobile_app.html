@@ -1520,7 +1520,8 @@
     // ─── Modulo Viagens (checklist) ────────────────────────────────────────
     const VJ_ESTOQUE = [
       {% for e in estoque|default([]) %}
-      {tipo: {{ (e.tipo_suprimento ~ ' ' ~ (e.modelo_impressora or '') ~ (' (' ~ e.marca ~ ')' if e.marca else '')) | tojson }},
+      {rotulo: {{ (e.tipo_suprimento ~ ' ' ~ (e.modelo_impressora or '') ~ (' (' ~ e.marca ~ ')' if e.marca else '')) | tojson }},
+       tipo: {{ e.tipo_suprimento | tojson }},
        modelo: {{ (e.modelo_impressora or '') | tojson }}, marca: {{ (e.marca or '') | tojson }}, saldo: {{e.quantidade}}}{{ ',' if not loop.last }}
       {% endfor %}
     ];
@@ -1541,14 +1542,8 @@
     }
 
     function vjOpcoesUnidades(){
-      let html = '<option value="">Unidade...</option>';
-      let empresa = null;
-      VJ_LOCAIS.forEach(l => {
-        if(l.empresa !== empresa){ html += '<optgroup label="' + l.empresa + '">'; empresa = l.empresa; }
-        html += `<option value="${l.unidade_id}">${l.unidade}${l.setor ? ' - ' + l.setor : ''}</option>`;
-      });
-      if(empresa !== null) html += '</optgroup>';
-      return html;
+      return '<option value="">Digite o nome da unidade...</option>' +
+        VJ_LOCAIS.map(l => `<option value="${l.unidade} — ${l.empresa}" data-id="${l.unidade_id}"></option>`).join('');
     }
 
     function mobAddParada(){
@@ -1558,7 +1553,10 @@
       div.className = 'item-box';
       div.style.cssText = 'border:1px solid #ddd;border-radius:8px;padding:8px;margin-bottom:8px';
       div.innerHTML = `
-        <select class="vj-parada-unidade" name="parada_unidade_id[]" style="width:100%">${vjOpcoesUnidades()}</select>
+        <input class="vj-parada-unidade-busca" list="vj-lista-unidades"
+               placeholder="Digite para buscar a unidade..." style="width:100%"
+               oninput="vjSyncParadaUnidade(this)" required>
+        <input type="hidden" class="vj-parada-unidade" name="parada_unidade_id[]">
         <div class="d-flex gap-1 mt-1">
           <input type="text" class="vj-parada-busca" placeholder="Buscar chamado (protocolo/descrição)" style="flex:1">
           <button type="button" class="btn-add" style="padding:6px 10px" onclick="vjBuscarChamado(this)">OK</button>
@@ -1567,6 +1565,15 @@
         <input type="hidden" class="vj-protocolo" name="parada_chamado_protocolo[]" value="">
         <div class="vj-parada-info small text-muted">Sem chamado vinculado.</div>`;
       box.appendChild(div);
+    }
+
+    function vjSyncParadaUnidade(input){
+      const row = input.closest('.item-box');
+      const texto = input.value.trim().toLowerCase();
+      const local = VJ_LOCAIS.find(l =>
+        (l.unidade + ' — ' + l.empresa).toLowerCase() === texto ||
+        l.unidade.toLowerCase() === texto);
+      row.querySelector('.vj-parada-unidade').value = local ? local.unidade_id : '';
     }
 
     async function vjBuscarChamado(btn){
@@ -1601,11 +1608,14 @@
       row.querySelector('.vj-protocolo').value = c.protocolo;
       row.querySelector('.vj-parada-info').innerHTML =
         '<span style="color:#0a7d33">Chamado <strong>' + c.protocolo + '</strong> — ' + (c.descricao || '').slice(0, 60) + '</span>';
-      const sel = row.querySelector('.vj-parada-unidade');
+      const sel = row.querySelector('.vj-parada-unidade-busca');
       const alvo = (c.unidade || '').trim().toLowerCase();
       if(alvo){
-        for(const opt of sel.options){
-          if(opt.textContent.trim().toLowerCase().startsWith(alvo)){ sel.value = opt.value; break; }
+        const local = VJ_LOCAIS.find(l => l.unidade.toLowerCase() === alvo ||
+          (l.unidade + ' — ' + l.empresa).toLowerCase() === alvo);
+        if(local){
+          sel.value = local.unidade + ' — ' + local.empresa;
+          row.querySelector('.vj-parada-unidade').value = local.unidade_id;
         }
       }
     }
@@ -1618,7 +1628,9 @@
       div.style.cssText = 'border:1px solid #ddd;border-radius:8px;padding:8px;margin-bottom:8px';
       div.innerHTML = `
         <div class="d-flex gap-1">
-          <select class="vj-item-select" style="flex:1" onchange="vjSyncItem(this)">${vjOpcoesEstoque()}</select>
+          <input class="vj-item-busca" list="vj-lista-suprimentos"
+                 placeholder="Digite tipo, modelo ou marca..." style="flex:1"
+                 oninput="vjSyncItem(this)" required>
           <input type="number" name="quantidade[]" value="1" min="1" style="width:70px;text-align:center">
         </div>
         <input type="hidden" name="tipo_suprimento[]" value="">
@@ -1628,8 +1640,8 @@
     }
 
     function vjSyncItem(sel){
-      const opt = sel.selectedOptions[0];
-      const e = VJ_ESTOQUE[parseInt(opt?.value, 10)];
+      const texto = sel.value.trim().toLowerCase();
+      const e = VJ_ESTOQUE.find(item => item.rotulo.toLowerCase() === texto);
       const row = sel.closest('.item-box');
       row.querySelector('[name="tipo_suprimento[]"]').value = e ? e.tipo : '';
       row.querySelector('[name="modelo_impressora[]"]').value = e ? e.modelo : '';
@@ -1644,7 +1656,9 @@
       div.style.cssText = 'border:1px solid #ddd;border-radius:8px;padding:8px;margin-bottom:8px';
       div.innerHTML = `
         <div class="d-flex gap-1">
-          <select class="vj-coleta-select" style="flex:1" onchange="vjSyncColeta(this)">${vjOpcoesEstoque()}</select>
+          <input class="vj-coleta-busca" list="vj-lista-suprimentos"
+                 placeholder="Digite tipo, modelo ou marca..." style="flex:1"
+                 oninput="vjSyncColeta(this)" required>
           <input type="number" name="quantidade[]" value="1" min="1" style="width:70px;text-align:center">
         </div>
         <input type="hidden" name="tipo_suprimento[]" value="">
@@ -1656,12 +1670,32 @@
     }
 
     function vjSyncColeta(sel){
-      const opt = sel.selectedOptions[0];
-      const e = VJ_ESTOQUE[parseInt(opt?.value, 10)];
+      const texto = sel.value.trim().toLowerCase();
+      const e = VJ_ESTOQUE.find(item => item.rotulo.toLowerCase() === texto);
       const row = sel.closest('.item-box');
       row.querySelector('[name="tipo_suprimento[]"]').value = e ? e.tipo : '';
       row.querySelector('[name="modelo_impressora[]"]').value = e ? e.modelo : '';
       row.querySelector('[name="marca[]"]').value = e ? e.marca : '';
+    }
+
+    function prepararDatelistsViagem(){
+      let unidades = document.getElementById('vj-lista-unidades');
+      if(!unidades){
+        unidades = document.createElement('datalist');
+        unidades.id = 'vj-lista-unidades';
+        document.body.appendChild(unidades);
+      }
+      unidades.innerHTML = VJ_LOCAIS.map(l =>
+        `<option value="${l.unidade} — ${l.empresa}"></option>`).join('');
+
+      let suprimentos = document.getElementById('vj-lista-suprimentos');
+      if(!suprimentos){
+        suprimentos = document.createElement('datalist');
+        suprimentos.id = 'vj-lista-suprimentos';
+        document.body.appendChild(suprimentos);
+      }
+      suprimentos.innerHTML = VJ_ESTOQUE.map(e =>
+        `<option value="${e.rotulo}"></option>`).join('');
     }
 
     document.querySelector('.mob-coleta-usar')?.addEventListener('change', function(){
@@ -1670,6 +1704,7 @@
 
     // Inicializa o modulo viagens quando presente
     if(document.getElementById('aba-viagem_nova')?.classList.contains('active')){
+      prepararDatelistsViagem();
       mobAddParada();
       mobAddItem();
     }

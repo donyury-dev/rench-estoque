@@ -71,7 +71,7 @@
 <script>
 const ESTOQUE = {{ estoque | map(attribute='id') | list | length }} ? [
   {% for e in estoque %}
-  {id: {{e.id}}, tipo: {{ (e.tipo_suprimento ~ ' ' ~ (e.modelo_impressora or '') ~ (' (' ~ e.marca ~ ')' if e.marca else '')) | tojson }}, modelo: {{ (e.modelo_impressora or '') | tojson }}, marca: {{ (e.marca or '') | tojson }}, saldo: {{e.quantidade}} }{{ ',' if not loop.last }}
+  {id: {{e.id}}, rotulo: {{ (e.tipo_suprimento ~ ' ' ~ (e.modelo_impressora or '') ~ (' (' ~ e.marca ~ ')' if e.marca else '')) | tojson }}, tipo: {{ e.tipo_suprimento | tojson }}, modelo: {{ (e.modelo_impressora or '') | tojson }}, marca: {{ (e.marca or '') | tojson }}, saldo: {{e.quantidade}} }{{ ',' if not loop.last }}
   {% endfor %}
 ] : [];
 
@@ -108,9 +108,9 @@ function addParada(){
   div.innerHTML = `
     <div class="d-flex gap-2 align-items-center mb-2">
       <span class="badge bg-secondary">${paradaIdx}ª</span>
-      <select class="form-select form-select-sm parada-unidade" name="parada_unidade_id[]">
-        ${optgroupsLocais()}
-      </select>
+      <input class="form-control form-control-sm parada-unidade-busca" list="lista-unidades-viagem"
+             placeholder="Digite para buscar a unidade..." oninput="syncParadaUnidade(this)" required>
+      <input type="hidden" class="parada-unidade" name="parada_unidade_id[]">
       <button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirChamados(this)"><i class="bi bi-ticket"></i> Chamado</button>
       <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.parada-row').remove()"><i class="bi bi-x-lg"></i></button>
     </div>
@@ -118,6 +118,14 @@ function addParada(){
     <input type="hidden" class="parada-protocolo" name="parada_chamado_protocolo[]" value="">
     <div class="parada-info small text-muted">Sem chamado vinculado.</div>`;
   document.getElementById('lista-paradas').appendChild(div);
+}
+
+function syncParadaUnidade(input){
+  const row = input.closest('.parada-row');
+  const texto = input.value.trim().toLowerCase();
+  const local = LOCAIS.find(l => (l.unidade + ' — ' + l.empresa).toLowerCase() === texto
+    || l.unidade.toLowerCase() === texto);
+  row.querySelector('.parada-unidade').value = local ? local.unidade_id : '';
 }
 
 function addItem(){
@@ -130,9 +138,8 @@ function addItem(){
   });
   div.innerHTML = `
     <div class="d-flex gap-2 align-items-center">
-      <select class="form-select form-select-sm item-select" onchange="syncItem(this)" required>
-        ${opcoes}
-      </select>
+      <input class="form-control form-control-sm item-busca" list="lista-suprimentos-viagem"
+             placeholder="Digite tipo, modelo ou marca..." oninput="syncItem(this)" required>
       <input type="number" class="form-control form-control-sm text-center" style="max-width:90px" name="quantidade[]" value="1" min="1" required>
       <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.item-row').remove()"><i class="bi bi-x-lg"></i></button>
     </div>
@@ -142,12 +149,13 @@ function addItem(){
   document.getElementById('lista-itens').appendChild(div);
 }
 
-function syncItem(sel){
-  const opt = sel.selectedOptions[0];
-  const row = sel.closest('.item-row');
-  row.querySelector('[name="tipo_suprimento[]"]').value = opt?.dataset.tipo || '';
-  row.querySelector('[name="modelo_impressora[]"]').value = opt?.dataset.modelo || '';
-  row.querySelector('[name="marca[]"]').value = opt?.dataset.marca || '';
+function syncItem(input){
+  const texto = input.value.trim().toLowerCase();
+  const item = ESTOQUE.find(e => e.rotulo.toLowerCase() === texto);
+  const row = input.closest('.item-row');
+  row.querySelector('[name="tipo_suprimento[]"]').value = item?.tipo || '';
+  row.querySelector('[name="modelo_impressora[]"]').value = item?.modelo || '';
+  row.querySelector('[name="marca[]"]').value = item?.marca || '';
 }
 
 function abrirChamados(btn){
@@ -230,4 +238,14 @@ document.getElementById('form-viagem').addEventListener('submit', (e) => {
 addParada();
 addItem();
 </script>
+<datalist id="lista-unidades-viagem">
+  {% for l in locais if l.unidade_id %}
+  <option value="{{l.unidade_nome}} — {{l.empresa_nome}}"></option>
+  {% endfor %}
+</datalist>
+<datalist id="lista-suprimentos-viagem">
+  {% for e in estoque %}
+  <option value="{{e.tipo_suprimento}} {{e.modelo_impressora or ''}}{{' (' ~ e.marca ~ ')' if e.marca else ''}}"></option>
+  {% endfor %}
+</datalist>
 {% endblock %}
