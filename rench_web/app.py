@@ -3163,6 +3163,13 @@ def lista_viagens():
                    AND vp.status='atendida') AS paradas_atendidas,
                (SELECT COALESCE(SUM(vi.quantidade_carregada), 0) FROM viagens_itens vi
                    WHERE vi.viagem_id = v.id) AS total_itens
+               ,(SELECT STRING_AGG(
+                    COALESCE(u.nome, 'Unidade não identificada'),
+                    ' · ' ORDER BY vp.ordem
+                 )
+                 FROM viagens_paradas vp
+                 LEFT JOIN unidades u ON u.id = vp.unidade_id
+                 WHERE vp.viagem_id = v.id) AS unidades_rota
         FROM viagens v
     """
     params = []

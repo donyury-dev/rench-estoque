@@ -1249,6 +1249,9 @@
               {% if v.status=='separacao' %}Separação{% elif v.status=='conferido' %}Conferido{% elif v.status=='em_rota' %}Em rota{% elif v.status=='aguardando_retorno' %}Retorno{% elif v.status=='concluido' %}Concluída{% else %}Cancelada{% endif %}
             </span>
           </div>
+          <div class="small text-muted">
+            {% if v.unidades_rota %}{{v.unidades_rota}}{% else %}Nenhuma unidade vinculada{% endif %}
+          </div>
           <div class="small">
             Paradas: {{v.paradas_atendidas}}/{{v.total_paradas}} atendidas ·
             {{v.data_criacao.strftime('%d/%m/%Y') if v.data_criacao else '-'}}

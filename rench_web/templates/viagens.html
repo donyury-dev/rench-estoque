@@ -28,7 +28,7 @@
   <table class="table mb-0">
     <thead>
       <tr>
-        <th>Número</th>
+        <th>Viagem / Unidade</th>
         <th>Data</th>
         <th>Responsável</th>
         <th>Paradas</th>
@@ -40,7 +40,12 @@
     <tbody>
       {% for v in viagens %}
       <tr>
-        <td class="fw-bold">{{v.numero}}</td>
+        <td>
+          <div class="fw-bold">{{v.numero}}</div>
+          <div class="small text-muted">
+            {{v.unidades_rota or 'Nenhuma unidade vinculada'}}
+          </div>
+        </td>
         <td>{{v.data_criacao.strftime('%d/%m/%Y %H:%M') if v.data_criacao else '-'}}</td>
         <td>{{v.responsavel_atendimento or '-'}}</td>
         <td>
