@@ -1778,6 +1778,7 @@
       const buscaCliente = document.getElementById('busca-cliente-mov');
       const listaClientes = document.getElementById('lista-clientes-mov');
       if(tipo !== 'saida_cliente'){
+        window._empresaFiltroMov = null;
         buscaCliente.style.display = 'none';
         listaClientes.style.display = 'none';
       }
@@ -1830,6 +1831,7 @@
     }
 
     function carregarUnidadesDestinoCliente(empresaId){
+      window._empresaFiltroMov = empresaId || null;
       const lista = document.getElementById('listaUnidadesMov');
       const destino = document.getElementById('destino_unidade_id');
       const destinoBox = document.getElementById('selectedBoxMov');
@@ -1847,6 +1849,11 @@
       aviso.style.display = empresaId && !unidades.length ? 'block' : 'none';
       destinoBox.style.display = empresaId ? 'block' : 'none';
       lista.style.display = 'block';
+      const container = document.getElementById('selectListMov');
+      container.classList.add('show');
+      container.style.display = 'block';
+      const busca = document.getElementById('buscaUnidadeMov');
+      if(busca){ busca.value = ''; }
     }
 
     function filtrarClientesMov(termo){
@@ -2133,8 +2140,10 @@
 
     function abrirListaUnidadeGenerico(boxId, listId){
       const list = document.getElementById(listId);
+      const abrindo = !list.classList.contains('show');
       list.classList.toggle('show');
-      if(list.classList.contains('show')){
+      list.style.display = abrindo ? 'block' : 'none';
+      if(abrindo){
         const input = list.querySelector('input.search-input');
         if(input){ input.value = ''; input.focus(); }
         filtrarUnidadeGenerico(input?.id, list.querySelector('[id^="listaUnidades"]')?.id);
@@ -2146,19 +2155,21 @@
       const termo = (input ? input.value : '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const lista = document.getElementById(listaId);
       if(!lista) return;
+      const empresaFiltro = (listaId === 'listaUnidadesMov' && window._empresaFiltroMov) ? String(window._empresaFiltroMov) : null;
       const empresas = lista.querySelectorAll('.select-item.empresa');
       const unidades = lista.querySelectorAll('.select-item.unidade');
 
       unidades.forEach(u => {
         const texto = (u.dataset.texto + ' ' + u.dataset.empresa).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        u.style.display = texto.includes(termo) ? 'block' : 'none';
+        const passaEmpresa = !empresaFiltro || u.dataset.empresaId === empresaFiltro;
+        u.style.display = (passaEmpresa && texto.includes(termo)) ? 'block' : 'none';
       });
 
       empresas.forEach(e => {
         const grupo = e.nextElementSibling;
         if(!grupo) return;
         const visiveis = grupo.querySelectorAll('.unidade:not([style*="none"])').length;
-        e.style.display = visiveis > 0 ? 'block' : 'none';
+        e.style.display = (!empresaFiltro && visiveis > 0) ? 'block' : 'none';
       });
     }
 
