@@ -5320,7 +5320,7 @@ def mobile_equipamento_movimentar(equip_id):
         return redirect(url_for('mobile_equipamento_detalhe', equip_id=equip_id))
 
     cur.execute("""
-        SELECT e.id as empresa_id, e.nome as empresa_nome,
+        SELECT e.id as empresa_id, e.nome as empresa_nome, e.tipo as empresa_tipo,
                u.id as unidade_id, u.nome as unidade_nome
         FROM empresas e
         LEFT JOIN unidades u ON u.empresa_id = e.id AND u.ativo=1
