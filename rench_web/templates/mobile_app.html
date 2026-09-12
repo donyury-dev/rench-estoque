@@ -1137,19 +1137,10 @@
                     <option value="{{l.empresa_id}}">{{l.empresa_nome}}</option>
                   {% endfor %}
                 </select>
-                <label id="cliente-label-mov" style="display:none">Cliente *</label>
                 <input type="text" id="busca-cliente-mov" class="search-input" style="display:none"
                        placeholder="Digite para buscar o cliente..." oninput="filtrarClientesMov(this.value)">
                 <div id="lista-clientes-mov" class="select-list" style="display:none;max-height:180px;overflow-y:auto"></div>
                 <input type="hidden" name="empresa_destino_cliente_id" id="empresa-destino-cliente-mov">
-                  {% set clientes_mostrados = [] %}
-                  {% for l in locais if l.empresa_tipo == 'cliente' %}
-                    {% if l.empresa_id not in clientes_mostrados %}
-                    <option value="{{l.empresa_id}}">{{l.empresa_nome}}</option>
-                    {% set _ = clientes_mostrados.append(l.empresa_id) %}
-                    {% endif %}
-                  {% endfor %}
-                </select>
               <input type="hidden" name="destino_unidade_id" id="destino_unidade_id" value="{{equip.unidade_id or ''}}">
                 <div class="selected-box" id="selectedBoxMov" onclick="abrirListaUnidadeGenerico('selectedBoxMov','selectListMov')">
                   <span id="selectedTextMov">{% if equip.unidade_id %}{{equip.unidade_nome or equip.local_atual_nome or 'Unidade selecionada'}}{% else %}Selecione a unidade de destino...{% endif %}</span>
@@ -1784,6 +1775,12 @@
       const rench = [...document.querySelectorAll('#listaUnidadesMov .select-item.unidade')]
         .find(item => (item.dataset.empresa || '').toLowerCase().includes('rench'));
       const automatico = tipo === 'entrada_estoque' || tipo === 'retorno_cliente';
+      const buscaCliente = document.getElementById('busca-cliente-mov');
+      const listaClientes = document.getElementById('lista-clientes-mov');
+      if(tipo !== 'saida_cliente'){
+        buscaCliente.style.display = 'none';
+        listaClientes.style.display = 'none';
+      }
       if(automatico && rench){
         destino.value = rench.dataset.unidade;
         document.getElementById('selectedTextMov').textContent = rench.dataset.texto;
@@ -1818,7 +1815,6 @@
         if(assistencia) { assistencia.style.display = 'none'; assistencia.required = false; }
         cliente.style.display = 'block';
         cliente.required = true;
-        document.getElementById('cliente-label-mov').style.display = 'block';
         document.getElementById('busca-cliente-mov').style.display = 'block';
         filtrarClientesMov('');
         label.textContent = 'Cliente *';
@@ -1826,8 +1822,8 @@
         return;
       }
       if(cliente) { cliente.style.display = 'none'; cliente.required = false; }
-      document.getElementById('cliente-label-mov').style.display = 'none';
       document.getElementById('busca-cliente-mov').style.display = 'none';
+      document.getElementById('lista-clientes-mov').style.display = 'none';
       destino.required = true;
       destinoBox.style.display = 'block';
       label.textContent = 'Destino (Unidade) *';
@@ -1856,7 +1852,6 @@
     function filtrarClientesMov(termo){
       const busca = (termo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const lista = document.getElementById('lista-clientes-mov');
-      const clientes = [...new Map({{ locais | selectattr('empresa_tipo', 'equalto', 'cliente') | map(attribute='empresa_id') | list | tojson }}.map((id, index) => [id, id])).values()];
       const nomes = {{ locais | selectattr('empresa_tipo', 'equalto', 'cliente') | map(attribute='empresa_nome') | list | tojson }};
       const ids = {{ locais | selectattr('empresa_tipo', 'equalto', 'cliente') | map(attribute='empresa_id') | list | tojson }};
       const unicos = [];
