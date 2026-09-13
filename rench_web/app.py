@@ -3329,6 +3329,74 @@ def viagem_conferir(viagem_id):
     return _redirect_viagem(viagem_id)
 
 
+@app.route('/viagens/<int:viagem_id>/itens/adicionar', methods=['POST'])
+@login_required
+def viagem_item_adicionar(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        flash('Viagem nao encontrada.', 'danger')
+        return redirect(url_for('lista_viagens'))
+    if viagem['status'] not in ('separacao', 'conferido'):
+        flash('Só é possível alterar os itens antes de iniciar a rota.', 'danger')
+        return _redirect_viagem(viagem_id)
+    itens = _coletar_itens_viagem(request.form)
+    if not itens:
+        flash('Selecione pelo menos um suprimento para adicionar.', 'danger')
+        return _redirect_viagem(viagem_id)
+    for item in itens:
+        cur.execute("""
+            SELECT id FROM viagens_itens
+            WHERE viagem_id=%s AND origem='rench' AND tipo_suprimento=%s
+              AND COALESCE(modelo_impressora,'')=COALESCE(%s,'')
+              AND COALESCE(marca,'')=COALESCE(%s,'')
+        """, (viagem_id, item['tipo_suprimento'], item['modelo_impressora'], item['marca']))
+        row = cur.fetchone()
+        if row:
+            cur.execute("""
+                UPDATE viagens_itens SET quantidade_carregada=quantidade_carregada+%s
+                WHERE id=%s
+            """, (item['quantidade'], row['id']))
+        else:
+            cur.execute("""
+                INSERT INTO viagens_itens (viagem_id, tipo_suprimento, modelo_impressora, marca,
+                                           origem, quantidade_carregada)
+                VALUES (%s, %s, %s, %s, 'rench', %s)
+            """, (viagem_id, item['tipo_suprimento'], item['modelo_impressora'],
+                  item['marca'], item['quantidade']))
+    db.commit()
+    flash('Itens adicionados à viagem.', 'success')
+    return _redirect_viagem(viagem_id)
+
+
+@app.route('/viagens/<int:viagem_id>/itens/<int:item_id>/remover', methods=['POST'])
+@login_required
+def viagem_item_remover(viagem_id, item_id):
+    db = get_db()
+    cur = db.cursor()
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        flash('Viagem nao encontrada.', 'danger')
+        return redirect(url_for('lista_viagens'))
+    if viagem['status'] not in ('separacao', 'conferido'):
+        flash('Só é possível alterar os itens antes de iniciar a rota.', 'danger')
+        return _redirect_viagem(viagem_id)
+    cur.execute("""
+        DELETE FROM viagens_itens
+        WHERE id=%s AND viagem_id=%s AND origem='rench'
+          AND COALESCE(quantidade_entregue,0)=0
+          AND COALESCE(quantidade_usada_manual,0)=0
+    """, (item_id, viagem_id))
+    removido = cur.rowcount
+    db.commit()
+    if removido:
+        flash('Item removido da viagem.', 'success')
+    else:
+        flash('Este item não pode ser removido (já foi entregue ou usado).', 'danger')
+    return _redirect_viagem(viagem_id)
+
+
 @app.route('/viagens/<int:viagem_id>/iniciar', methods=['POST'])
 @login_required
 def viagem_iniciar(viagem_id):

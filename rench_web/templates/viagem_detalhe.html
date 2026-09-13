@@ -75,6 +75,7 @@
               <th class="text-center">Usado</th>
               <th class="text-center">Esperado retorno</th>
               <th class="text-center">Retornou</th>
+              {% if viagem.status in ('separacao', 'conferido') %}<th></th>{% endif %}
             </tr>
           </thead>
           <tbody>
@@ -100,13 +101,35 @@
               <td class="text-center">{{i.quantidade_usada_manual}}</td>
               <td class="text-center fw-bold {{'text-success' if esperado > 0 else 'text-muted'}}">{{esperado}}</td>
               <td class="text-center">{{i.quantidade_retornada if i.quantidade_retornada is not none else '—'}}</td>
+              {% if viagem.status in ('separacao', 'conferido') %}
+              <td class="text-center">
+                {% if i.origem == 'rench' and not i.quantidade_entregue and not i.quantidade_usada_manual %}
+                <form method="POST" action="{{url_for('viagem_item_remover', viagem_id=viagem.id, item_id=i.id)}}"
+                      onsubmit="return confirm('Remover {{i.tipo_suprimento}} {{i.modelo_impressora or ''}} {{i.marca or ''}} da viagem?')">
+                  <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i></button>
+                </form>
+                {% else %}—{% endif %}
+              </td>
+              {% endif %}
             </tr>
             {% else %}
-            <tr><td colspan="7" class="text-center text-muted py-4">Nenhum item na viagem.</td></tr>
+            <tr><td colspan="{{8 if viagem.status in ('separacao', 'conferido') else 7}}" class="text-center text-muted py-4">Nenhum item na viagem.</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+
+      {% if viagem.status in ('separacao', 'conferido') %}
+      <hr>
+      <h6 class="fw-bold"><i class="bi bi-plus-circle me-1"></i>Adicionar suprimentos à viagem</h6>
+      <form method="POST" action="{{url_for('viagem_item_adicionar', viagem_id=viagem.id)}}" id="form-add-itens">
+        <div id="add-itens-lista"></div>
+        <div class="d-flex gap-2 mb-2">
+          <button type="button" class="btn btn-sm btn-rench-primary" onclick="addEditarItem()"><i class="bi bi-plus-lg"></i> Item</button>
+          <button class="btn btn-sm btn-outline-primary"><i class="bi bi-check-circle me-1"></i>Adicionar à viagem</button>
+        </div>
+      </form>
+      {% endif %}
 
       {% if viagem.status in ('conferido','em_rota','aguardando_retorno') %}
       <hr>
@@ -260,6 +283,88 @@ const ESTOQUE_COLETA = [
   {id: {{e.id}}, tipo: {{ (e.tipo_suprimento ~ ' ' ~ (e.modelo_impressora or '') ~ (' (' ~ e.marca ~ ')' if e.marca else '')) | tojson }}, modelo: {{ (e.modelo_impressora or '') | tojson }}, marca: {{ (e.marca or '') | tojson }}}{{ ',' if not loop.last }}
   {% endfor %}
 ];
+
+const ESTOQUE_EDITAR = [
+  {% for e in estoque %}
+  {tipo: {{ (e.tipo_suprimento or '') | tojson }}, modelo: {{ (e.modelo_impressora or '') | tojson }}, marca: {{ (e.marca or '') | tojson }}, saldo: {{ e.quantidade or 0 }}}{{ ',' if not loop.last }}
+  {% endfor %}
+];
+
+function addEditarItem(){
+  const box = document.getElementById('add-itens-lista');
+  const div = document.createElement('div');
+  div.className = 'item-editar-row border rounded p-2 mb-2';
+  div.innerHTML = `
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+      <select class="form-select form-select-sm editar-modelo" onchange="carregarTiposEditar(this)">
+        <option value="">1. Modelo da impressora...</option>
+      </select>
+      <select class="form-select form-select-sm editar-tipo" onchange="carregarItensEditar(this)" disabled>
+        <option value="">2. Tipo...</option>
+      </select>
+      <select class="form-select form-select-sm editar-exato" onchange="syncItemEditar(this)" disabled>
+        <option value="">3. Item exato...</option>
+      </select>
+      <input type="number" class="form-control form-control-sm text-center" style="max-width:90px" name="quantidade[]" value="1" min="1" required>
+      <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.item-editar-row').remove()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <input type="hidden" name="tipo_suprimento[]" value="">
+    <input type="hidden" name="modelo_impressora[]" value="">
+    <input type="hidden" name="marca[]" value="">`;
+  box.appendChild(div);
+  const modelos = [...new Set(ESTOQUE_EDITAR.map(e => e.modelo).filter(Boolean))].sort();
+  const selectModelo = div.querySelector('.editar-modelo');
+  modelos.forEach(modelo => selectModelo.add(new Option(modelo, modelo)));
+}
+
+function carregarTiposEditar(modeloSelect){
+  const row = modeloSelect.closest('.item-editar-row');
+  const tipoSelect = row.querySelector('.editar-tipo');
+  const itemSelect = row.querySelector('.editar-exato');
+  const tipos = [...new Set(ESTOQUE_EDITAR.filter(e => e.modelo === modeloSelect.value).map(e => e.tipo).filter(Boolean))].sort();
+  tipoSelect.innerHTML = '<option value="">2. Tipo...</option>';
+  tipos.forEach(tipo => tipoSelect.add(new Option(tipo, tipo)));
+  tipoSelect.disabled = !tipos.length;
+  itemSelect.innerHTML = '<option value="">3. Item exato...</option>';
+  itemSelect.disabled = true;
+  syncItemEditar(itemSelect);
+}
+
+function carregarItensEditar(tipoSelect){
+  const row = tipoSelect.closest('.item-editar-row');
+  const modelo = row.querySelector('.editar-modelo').value;
+  const itemSelect = row.querySelector('.editar-exato');
+  const itens = ESTOQUE_EDITAR.filter(e => e.modelo === modelo && e.tipo === tipoSelect.value);
+  itemSelect.innerHTML = '<option value="">3. Item exato...</option>';
+  itens.forEach(e => {
+    const rotulo = `${e.tipo} ${e.modelo}${e.marca ? ' (' + e.marca + ')' : ''} — estoque ${e.saldo}`;
+    const opt = new Option(rotulo, rotulo);
+    opt.dataset.tipo = e.tipo;
+    opt.dataset.modelo = e.modelo;
+    opt.dataset.marca = e.marca;
+    itemSelect.add(opt);
+  });
+  itemSelect.disabled = !itens.length;
+  syncItemEditar(itemSelect);
+}
+
+function syncItemEditar(select){
+  const opt = select.selectedOptions[0];
+  const row = select.closest('.item-editar-row');
+  row.querySelector('[name="tipo_suprimento[]"]').value = opt?.dataset.tipo || '';
+  row.querySelector('[name="modelo_impressora[]"]').value = opt?.dataset.modelo || '';
+  row.querySelector('[name="marca[]"]').value = opt?.dataset.marca || '';
+}
+
+document.getElementById('form-add-itens')?.addEventListener('submit', function(){
+  this.querySelectorAll('.item-editar-row').forEach(row => {
+    if(!row.querySelector('[name="tipo_suprimento[]"]').value) row.remove();
+  });
+  if(!this.querySelector('.item-editar-row')){
+    event.preventDefault();
+    alert('Adicione pelo menos um item.');
+  }
+});
 
 function addColetaItem(){
   const box = document.getElementById('coleta-itens');
