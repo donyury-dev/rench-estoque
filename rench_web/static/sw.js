@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rench-mobile-v11';
+const CACHE_NAME = 'rench-mobile-v12';
 const URLS_TO_CACHE = [
   '/mobile',
   '/mobile?v=3',

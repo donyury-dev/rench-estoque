@@ -1353,12 +1353,22 @@
           {% for i in itens %}
           {% set esperado = (i.quantidade_carregada or 0) - (i.quantidade_entregue or 0) - (i.quantidade_usada_manual or 0) %}
           <div class="border-bottom py-2">
-            <div class="d-flex justify-content-between">
+            <div class="d-flex justify-content-between align-items-center">
               <strong>{{i.tipo_suprimento}} {{i.modelo_impressora or ''}}</strong>
-              <span>{{i.quantidade_carregada}}x</span>
+              <div class="d-flex align-items-center gap-2">
+                <span>{{i.quantidade_carregada}}x</span>
+                {% if viagem.status in ('separacao','conferido') and i.origem == 'rench' and not i.quantidade_entregue and not i.quantidade_usada_manual %}
+                <form method="POST" action="{{url_for('viagem_item_remover', viagem_id=viagem.id, item_id=i.id)}}"
+                      onsubmit="return confirm('Remover {{i.tipo_suprimento}} {{i.modelo_impressora or ''}} {{i.marca or ''}} da viagem?')">
+                  <input type="hidden" name="origem" value="mobile">
+                  <button class="btn btn-sm btn-outline-danger" style="padding:2px 8px"><i class="bi bi-x-lg"></i></button>
+                </form>
+                {% endif %}
+              </div>
             </div>
             <div class="small text-muted">
               {% if i.origem == 'rench' %}Rench{% else %}{{i.fornecedor or 'Fornecedor'}}{% endif %}
+              {% if i.marca %} · {{i.marca}}{% endif %}
               · entregue {{i.quantidade_entregue}} · retorno esperado {{esperado}}
             </div>
             {% if i.divergencia %}<div class="small text-danger"><i class="bi bi-exclamation-triangle"></i> {{i.divergencia}}</div>{% endif %}
@@ -1367,6 +1377,20 @@
           <div class="text-muted text-center py-2">Nenhum item.</div>
           {% endfor %}
         </div>
+
+        {% if viagem.status in ('separacao','conferido') %}
+        <div class="card">
+          <div class="card-title"><i class="bi bi-plus-circle"></i> Adicionar suprimentos</div>
+          <form method="POST" action="{{url_for('viagem_item_adicionar', viagem_id=viagem.id)}}" id="mob-form-add-itens">
+            <input type="hidden" name="origem" value="mobile">
+            <div id="mob-add-itens-lista"></div>
+            <div class="d-flex gap-2 mt-2">
+              <button type="button" class="btn-add" onclick="mobAddViagemItem()"><i class="bi bi-plus-lg"></i> Item</button>
+              <button type="submit" class="btn-block" style="margin:0"><i class="bi bi-check-lg"></i> Adicionar</button>
+            </div>
+          </form>
+        </div>
+        {% endif %}
 
         {% if viagem.status in ('conferido','em_rota','aguardando_retorno') %}
         <div class="card">
@@ -1702,6 +1726,81 @@
       row.querySelector('[name="modelo_impressora[]"]').value = opt?.dataset.modelo || '';
       row.querySelector('[name="marca[]"]').value = opt?.dataset.marca || '';
     }
+
+    function mobAddViagemItem(){
+      const box = document.getElementById('mob-add-itens-lista');
+      const div = document.createElement('div');
+      div.className = 'item-box mob-viagem-item border rounded p-2 mb-2';
+      div.innerHTML = `
+        <select class="mv-modelo" onchange="mvCarregarTipos(this)">
+          <option value="">1. Modelo da impressora...</option>
+        </select>
+        <select class="mv-tipo mt-1" onchange="mvCarregarItens(this)" disabled>
+          <option value="">2. Tipo...</option>
+        </select>
+        <div class="d-flex gap-1 mt-1">
+          <select class="mv-exato" onchange="mvSyncItem(this)" disabled style="flex:1">
+            <option value="">3. Item exato...</option>
+          </select>
+          <input type="number" name="quantidade[]" value="1" min="1" style="width:70px;text-align:center">
+          <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.mob-viagem-item').remove()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <input type="hidden" name="tipo_suprimento[]" value="">
+        <input type="hidden" name="modelo_impressora[]" value="">
+        <input type="hidden" name="marca[]" value="">`;
+      box.appendChild(div);
+      const modelos = [...new Set(VJ_ESTOQUE.map(e => e.modelo).filter(Boolean))].sort();
+      const modeloSelect = div.querySelector('.mv-modelo');
+      modelos.forEach(modelo => modeloSelect.add(new Option(modelo, modelo)));
+    }
+
+    function mvCarregarTipos(modeloSelect){
+      const row = modeloSelect.closest('.mob-viagem-item');
+      const tipoSelect = row.querySelector('.mv-tipo');
+      const itemSelect = row.querySelector('.mv-exato');
+      const tipos = [...new Set(VJ_ESTOQUE.filter(e => e.modelo === modeloSelect.value).map(e => e.tipo).filter(Boolean))].sort();
+      tipoSelect.innerHTML = '<option value="">2. Tipo...</option>';
+      tipos.forEach(tipo => tipoSelect.add(new Option(tipo, tipo)));
+      tipoSelect.disabled = !tipos.length;
+      itemSelect.innerHTML = '<option value="">3. Item exato...</option>';
+      itemSelect.disabled = true;
+      mvSyncItem(itemSelect);
+    }
+
+    function mvCarregarItens(tipoSelect){
+      const row = tipoSelect.closest('.mob-viagem-item');
+      const modelo = row.querySelector('.mv-modelo').value;
+      const itemSelect = row.querySelector('.mv-exato');
+      const itens = VJ_ESTOQUE.filter(e => e.modelo === modelo && e.tipo === tipoSelect.value);
+      itemSelect.innerHTML = '<option value="">3. Item exato...</option>';
+      itens.forEach(e => {
+        const opt = new Option(`${e.tipo} ${e.modelo}${e.marca ? ' (' + e.marca + ')' : ''} — estoque ${e.saldo}`, e.rotulo);
+        opt.dataset.tipo = e.tipo;
+        opt.dataset.modelo = e.modelo;
+        opt.dataset.marca = e.marca;
+        itemSelect.add(opt);
+      });
+      itemSelect.disabled = !itens.length;
+      mvSyncItem(itemSelect);
+    }
+
+    function mvSyncItem(select){
+      const opt = select.selectedOptions[0];
+      const row = select.closest('.mob-viagem-item');
+      row.querySelector('[name="tipo_suprimento[]"]').value = opt?.dataset.tipo || '';
+      row.querySelector('[name="modelo_impressora[]"]').value = opt?.dataset.modelo || '';
+      row.querySelector('[name="marca[]"]').value = opt?.dataset.marca || '';
+    }
+
+    document.getElementById('mob-form-add-itens')?.addEventListener('submit', function(event){
+      this.querySelectorAll('.mob-viagem-item').forEach(row => {
+        if(!row.querySelector('[name="tipo_suprimento[]"]').value) row.remove();
+      });
+      if(!this.querySelector('.mob-viagem-item')){
+        event.preventDefault();
+        alert('Adicione pelo menos um item.');
+      }
+    });
 
     function mobAddColetaItem(){
       const box = document.getElementById('mob-coleta-itens');
