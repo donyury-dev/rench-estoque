@@ -3505,6 +3505,12 @@ def viagem_retorno(viagem_id):
         assinatura = request.form.get('assinatura_retorno', '').strip() or None
         observacoes = request.form.get('observacoes_retorno', '').strip() or None
 
+        if not assinatura or not assinatura.startswith('data:image'):
+            flash('Assine no quadro de assinatura digital antes de concluir.', 'danger')
+            paradas, itens, coletas, entregas = _carregar_detalhes_viagem(cur, viagem_id)
+            return render_template('viagem_retorno.html', viagem=viagem, itens=itens,
+                                   paradas=paradas)
+
         cur.execute("SELECT * FROM viagens_itens WHERE viagem_id=%s", (viagem_id,))
         itens = cur.fetchall()
         divergencias = []

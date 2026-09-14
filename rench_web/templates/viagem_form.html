@@ -15,7 +15,7 @@
         <label class="form-label">Quem vai sair para o atendimento</label>
         <select class="form-select" name="responsavel_atendimento" required>
           <option value="">Selecione o responsável...</option>
-          {% for nome in ['Kaio', 'Renan', 'Gilvan'] %}
+          {% for nome in ['Kaio', 'Renan', 'Gilvan', 'Christian'] %}
           <option value="{{nome}}" {{'selected' if session.usuario == nome else ''}}>{{nome}}</option>
           {% endfor %}
         </select>

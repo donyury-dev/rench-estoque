@@ -1272,7 +1272,7 @@
               <div class="card-title"><i class="bi bi-person"></i> Responsável pela viagem</div>
               <select name="responsavel_atendimento" required>
                 <option value="">Selecione o responsável...</option>
-                {% for nome in ['Kaio', 'Renan', 'Gilvan'] %}
+                {% for nome in ['Kaio', 'Renan', 'Gilvan', 'Christian'] %}
                 <option value="{{nome}}" {{'selected' if session.usuario == nome else ''}}>{{nome}}</option>
                 {% endfor %}
               </select>
@@ -1409,6 +1409,21 @@
           </form>
         </div>
         {% endif %}
+
+        {% if viagem.status == 'concluido' %}
+        <div class="card">
+          <div class="card-title"><i class="bi bi-person-check"></i> Retorno conferido</div>
+          <div class="small">Recebido por <strong>{{viagem.responsavel_retorno or '—'}}</strong></div>
+          <div class="small text-muted">{{viagem.data_retorno or ''}}</div>
+          {% if viagem.observacoes_retorno %}
+          <div class="small mt-1">{{viagem.observacoes_retorno}}</div>
+          {% endif %}
+          {% if viagem.assinatura_retorno %}
+          <img src="{{viagem.assinatura_retorno}}" alt="Assinatura"
+               style="max-width:100%;max-height:120px;background:#fff;border:1px solid #ccc;border-radius:8px;padding:4px;margin-top:6px">
+          {% endif %}
+        </div>
+        {% endif %}
         {% endif %}
       </div>
 
@@ -1441,11 +1456,21 @@
             <div class="card">
               <div class="card-title"><i class="bi bi-person-check"></i> Recebimento</div>
               <label>Recebido por *</label>
-              <input type="text" name="responsavel_retorno" value="{{session.usuario or ''}}" required>
-              <label class="mt-2">Assinatura / confirmação *</label>
-              <input type="text" name="assinatura_retorno" placeholder="Nome de quem confirma" required>
+              <select name="responsavel_retorno" required>
+                <option value="">Selecione quem conferiu...</option>
+                {% for nome in ['Kaio', 'Renan', 'Gilvan', 'Christian'] %}
+                <option value="{{nome}}" {{'selected' if session.usuario == nome else ''}}>{{nome}}</option>
+                {% endfor %}
+              </select>
+              <label class="mt-2">Assinatura digital *</label>
+              <canvas id="mobAssinaturaCanvas" class="w-100" height="150"
+                      style="background:#fff;border:1px solid #ccc;border-radius:8px;touch-action:none"></canvas>
+              <input type="hidden" name="assinatura_retorno" id="mobAssinaturaInput" value="">
+              <div class="mt-1">
+                <button type="button" class="btn-add" onclick="mobLimparAssinatura()"><i class="bi bi-eraser"></i> Limpar</button>
+              </div>
               <label class="mt-2">Observações</label>
-              <input type="text" name="observacoes_retorno" placeholder="Obrigatória se houver divergência">
+              <input type="text" name="observacoes_retorno" placeholder="Ex.: item deixado na unidade; drum retirada na R10">
             </div>
           </div>
           <div class="footer">
@@ -1726,6 +1751,41 @@
       row.querySelector('[name="modelo_impressora[]"]').value = opt?.dataset.modelo || '';
       row.querySelector('[name="marca[]"]').value = opt?.dataset.marca || '';
     }
+
+    (function(){
+      const canvas = document.getElementById('mobAssinaturaCanvas');
+      if(!canvas) return;
+      const input = document.getElementById('mobAssinaturaInput');
+      const ctx = canvas.getContext('2d');
+      ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111';
+      let desenhando = false, desenhou = false;
+
+      function pos(e){
+        const r = canvas.getBoundingClientRect();
+        const t = e.touches ? e.touches[0] : e;
+        return [(t.clientX - r.left) * canvas.width / r.width,
+                (t.clientY - r.top) * canvas.height / r.height];
+      }
+      function inicio(e){ e.preventDefault(); desenhando = true; const [x,y] = pos(e); ctx.beginPath(); ctx.moveTo(x,y); }
+      function mov(e){ if(!desenhando) return; e.preventDefault(); const [x,y] = pos(e); ctx.lineTo(x,y); ctx.stroke(); desenhou = true; }
+      function fim(){ if(!desenhando) return; desenhando = false; input.value = desenhou ? canvas.toDataURL('image/png') : ''; }
+
+      canvas.addEventListener('mousedown', inicio);
+      canvas.addEventListener('mousemove', mov);
+      window.addEventListener('mouseup', fim);
+      canvas.addEventListener('touchstart', inicio, {passive:false});
+      canvas.addEventListener('touchmove', mov, {passive:false});
+      canvas.addEventListener('touchend', fim);
+
+      window.mobLimparAssinatura = function(){
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        desenhou = false; input.value = '';
+      };
+
+      canvas.closest('form').addEventListener('submit', function(e){
+        if(!desenhou){ e.preventDefault(); alert('Assine no quadro antes de concluir a viagem.'); }
+      });
+    })();
 
     function mobAddViagemItem(){
       const box = document.getElementById('mob-add-itens-lista');
