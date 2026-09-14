@@ -1679,7 +1679,11 @@ def index():
         FROM movimentacoes m
         JOIN equipamentos e ON m.equipamento_id = e.id
         WHERE m.data_movimentacao LIKE '____-__-__'
-        ORDER BY m.data_movimentacao DESC, m.id DESC
+        ORDER BY CASE
+            WHEN m.data_movimentacao ~ '^\\d{4}-\\d{2}-\\d{2}( \\d{2}:\\d{2}(:\\d{2})?)?$'
+            THEN m.data_movimentacao::timestamp
+            ELSE NULL
+        END DESC NULLS LAST, m.id DESC
         LIMIT 8
     """)
     ultimas_mov = cur.fetchall()
@@ -1817,7 +1821,13 @@ def detalhe_equipamento(equip_id):
         flash("Equipamento nao encontrado!", "danger")
         return redirect(url_for('lista_equipamentos'))
 
-    cur.execute("SELECT * FROM movimentacoes WHERE equipamento_id=%s ORDER BY data_movimentacao DESC, id DESC", (equip_id,))
+    cur.execute("""SELECT * FROM movimentacoes
+        WHERE equipamento_id=%s
+        ORDER BY CASE
+            WHEN data_movimentacao ~ '^\\d{4}-\\d{2}-\\d{2}( \\d{2}:\\d{2}(:\\d{2})?)?$'
+            THEN data_movimentacao::timestamp
+            ELSE NULL
+        END DESC NULLS LAST, id DESC""", (equip_id,))
     movimentacoes = cur.fetchall()
 
     cur.execute("SELECT * FROM historico_defeitos WHERE equipamento_id=%s ORDER BY data_ocorrencia DESC", (equip_id,))
@@ -2246,7 +2256,11 @@ def movimentar(equip_id):
                contador_mono_anterior, contador_mono_novo, contador_color_anterior, contador_color_novo
         FROM movimentacoes
         WHERE equipamento_id=%s
-        ORDER BY data_movimentacao DESC, id DESC
+        ORDER BY CASE
+            WHEN data_movimentacao ~ '^\\d{4}-\\d{2}-\\d{2}( \\d{2}:\\d{2}(:\\d{2})?)?$'
+            THEN data_movimentacao::timestamp
+            ELSE NULL
+        END DESC NULLS LAST, id DESC
         LIMIT 20
     """, (equip_id,))
     historico_contadores = cur.fetchall()
@@ -2432,7 +2446,11 @@ def historico():
                 FROM movimentacoes m
                 JOIN equipamentos e ON m.equipamento_id = e.id
                 WHERE m.equipamento_id = %s
-                ORDER BY m.data_movimentacao DESC
+                ORDER BY CASE
+                    WHEN m.data_movimentacao ~ '^\\d{4}-\\d{2}-\\d{2}( \\d{2}:\\d{2}(:\\d{2})?)?$'
+                    THEN m.data_movimentacao::timestamp
+                    ELSE NULL
+                END DESC NULLS LAST, m.id DESC
             """, (equip_id,))
             movimentacoes = cur.fetchall()
     elif serie:
@@ -2464,7 +2482,11 @@ def historico():
                 FROM movimentacoes m
                 JOIN equipamentos e ON m.equipamento_id = e.id
                 WHERE m.equipamento_id = %s
-                ORDER BY m.data_movimentacao DESC
+                ORDER BY CASE
+                    WHEN m.data_movimentacao ~ '^\\d{4}-\\d{2}-\\d{2}( \\d{2}:\\d{2}(:\\d{2})?)?$'
+                    THEN m.data_movimentacao::timestamp
+                    ELSE NULL
+                END DESC NULLS LAST, m.id DESC
             """, (equip['id'],))
             movimentacoes = cur.fetchall()
         else:
@@ -5176,7 +5198,11 @@ def mobile_equipamento_detalhe(equip_id):
 
     cur.execute("""
         SELECT * FROM movimentacoes WHERE equipamento_id=%s
-        ORDER BY data_movimentacao DESC, id DESC LIMIT 30
+        ORDER BY CASE
+            WHEN data_movimentacao ~ '^\\d{4}-\\d{2}-\\d{2}( \\d{2}:\\d{2}(:\\d{2})?)?$'
+            THEN data_movimentacao::timestamp
+            ELSE NULL
+        END DESC NULLS LAST, id DESC LIMIT 30
     """, (equip_id,))
     movimentacoes = cur.fetchall()
     return render_template('mobile_app.html', vapid_public_key=VAPID_PUBLIC_KEY, modulo='equipamentos', aba='equipamento_detalhe',
