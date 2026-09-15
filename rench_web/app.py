@@ -6312,7 +6312,7 @@ def api_mobile_equipamentos():
 
     sql = """
         SELECT e.id, e.codigo, e.tipo_equipamento, e.fabricante, e.modelo,
-               e.numero_serie, e.patrimonio, e.condicao, e.setor_equipamento,
+               e.numero_serie, e.patrimonio, e.condicao_uso, e.setor_equipamento,
                e.local_atual_nome, e.cliente_atual, e.contador_mono, e.contador_color,
                e.unidade_id,
                COALESCE(u.nome, e.local_atual_nome) as local_nome,
