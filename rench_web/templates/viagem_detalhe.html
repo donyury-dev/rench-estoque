@@ -25,11 +25,16 @@
 
   {% if viagem.status == 'separacao' %}
   <div class="col-auto">
-    <form method="POST" action="{{url_for('viagem_conferir', viagem_id=viagem.id)}}" class="d-flex gap-2"
-          onsubmit="return confirm('Confirmar que os itens separados foram conferidos?')">
-      <input type="text" class="form-control form-control-sm" name="responsavel_conferencia" placeholder="Conferido por" style="max-width:200px">
+    <form method="POST" action="{{url_for('viagem_conferir', viagem_id=viagem.id)}}" class="d-flex gap-2 align-items-center"
+          onsubmit="return confirm('Confirmar que os itens separados foram conferidos? A conferência deve ser feita por pessoa diferente de quem separou.')">
+      <select class="form-select form-select-sm" name="responsavel_conferencia" style="max-width:180px;">
+        {% for nome in ['Kaio', 'Renan', 'Gilvan', 'Christian'] %}
+        <option value="{{nome}}" {{'selected' if session.get('operador') == nome}}>{{nome}}</option>
+        {% endfor %}
+      </select>
       <button class="btn btn-sm btn-outline-primary"><i class="bi bi-clipboard-check me-1"></i>Registrar conferência</button>
     </form>
+    <small class="text-muted d-block mt-1">Quem fez a separação ({{viagem.responsavel_separacao or '-'}}) não pode registrar a conferência.</small>
   </div>
   {% elif viagem.status == 'conferido' %}
   <div class="col-auto">
@@ -254,7 +259,7 @@
         <div class="row g-2 mb-2">
           <div class="col-6">
             <label class="form-label small">Responsável</label>
-            <input type="text" class="form-control form-control-sm" name="responsavel" value="{{session.usuario or ''}}">
+            <input type="text" class="form-control form-control-sm" name="responsavel" value="{{session.get('operador') or ''}}">
           </div>
           <div class="col-6">
             <label class="form-label small">Documento (opcional)</label>

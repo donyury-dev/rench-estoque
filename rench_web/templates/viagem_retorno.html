@@ -64,7 +64,7 @@
         <select class="form-select" name="responsavel_retorno" required>
           <option value="">Selecione quem conferiu...</option>
           {% for nome in ['Kaio', 'Renan', 'Gilvan', 'Christian'] %}
-          <option value="{{nome}}" {{'selected' if session.usuario == nome else ''}}>{{nome}}</option>
+          <option value="{{nome}}" {{'selected' if session.get('operador') == nome else ''}}>{{nome}}</option>
           {% endfor %}
         </select>
       </div>

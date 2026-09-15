@@ -16,6 +16,9 @@
     header{background:#850001;color:#fff;padding:12px 16px;text-align:center;flex:0 0 auto;}
     header h1{margin:0;font-size:18px;font-weight:700;}
     header p{margin:2px 0 0;font-size:11px;opacity:0.9;}
+    .operador-bar{margin-top:8px;}
+    .operador-bar select{width:auto;margin:0 auto;display:block;padding:5px 12px;font-size:13px;font-weight:700;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.45);border-radius:20px;}
+    .operador-bar select option{color:#222;}
     main{flex:1;display:flex;flex-direction:column;}
     .scroll-area{flex:1;overflow-y:auto;padding:12px;-webkit-overflow-scrolling:touch;}
     .card{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.08);}
@@ -184,6 +187,14 @@
     <header>
       <h1><i class="bi bi-phone"></i> RENCH Mobile</h1>
       <p>Controle de estoque e equipamentos</p>
+      <form method="POST" action="{{url_for('trocar_operador')}}" class="operador-bar">
+        <select name="operador" onchange="this.form.submit()" aria-label="Quem está usando">
+          {% for nome in ['Kaio', 'Renan', 'Gilvan', 'Christian'] %}
+          <option value="{{nome}}" {{'selected' if session.get('operador') == nome}}>{{nome}}</option>
+          {% endfor %}
+        </select>
+        <input type="hidden" name="next" value="{{request.path}}">
+      </form>
     </header>
 
     <div class="modulo-tabs">
@@ -267,15 +278,15 @@
                 <select name="parada_id" id="parada_id_mob">
                   <option value="">Sem viagem / não vincular</option>
                 </select>
+                <small style="color:#888;font-size:12px;">Em atendimento, só é permitida a saída do que está na carga da viagem ou foi coletado na rota.</small>
               </div>
               <div class="mb-0">
                 <label>Responsável *</label>
                 <select name="responsavel" required>
                   <option value="" selected disabled>Selecione...</option>
-                  <option value="Kaio">Kaio</option>
-                  <option value="Renan">Renan</option>
-                  <option value="Gilvan">Gilvan</option>
-                  <option value="Christian">Christian</option>
+                  {% for nome in ['Kaio', 'Renan', 'Gilvan', 'Christian'] %}
+                  <option value="{{nome}}" {{'selected' if session.get('operador') == nome}}>{{nome}}</option>
+                  {% endfor %}
                 </select>
               </div>
             </div>
@@ -1176,10 +1187,9 @@
                 <label>Responsável *</label>
                 <select name="responsavel" required>
                   <option value="">Selecione...</option>
-                  <option value="Kaio">Kaio</option>
-                  <option value="Renan">Renan</option>
-                  <option value="Gilvan">Gilvan</option>
-                  <option value="Christian">Christian</option>
+                  {% for nome in ['Kaio', 'Renan', 'Gilvan', 'Christian'] %}
+                  <option value="{{nome}}" {{'selected' if session.get('operador') == nome}}>{{nome}}</option>
+                  {% endfor %}
                 </select>
               </div>
               
@@ -1273,7 +1283,7 @@
               <select name="responsavel_atendimento" required>
                 <option value="">Selecione o responsável...</option>
                 {% for nome in ['Kaio', 'Renan', 'Gilvan', 'Christian'] %}
-                <option value="{{nome}}" {{'selected' if session.usuario == nome else ''}}>{{nome}}</option>
+                <option value="{{nome}}" {{'selected' if session.get('operador') == nome else ''}}>{{nome}}</option>
                 {% endfor %}
               </select>
               <textarea name="observacoes" rows="2" placeholder="Observações (opcional)" class="mt-2"></textarea>
@@ -1459,7 +1469,7 @@
               <select name="responsavel_retorno" required>
                 <option value="">Selecione quem conferiu...</option>
                 {% for nome in ['Kaio', 'Renan', 'Gilvan', 'Christian'] %}
-                <option value="{{nome}}" {{'selected' if session.usuario == nome else ''}}>{{nome}}</option>
+                <option value="{{nome}}" {{'selected' if session.get('operador') == nome else ''}}>{{nome}}</option>
                 {% endfor %}
               </select>
               <label class="mt-2">Assinatura digital *</label>

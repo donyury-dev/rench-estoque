@@ -1100,30 +1100,42 @@ def verificar_saldo(cur, tipo_suprimento, modelo_impressora, quantidade, marca=N
     return saldo >= quantidade, saldo
 
 
-def debitar_estoque_entrega(cur, entrega_id, itens, responsavel=None):
-    """Recebe lista de dicts: {tipo_suprimento, modelo_impressora, quantidade, marca, cor_selecionada}."""
+def _chave_item_saida(item):
+    """Normaliza um item de entrega (tipo + cor + modelo + marca) para a chave do estoque."""
+    tipo = (item.get('tipo_suprimento') or '').strip()
+    cor = (item.get('cor_selecionada') or '').strip()
+    if cor and not tipo.endswith(cor) and tipo not in ('Papel Fotografico',):
+        tipo = f"{tipo} {cor}"
+    return _chave_estoque(tipo, item.get('modelo_impressora'), item.get('marca'))
+
+
+def debitar_estoque_entrega(cur, entrega_id, itens, responsavel=None, alocacao=None):
+    """Recebe lista de dicts: {tipo_suprimento, modelo_impressora, quantidade, marca, cor_selecionada}.
+
+    Quando a saida esta vinculada a uma viagem, `alocacao` (paralela a `itens`)
+    informa quanto de cada item sai da carga separada no escritorio (origem
+    Rench) e quanto ve de coleta de fornecedor. Somente a parcela Rench e
+    debitada do estoque; itens coletados em fornecedor nunca passaram pelo
+    estoque da Rench.
+    """
     faltantes = []
-    for item in itens:
-        tipo = (item.get('tipo_suprimento') or '').strip()
-        cor = (item.get('cor_selecionada') or '').strip()
-        # Garante que tipo e cor estejam combinados no padrao do estoque
-        if cor and not tipo.endswith(cor) and tipo not in ('Papel Fotografico',):
-            tipo = f"{tipo} {cor}"
-        tipo, modelo, marca = _chave_estoque(tipo, item.get('modelo_impressora'), item.get('marca'))
+    debitos = []
+    for idx, item in enumerate(itens):
+        tipo, modelo, marca = _chave_item_saida(item)
         qtd = int(item.get('quantidade') or 1)
+        if alocacao is not None:
+            qtd = alocacao[idx]['rench']
+        if qtd <= 0:
+            continue
         ok, saldo = verificar_saldo(cur, tipo, modelo, qtd, marca)
         if not ok:
             faltantes.append({'tipo': tipo, 'modelo': modelo, 'marca': marca, 'saldo': saldo, 'solicitado': qtd})
+        else:
+            debitos.append((tipo, modelo, marca, qtd))
     if faltantes:
         return faltantes
 
-    for item in itens:
-        tipo = (item.get('tipo_suprimento') or '').strip()
-        cor = (item.get('cor_selecionada') or '').strip()
-        if cor and not tipo.endswith(cor) and tipo not in ('Papel Fotografico',):
-            tipo = f"{tipo} {cor}"
-        tipo, modelo, marca = _chave_estoque(tipo, item.get('modelo_impressora'), item.get('marca'))
-        qtd = int(item.get('quantidade') or 1)
+    for tipo, modelo, marca, qtd in debitos:
         estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo, modelo, marca)
         movimentar_estoque(
             cur, estoque_id, 'saida', -qtd, saldo,
@@ -1134,7 +1146,7 @@ def debitar_estoque_entrega(cur, entrega_id, itens, responsavel=None):
     return []
 
 
-def vincular_entrega_a_viagem(cur, entrega_id):
+def vincular_entrega_a_viagem(cur, entrega_id, alocacao=None):
     """Vincula uma entrega (saida) a viagem/parada correspondente.
 
     - Se a entrega ja tem parada_id (selecionado no formulario), usa-a.
@@ -1197,21 +1209,42 @@ def vincular_entrega_a_viagem(cur, entrega_id):
         WHERE id=%s
     """, (viagem_id, parada['chamado_id'], parada['chamado_protocolo'], entrega_id))
 
-    # Soma quantidades nos itens do pool (origem Rench) desta viagem
-    cur.execute("""
-        SELECT si.tipo_suprimento, si.modelo_impressora, si.marca, si.quantidade
-        FROM suprimentos_itens si WHERE si.entrega_id=%s
-    """, (entrega_id,))
-    for item in cur.fetchall():
+    # Aplica as quantidades entregues na carga da viagem: consome primeiro os
+    # itens de origem Rench e depois as coletas de fornecedor que podem ser
+    # usadas no cliente. Nao cria nenhuma movimentacao de estoque extra.
+    if alocacao:
         cur.execute("""
-            UPDATE viagens_itens
-            SET quantidade_entregue = quantidade_entregue + %s
-            WHERE viagem_id=%s AND origem='rench'
-              AND tipo_suprimento=%s
-              AND COALESCE(modelo_impressora,'') = COALESCE(%s,'')
-              AND COALESCE(marca,'') = COALESCE(%s,'')
-        """, (item['quantidade'], viagem_id, item['tipo_suprimento'],
-              item['modelo_impressora'], item['marca']))
+            SELECT id, tipo_suprimento, modelo_impressora, marca, origem
+            FROM viagens_itens
+            WHERE viagem_id=%s AND pode_usar_cliente=TRUE
+        """, (viagem_id,))
+        linhas = []
+        for r in cur.fetchall():
+            tipo, modelo, marca = _chave_estoque(r['tipo_suprimento'], r['modelo_impressora'], r['marca'])
+            linhas.append({'id': r['id'], 'chave': (tipo, modelo, marca or ''), 'origem': r['origem']})
+        linhas.sort(key=lambda l: 0 if l['origem'] == 'rench' else 1)
+        for a in alocacao:
+            restante = a['quantidade']
+            for linha in linhas:
+                if restante <= 0:
+                    break
+                if linha['chave'] != a['chave']:
+                    continue
+                cur.execute("""
+                    SELECT GREATEST(COALESCE(quantidade_carregada,0)
+                                    - COALESCE(quantidade_entregue,0)
+                                    - COALESCE(quantidade_usada_manual,0), 0) AS disp
+                    FROM viagens_itens WHERE id=%s
+                """, (linha['id'],))
+                disp = cur.fetchone()['disp'] or 0
+                usar = min(disp, restante)
+                if usar > 0:
+                    cur.execute("""
+                        UPDATE viagens_itens
+                        SET quantidade_entregue = quantidade_entregue + %s
+                        WHERE id=%s
+                    """, (usar, linha['id']))
+                    restante -= usar
 
     cur.execute("UPDATE viagens_paradas SET status='atendida' WHERE id=%s", (parada_id,))
 
@@ -1234,6 +1267,102 @@ def vincular_entrega_a_viagem(cur, entrega_id):
         'chamado_id': parada['chamado_id'],
         'chamado_protocolo': parada['chamado_protocolo'],
     }
+
+
+def validar_saida_contra_viagem(cur, parada_id, unidade_id, itens):
+    """Controla que a saida de suprimentos so use a carga da viagem.
+
+    So e permitido dar saida do que foi levado no carro (carga conferida da
+    viagem) ou recolhido em fornecedor/unidade durante a rota.
+
+    Retorna (parada_resolvida, viagem_id, alocacao, erros):
+    - parada_resolvida: parada a qual a entrega sera vinculada (ou None).
+    - viagem_id: viagem da saida (ou None quando nao vinculada).
+    - alocacao: lista paralela a `itens` com a quantidade que sai do estoque
+      Rench ('rench') e a que vem de coleta de fornecedor ('fornecedor').
+    - erros: mensagens que bloqueiam a saida (vazio = liberado).
+    """
+    parada = None
+    if parada_id:
+        cur.execute("""
+            SELECT vp.id, vp.viagem_id, v.status, v.numero
+            FROM viagens_paradas vp JOIN viagens v ON v.id = vp.viagem_id
+            WHERE vp.id = %s
+        """, (parada_id,))
+        parada = cur.fetchone()
+        if not parada:
+            return None, None, None, ['Parada selecionada não existe.']
+        if parada['status'] not in ('conferido', 'em_rota'):
+            return None, None, None, [
+                'A viagem %s ainda não teve a carga conferida. A saída só é '
+                'permitida após a conferência.' % parada['numero']]
+    else:
+        cur.execute("""
+            SELECT vp.id, vp.viagem_id, v.status, v.numero
+            FROM viagens_paradas vp JOIN viagens v ON v.id = vp.viagem_id
+            WHERE vp.unidade_id = %s AND v.status IN ('conferido', 'em_rota')
+              AND vp.status = 'planejada'
+              AND NOT EXISTS (SELECT 1 FROM suprimentos_entregas se WHERE se.parada_id = vp.id)
+            ORDER BY vp.ordem LIMIT 2
+        """, (unidade_id,))
+        candidatas = cur.fetchall()
+        if len(candidatas) == 1:
+            parada = candidatas[0]
+
+    if not parada:
+        # Sem viagem vinculada: saida pelo escritorio (motoboy/correio/retirada)
+        alocacao = []
+        for item in itens:
+            tipo, modelo, marca = _chave_item_saida(item)
+            alocacao.append({
+                'chave': (tipo, modelo, marca or ''), 'tipo': tipo, 'modelo': modelo,
+                'marca': marca, 'quantidade': int(item.get('quantidade') or 1),
+                'rench': int(item.get('quantidade') or 1), 'fornecedor': 0})
+        return None, None, alocacao, []
+
+    viagem_id = parada['viagem_id']
+    cur.execute("""
+        SELECT tipo_suprimento, modelo_impressora, marca, origem, pode_usar_cliente,
+               quantidade_carregada, quantidade_entregue, quantidade_usada_manual
+        FROM viagens_itens WHERE viagem_id = %s
+    """, (viagem_id,))
+    pool_rench, pool_fornecedor = {}, {}
+    for r in cur.fetchall():
+        if not r['pode_usar_cliente']:
+            continue
+        tipo, modelo, marca = _chave_estoque(r['tipo_suprimento'], r['modelo_impressora'], r['marca'])
+        chave = (tipo, modelo, marca or '')
+        disp = ((r['quantidade_carregada'] or 0)
+                - (r['quantidade_entregue'] or 0)
+                - (r['quantidade_usada_manual'] or 0))
+        if r['origem'] == 'rench':
+            pool_rench[chave] = pool_rench.get(chave, 0) + disp
+        else:
+            pool_fornecedor[chave] = pool_fornecedor.get(chave, 0) + disp
+
+    alocacao, erros = [], []
+    for item in itens:
+        tipo, modelo, marca = _chave_item_saida(item)
+        chave = (tipo, modelo, marca or '')
+        qtd = int(item.get('quantidade') or 1)
+        rench_disp = pool_rench.get(chave, 0)
+        forn_disp = pool_fornecedor.get(chave, 0)
+        if qtd > rench_disp + forn_disp:
+            desc = f"{tipo} {modelo or ''}".strip()
+            if marca:
+                desc += f" ({marca})"
+            erros.append(
+                f"{desc}: saida de {qtd} bloqueada, item fora da carga da viagem "
+                f"ou quantidade alem do disponivel (disponivel na carga: {rench_disp + forn_disp}). "
+                "Adicione o item a viagem ou registre a coleta do fornecedor.")
+            continue
+        qtd_rench = min(qtd, max(0, rench_disp))
+        alocacao.append({
+            'chave': chave, 'tipo': tipo, 'modelo': modelo, 'marca': marca,
+            'quantidade': qtd, 'rench': qtd_rench, 'fornecedor': qtd - qtd_rench})
+    if erros:
+        return None, None, None, erros
+    return parada['id'], viagem_id, alocacao, []
 
 
 # ─── Integracao com o sistema de chamados (Rench Helpdesk / Supabase) ────────
@@ -1498,11 +1627,27 @@ def importar_planilha_para_banco(caminho=PLANILHA_PADRAO, limpar=True):
 USUARIO_PADRAO = 'admin'
 SENHA_PADRAO_HASH = hashlib.sha256('ipascnma'.encode()).hexdigest()
 
+# Equipe que opera o sistema (login unico compartilhado)
+OPERADORES = ['Kaio', 'Renan', 'Gilvan', 'Christian']
+
+# Saidas sem viagem so sao permitidas para envio pelo escritorio ou retirada
+ENVIOS_SEM_VIAGEM = {'Enviado via motoboy', 'Enviado via correio', 'Retirado no local'}
+
+
+def operador_atual():
+    """Nome da pessoa que esta operando o sistema nesta sessao."""
+    return session.get('operador') or session.get('usuario') or 'Rench'
+
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('logado'):
             return redirect(url_for('login', next=request.url))
+        if not session.get('operador'):
+            if request.path.startswith('/api/'):
+                return jsonify({'erro': 'Selecione quem esta operando o sistema.'}), 401
+            return redirect(url_for('selecionar_operador', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -1650,10 +1795,9 @@ def login():
         if usuario == USUARIO_PADRAO and senha_hash == SENHA_PADRAO_HASH:
             session['logado'] = True
             session['usuario'] = usuario
+            session.pop('operador', None)
             next_url = request.form.get('next') or request.args.get('next')
-            if next_url and next_url.startswith('/') and not next_url.startswith('//'):
-                return redirect(next_url)
-            return redirect(url_for('index'))
+            return redirect(url_for('selecionar_operador', next=next_url))
         flash('Usuário ou senha incorretos.', 'danger')
     return render_template('login.html')
 
@@ -1661,6 +1805,37 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+
+@app.route('/selecionar-operador', methods=['GET', 'POST'])
+def selecionar_operador():
+    if not session.get('logado'):
+        return redirect(url_for('login'))
+    if request.method == 'POST':
+        nome = request.form.get('operador', '').strip()
+        if nome not in OPERADORES:
+            flash('Selecione quem está usando o sistema.', 'danger')
+            return redirect(url_for('selecionar_operador'))
+        session['operador'] = nome
+        next_url = request.form.get('next') or request.args.get('next')
+        if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+            return redirect(next_url)
+        return redirect(url_for('index'))
+    return render_template('selecionar_operador.html', operadores=OPERADORES)
+
+
+@app.route('/operador/trocar', methods=['POST'])
+def trocar_operador():
+    if not session.get('logado'):
+        return redirect(url_for('login'))
+    nome = request.form.get('operador', '').strip()
+    if nome in OPERADORES:
+        session['operador'] = nome
+        flash(f'Agora operando como {nome}.', 'success')
+    destino = request.form.get('next') or ''
+    if destino.startswith('/') and not destino.startswith('//'):
+        return redirect(destino)
+    return redirect(request.referrer or url_for('index'))
 
 @app.route('/')
 @login_required
@@ -2819,6 +2994,19 @@ def suprimento_mobile():
             return render_template('mobile_app.html', modulo='estoque', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega', vapid_public_key=VAPID_PUBLIC_KEY)
 
         parada_id = request.form.get('parada_id', '').strip() or None
+        parada_resolvida, viagem_id_saida, alocacao, erros_viagem = validar_saida_contra_viagem(
+            cur, parada_id, unidade_id, itens)
+        if erros_viagem:
+            flash('Saída bloqueada: ' + ' '.join(erros_viagem), 'danger')
+            return redirect(url_for('suprimento_mobile', aba='entrega'))
+        if not viagem_id_saida and observacoes not in ENVIOS_SEM_VIAGEM:
+            flash('Saída sem viagem só é permitida para envio pelo escritório '
+                  '(motoboy/correio) ou retirada no local. Para entregar em '
+                  'atendimento, a saída deve estar na carga de uma viagem '
+                  'conferida.', 'danger')
+            return redirect(url_for('suprimento_mobile', aba='entrega'))
+        if parada_resolvida:
+            parada_id = parada_resolvida
         cur.execute("""
             INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes, parada_id)
             VALUES (%s, %s, %s, %s, %s) RETURNING id
@@ -2826,7 +3014,7 @@ def suprimento_mobile():
         entrega_id = cur.fetchone()['id']
 
         if itens:
-            faltantes = debitar_estoque_entrega(cur, entrega_id, itens, responsavel=responsavel)
+            faltantes = debitar_estoque_entrega(cur, entrega_id, itens, responsavel=responsavel, alocacao=alocacao)
             if faltantes:
                 db.rollback()
                 msgs = []
@@ -2869,7 +3057,7 @@ def suprimento_mobile():
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (entrega_id, item['tipo_suprimento'], item['modelo_impressora'].strip() or None, item.get('cor_selecionada'), item.get('marca'), item['quantidade'], mp or None, defeito.strip() or None, motivo_texto))
 
-        vinculo = vincular_entrega_a_viagem(cur, entrega_id)
+        vinculo = vincular_entrega_a_viagem(cur, entrega_id, alocacao=alocacao)
         db.commit()
         flash('Entrega salva com sucesso!', 'success')
         cur.execute("SELECT u.nome FROM unidades u WHERE u.id=%s", (unidade_id,))
@@ -2929,6 +3117,19 @@ def novo_suprimento():
             return redirect(url_for('novo_suprimento'))
 
         parada_id = request.form.get('parada_id', '').strip() or None
+        parada_resolvida, viagem_id_saida, alocacao, erros_viagem = validar_saida_contra_viagem(
+            cur, parada_id, unidade_id, itens)
+        if erros_viagem:
+            flash('Saída bloqueada: ' + ' '.join(erros_viagem), 'danger')
+            return redirect(url_for('novo_suprimento'))
+        if not viagem_id_saida and observacoes not in ENVIOS_SEM_VIAGEM:
+            flash('Saída sem viagem só é permitida para envio pelo escritório '
+                  '(motoboy/correio) ou retirada no local. Para entregar em '
+                  'atendimento, a saída deve estar na carga de uma viagem '
+                  'conferida.', 'danger')
+            return redirect(url_for('novo_suprimento'))
+        if parada_resolvida:
+            parada_id = parada_resolvida
         cur.execute("""
             INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes, parada_id)
             VALUES (%s, %s, %s, %s, %s) RETURNING id
@@ -2936,7 +3137,7 @@ def novo_suprimento():
         entrega_id = cur.fetchone()['id']
 
         if itens:
-            faltantes = debitar_estoque_entrega(cur, entrega_id, itens, responsavel=responsavel)
+            faltantes = debitar_estoque_entrega(cur, entrega_id, itens, responsavel=responsavel, alocacao=alocacao)
             if faltantes:
                 db.rollback()
                 msgs = []
@@ -2977,7 +3178,7 @@ def novo_suprimento():
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (entrega_id, item['tipo_suprimento'], item['modelo_impressora'].strip() or None, item.get('cor_selecionada'), item.get('marca'), item['quantidade'], mp or None, defeito.strip() or None, motivo_texto))
 
-        vinculo = vincular_entrega_a_viagem(cur, entrega_id)
+        vinculo = vincular_entrega_a_viagem(cur, entrega_id, alocacao=alocacao)
         db.commit()
         flash('Entrega de suprimentos registrada com sucesso!', 'success')
         cur.execute("SELECT u.nome FROM unidades u WHERE u.id=%s", (unidade_id,))
@@ -3018,7 +3219,7 @@ def novo_suprimento():
 def excluir_suprimento(entrega_id):
     db = get_db()
     cur = db.cursor()
-    estornar_estoque_entrega(cur, entrega_id, responsavel=session.get('usuario'))
+    estornar_estoque_entrega(cur, entrega_id, responsavel=operador_atual())
     cur.execute("DELETE FROM suprimentos_entregas WHERE id=%s", (entrega_id,))
     db.commit()
     flash('Registro excluido e estoque estornado com sucesso!', 'success')
@@ -3249,7 +3450,7 @@ def nova_viagem():
         cur.execute("""
             INSERT INTO viagens (numero, responsavel_separacao, responsavel_atendimento, observacoes)
             VALUES (%s, %s, %s, %s) RETURNING id
-        """, (numero, session.get('usuario'), responsavel_atendimento or session.get('usuario'), observacoes))
+        """, (numero, operador_atual(), responsavel_atendimento or operador_atual(), observacoes))
         viagem_id = cur.fetchone()['id']
 
         for idx, parada in enumerate(paradas):
@@ -3340,7 +3541,16 @@ def viagem_detalhe(viagem_id):
 def viagem_conferir(viagem_id):
     db = get_db()
     cur = db.cursor()
-    responsavel = request.form.get('responsavel_conferencia', '').strip() or session.get('usuario')
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        flash('Viagem nao encontrada.', 'danger')
+        return redirect(url_for('lista_viagens'))
+    responsavel = request.form.get('responsavel_conferencia', '').strip() or operador_atual()
+    if (viagem['responsavel_separacao']
+            and responsavel.strip().lower() == viagem['responsavel_separacao'].strip().lower()):
+        flash('A conferência da carga deve ser registrada por outra pessoa, '
+              'diferente de quem fez a separação.', 'danger')
+        return _redirect_viagem(viagem_id)
     cur.execute("""
         UPDATE viagens SET status='conferido', responsavel_conferencia=%s,
             data_conferencia=CURRENT_TIMESTAMP
@@ -3456,7 +3666,7 @@ def viagem_coleta(viagem_id):
 
     fornecedor = request.form.get('fornecedor', '').strip()
     data_coleta = request.form.get('data_coleta', '').strip() or None
-    responsavel = request.form.get('responsavel', '').strip() or session.get('usuario')
+    responsavel = request.form.get('responsavel', '').strip() or operador_atual()
     documento = request.form.get('documento', '').strip() or None
     observacoes = request.form.get('observacoes', '').strip() or None
 
@@ -3523,7 +3733,7 @@ def viagem_retorno(viagem_id):
         return _redirect_viagem(viagem_id)
 
     if request.method == 'POST':
-        responsavel_retorno = request.form.get('responsavel_retorno', '').strip() or session.get('usuario')
+        responsavel_retorno = request.form.get('responsavel_retorno', '').strip() or operador_atual()
         assinatura = request.form.get('assinatura_retorno', '').strip() or None
         observacoes = request.form.get('observacoes_retorno', '').strip() or None
 
@@ -3536,6 +3746,7 @@ def viagem_retorno(viagem_id):
         cur.execute("SELECT * FROM viagens_itens WHERE viagem_id=%s", (viagem_id,))
         itens = cur.fetchall()
         divergencias = []
+        fornecedor_retornos = []
         for item in itens:
             esperado = (
                 (item['quantidade_carregada'] or 0)
@@ -3560,6 +3771,8 @@ def viagem_retorno(viagem_id):
             cur.execute("""
                 UPDATE viagens_itens SET quantidade_retornada=%s, divergencia=%s WHERE id=%s
             """, (retornada, divergencia, item['id']))
+            if item['origem'] == 'fornecedor' and retornada > 0:
+                fornecedor_retornos.append((item, retornada))
 
         if divergencias and not observacoes:
             flash('Existem diferenças no retorno. Informe o que aconteceu em cada item ou ajuste a quantidade retornada.', 'danger')
@@ -3567,6 +3780,18 @@ def viagem_retorno(viagem_id):
             paradas, itens, coletas, entregas = _carregar_detalhes_viagem(cur, viagem_id)
             return render_template('viagem_retorno.html', viagem=viagem, itens=itens,
                                    paradas=paradas, divergencias=divergencias)
+
+        # Itens coletados em fornecedor que voltaram ao escritorio entram no
+        # estoque (eles nunca passaram pelo estoque da Rench antes).
+        for item, retornada in fornecedor_retornos:
+            tipo, modelo, marca = _chave_estoque(
+                item['tipo_suprimento'], item['modelo_impressora'], item['marca'])
+            estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo, modelo, marca)
+            movimentar_estoque(
+                cur, estoque_id, 'entrada', retornada, saldo,
+                motivo=(f"Retorno da viagem {viagem['numero']} - fornecedor "
+                        f"{item['fornecedor'] or '-'} (item de coleta)"),
+                responsavel=responsavel_retorno)
 
         cur.execute("""
             UPDATE viagens SET status='concluido', responsavel_retorno=%s,

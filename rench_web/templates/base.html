@@ -130,6 +130,20 @@
     <a class="nav-link" href="{{url_for('testar_notificacao')}}">
       <i class="bi bi-bell"></i> Testar Notificacao
     </a>
+    <form method="POST" action="{{url_for('trocar_operador')}}" class="px-3 py-3" style="border-top:1px solid var(--primary-borda);">
+      <label style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:6px;display:block;">
+        <i class="bi bi-person-badge me-1"></i>Operando como
+      </label>
+      <div class="d-flex gap-2">
+        <select name="operador" class="form-select form-select-sm" style="border-color:var(--primary-borda);color:var(--primary);font-weight:600;">
+          {% for nome in ['Kaio', 'Renan', 'Gilvan', 'Christian'] %}
+          <option value="{{nome}}" {{'selected' if session.get('operador') == nome}}>{{nome}}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-sm btn-outline-primary" style="white-space:nowrap;">Trocar</button>
+      </div>
+      <input type="hidden" name="next" value="{{request.path}}">
+    </form>
     <a class="nav-link text-danger" href="{{url_for('logout')}}">
       <i class="bi bi-box-arrow-right"></i> Sair
     </a>
