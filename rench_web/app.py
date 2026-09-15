@@ -5756,6 +5756,11 @@ def api_mobile_auth(f):
     return decorated
 
 
+@app.route('/api/mobile/operadores')
+def api_mobile_operadores():
+    return jsonify({'operadores': OPERADORES})
+
+
 @app.route('/api/mobile/login', methods=['POST'])
 def api_mobile_login():
     dados = request.get_json(silent=True) or {}
