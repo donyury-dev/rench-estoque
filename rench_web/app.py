@@ -5705,6 +5705,234 @@ def mobile_locais():
     return render_template('mobile_app.html', vapid_public_key=VAPID_PUBLIC_KEY, modulo='equipamentos', aba='locais', locais=locais)
 
 
+# ============================================================
+# API MOBILE (APK Rench Helpdesk) — JSON + token HMAC
+# ============================================================
+
+import base64
+import hmac
+import time
+
+API_MOBILE_TOKEN_VALIDADE = 12 * 60 * 60  # 12 horas
+
+
+def _api_mobile_gerar_token(operador):
+    payload = json.dumps(
+        {'operador': operador, 'exp': int(time.time()) + API_MOBILE_TOKEN_VALIDADE},
+        separators=(',', ':')
+    )
+    dados = base64.urlsafe_b64encode(payload.encode('utf-8')).decode('ascii').rstrip('=')
+    assinatura = hmac.new(app.secret_key.encode('utf-8'), dados.encode('ascii'), hashlib.sha256).hexdigest()
+    return f"{dados}.{assinatura}"
+
+
+def _api_mobile_validar_token(token):
+    try:
+        dados, assinatura = token.split('.')
+        esperada = hmac.new(app.secret_key.encode('utf-8'), dados.encode('ascii'), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(assinatura, esperada):
+            return None
+        pad = '=' * (-len(dados) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(dados + pad))
+        if int(payload.get('exp', 0)) < time.time():
+            return None
+        operador = payload.get('operador')
+        return operador if operador in OPERADORES else None
+    except Exception:
+        return None
+
+
+def api_mobile_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.headers.get('Authorization', '')
+        if not auth.startswith('Bearer '):
+            return jsonify({'erro': 'Nao autenticado.'}), 401
+        operador = _api_mobile_validar_token(auth[7:].strip())
+        if not operador:
+            return jsonify({'erro': 'Sessao expirada. Faca login novamente.', 'codigo': 'sessao_expirada'}), 401
+        g.operador_mobile = operador
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.route('/api/mobile/login', methods=['POST'])
+def api_mobile_login():
+    dados = request.get_json(silent=True) or {}
+    usuario = (dados.get('usuario') or '').strip()
+    senha = (dados.get('senha') or '')
+    operador = (dados.get('operador') or '').strip()
+
+    if usuario != USUARIO_PADRAO or hashlib.sha256(senha.encode('utf-8')).hexdigest() != SENHA_PADRAO_HASH:
+        return jsonify({'erro': 'Usuario ou senha incorretos.'}), 401
+    if operador not in OPERADORES:
+        return jsonify({'erro': 'Selecione um operador valido.', 'operadores': OPERADORES}), 401
+
+    return jsonify({
+        'token': _api_mobile_gerar_token(operador),
+        'operador': operador,
+        'validade_horas': API_MOBILE_TOKEN_VALIDADE // 3600,
+    })
+
+
+@app.route('/api/mobile/estoque')
+@api_mobile_auth
+def api_mobile_estoque():
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        SELECT id, tipo_suprimento, modelo_impressora, marca, nome_exibicao,
+               quantidade, estoque_minimo
+        FROM estoque WHERE ativo=TRUE
+        ORDER BY tipo_suprimento, modelo_impressora, marca
+    """)
+    itens = cur.fetchall()
+
+    cur.execute("SELECT DISTINCT tipo_suprimento FROM estoque WHERE ativo=TRUE ORDER BY tipo_suprimento")
+    tipos = [r['tipo_suprimento'] for r in cur.fetchall()]
+
+    cur.execute("""
+        SELECT m.id, m.nome FROM modelos_impressora m
+        WHERE m.ativo = 1 ORDER BY m.ordem, m.nome
+    """)
+    modelos = cur.fetchall()
+
+    return jsonify({
+        'operador': g.operador_mobile,
+        'itens': [dict(i) for i in itens],
+        'tipos': tipos,
+        'modelos': [dict(m) for m in modelos],
+    })
+
+
+@app.route('/api/mobile/estoque/historico')
+@api_mobile_auth
+def api_mobile_estoque_historico():
+    db = get_db()
+    cur = db.cursor()
+    try:
+        estoque_id = int(request.args.get('estoque_id', ''))
+    except ValueError:
+        estoque_id = None
+    try:
+        limite = min(int(request.args.get('limite', 50)), 200)
+    except ValueError:
+        limite = 50
+
+    params = []
+    where = ''
+    if estoque_id:
+        where = 'WHERE em.estoque_id=%s'
+        params.append(estoque_id)
+    params.append(limite)
+    cur.execute(f"""
+        SELECT em.id, em.estoque_id, em.tipo_movimento, em.quantidade,
+               em.saldo_antes, em.saldo_depois, em.motivo, em.responsavel,
+               em.data_movimento,
+               e.tipo_suprimento, e.modelo_impressora, e.marca
+        FROM estoque_movimentacoes em
+        JOIN estoque e ON e.id = em.estoque_id
+        {where}
+        ORDER BY em.id DESC LIMIT %s
+    """, params)
+    return jsonify({'movimentacoes': [dict(r) for r in cur.fetchall()]})
+
+
+@app.route('/api/mobile/estoque/entrada', methods=['POST'])
+@api_mobile_auth
+def api_mobile_estoque_entrada():
+    dados = request.get_json(silent=True) or {}
+    tipo = (dados.get('tipo_suprimento') or '').strip()
+    cor = (dados.get('cor') or '').strip()
+    modelo = (dados.get('modelo_impressora') or '').strip().upper()
+    marca = (dados.get('marca') or '').strip() or None
+    motivo = (dados.get('motivo') or '').strip()
+
+    try:
+        quantidade = int(dados.get('quantidade') or 0)
+    except (TypeError, ValueError):
+        quantidade = 0
+
+    if not tipo or quantidade <= 0:
+        return jsonify({'erro': 'Informe o tipo e a quantidade (maior que zero).'}), 400
+    if not motivo:
+        return jsonify({'erro': 'Informe o motivo da entrada.'}), 400
+
+    tipo_final = f"{tipo} {cor}".strip() if cor else tipo
+    db = get_db()
+    cur = db.cursor()
+    estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo_final, modelo, marca)
+    movimentar_estoque(
+        cur, estoque_id, 'entrada', quantidade, saldo,
+        motivo=motivo or 'Entrada manual de estoque',
+        responsavel=g.operador_mobile
+    )
+    db.commit()
+    cur.execute("SELECT quantidade FROM estoque WHERE id=%s", (estoque_id,))
+    novo_saldo = cur.fetchone()['quantidade']
+
+    descricao = f"{tipo_final} {modelo}".strip() + (f" ({marca})" if marca else "")
+    try:
+        enviar_notificacao_push('Entrada no estoque', f'{descricao}: +{quantidade}', url_for('controle_estoque'))
+    except Exception:
+        pass
+    return jsonify({'ok': True, 'estoque_id': estoque_id, 'saldo': novo_saldo,
+                    'descricao': descricao, 'quantidade': quantidade})
+
+
+@app.route('/api/mobile/estoque/ajuste', methods=['POST'])
+@api_mobile_auth
+def api_mobile_estoque_ajuste():
+    dados = request.get_json(silent=True) or {}
+    motivo = (dados.get('motivo') or '').strip()
+    try:
+        estoque_id = int(dados.get('estoque_id') or 0)
+    except (TypeError, ValueError):
+        estoque_id = 0
+    try:
+        nova_qtd = int(dados.get('quantidade') or 0)
+    except (TypeError, ValueError):
+        nova_qtd = -1
+
+    if not estoque_id:
+        return jsonify({'erro': 'Item de estoque invalido.'}), 400
+    if not motivo:
+        return jsonify({'erro': 'Informe o motivo do ajuste.'}), 400
+
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT * FROM estoque WHERE id=%s", (estoque_id,))
+    item = cur.fetchone()
+    if not item:
+        return jsonify({'erro': 'Item nao encontrado.'}), 404
+
+    estoque_minimo = item['estoque_minimo']
+    if dados.get('estoque_minimo') not in (None, ''):
+        try:
+            estoque_minimo = int(dados.get('estoque_minimo'))
+        except (TypeError, ValueError):
+            return jsonify({'erro': 'Estoque minimo invalido.'}), 400
+
+    if nova_qtd < 0:
+        return jsonify({'erro': 'Quantidade nao pode ser negativa.'}), 400
+
+    diferenca = nova_qtd - item['quantidade']
+    tipo_movimento = 'ajuste'
+    if diferenca > 0:
+        tipo_movimento = 'entrada'
+    elif diferenca < 0:
+        tipo_movimento = 'saida'
+
+    cur.execute("UPDATE estoque SET estoque_minimo=%s WHERE id=%s", (estoque_minimo, estoque_id))
+    if diferenca != 0:
+        movimentar_estoque(
+            cur, estoque_id, tipo_movimento, diferenca, item['quantidade'],
+            motivo=motivo, responsavel=g.operador_mobile
+        )
+    db.commit()
+    return jsonify({'ok': True, 'estoque_id': estoque_id, 'saldo': nova_qtd})
+
+
 # Para produção (Render / Gunicorn)
 # Inicializa o banco automaticamente se estiver vazio
 with app.app_context():
