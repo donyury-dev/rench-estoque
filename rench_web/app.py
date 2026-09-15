@@ -6274,6 +6274,308 @@ def api_mobile_viagem_uso(viagem_id):
     return jsonify({'ok': True})
 
 
+# --- API mobile: delega para os endpoints de sessao (mesma logica do PWA) ---
+# Chama a funcao original via __wrapped__ para ignorar o login_required de sessao.
+
+@app.route('/api/mobile/paradas-ativas')
+@api_mobile_auth
+def api_mobile_paradas_ativas():
+    return api_paradas_ativas.__wrapped__()
+
+
+@app.route('/api/mobile/suprimentos/historico')
+@api_mobile_auth
+def api_mobile_suprimentos_historico():
+    return api_suprimentos_historico.__wrapped__()
+
+
+@app.route('/api/mobile/auditoria')
+@api_mobile_auth
+def api_mobile_auditoria():
+    return api_auditoria_estoque.__wrapped__()
+
+
+@app.route('/api/mobile/estoque/historico-item')
+@api_mobile_auth
+def api_mobile_estoque_historico_item():
+    return api_estoque_historico.__wrapped__()
+
+
+@app.route('/api/mobile/equipamentos')
+@api_mobile_auth
+def api_mobile_equipamentos():
+    db = get_db()
+    cur = db.cursor()
+    busca = request.args.get('q', '').strip()
+    tipo = request.args.get('tipo', '').strip()
+    unidade_id = request.args.get('unidade_id', '').strip()
+
+    sql = """
+        SELECT e.id, e.codigo, e.tipo_equipamento, e.fabricante, e.modelo,
+               e.numero_serie, e.patrimonio, e.condicao, e.setor_equipamento,
+               e.local_atual_nome, e.cliente_atual, e.contador_mono, e.contador_color,
+               e.unidade_id,
+               COALESCE(u.nome, e.local_atual_nome) as local_nome,
+               emp.nome as empresa_nome, u.setor as unidade_setor
+        FROM equipamentos e
+        LEFT JOIN unidades u ON e.unidade_id = u.id
+        LEFT JOIN empresas emp ON emp.id = u.empresa_id
+        WHERE e.ativo=1
+    """
+    params = []
+    if tipo:
+        sql += " AND e.tipo_equipamento = %s"
+        params.append(tipo)
+    if unidade_id:
+        sql += " AND e.unidade_id = %s"
+        params.append(unidade_id)
+    sql += " ORDER BY e.tipo_equipamento, e.modelo"
+    cur.execute(sql, params)
+    equipamentos = cur.fetchall()
+
+    if busca:
+        termos = preparar_termos_busca(busca)
+        filtrados = []
+        for eq in equipamentos:
+            pontuacao = calcular_pontuacao_busca(
+                termos, eq['codigo'], eq['fabricante'], eq['modelo'],
+                eq['numero_serie'], eq['patrimonio'], eq['cliente_atual'],
+                eq['local_nome'], eq['empresa_nome'], eq.get('unidade_setor'),
+                eq.get('setor_equipamento')
+            )
+            if pontuacao >= 50:
+                filtrados.append((pontuacao, eq))
+        filtrados.sort(key=lambda x: x[0], reverse=True)
+        equipamentos = [x[1] for x in filtrados]
+
+    cur.execute("""
+        SELECT tipo_equipamento, COUNT(*) as qtd FROM equipamentos
+        WHERE ativo=1 GROUP BY tipo_equipamento ORDER BY tipo_equipamento
+    """)
+    tipos = cur.fetchall()
+
+    cur.execute("SELECT COUNT(*) as total FROM equipamentos WHERE ativo=1")
+    total = cur.fetchone()['total']
+
+    return jsonify({
+        'equipamentos': [dict(e) for e in equipamentos],
+        'tipos': [dict(t) for t in tipos],
+        'total': total,
+    })
+
+
+@app.route('/api/mobile/equipamentos/<int:equip_id>')
+@api_mobile_auth
+def api_mobile_equipamento_detalhe(equip_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        SELECT e.*, COALESCE(u.nome, e.local_atual_nome) as unidade_nome,
+               emp.nome as empresa_nome
+        FROM equipamentos e
+        LEFT JOIN unidades u ON u.id = e.unidade_id
+        LEFT JOIN empresas emp ON emp.id = u.empresa_id
+        WHERE e.id=%s
+    """, (equip_id,))
+    equip = cur.fetchone()
+    if not equip:
+        return jsonify({'erro': 'Equipamento nao encontrado.'}), 404
+
+    cur.execute("""
+        SELECT m.id, m.data_movimentacao, m.tipo_movimento, m.origem_local,
+               m.destino_local, m.responsavel, m.observacoes
+        FROM movimentacoes m WHERE m.equipamento_id=%s
+        ORDER BY m.data_movimentacao DESC, m.id DESC LIMIT 20
+    """, (equip_id,))
+    movs = cur.fetchall()
+
+    return jsonify({
+        'equipamento': dict(equip),
+        'movimentacoes': [dict(m) for m in movs],
+    })
+
+
+@app.route('/api/mobile/equipamentos/<int:equip_id>/movimentar', methods=['POST'])
+@api_mobile_auth
+def api_mobile_equipamento_movimentar(equip_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        SELECT e.*, u.nome as unidade_nome, emp.nome as empresa_nome
+        FROM equipamentos e
+        LEFT JOIN unidades u ON u.id = e.unidade_id
+        LEFT JOIN empresas emp ON emp.id = u.empresa_id
+        WHERE e.id=%s
+    """, (equip_id,))
+    equip = cur.fetchone()
+    if not equip:
+        return jsonify({'erro': 'Equipamento nao encontrado.'}), 404
+
+    dados = request.get_json(silent=True) or {}
+    tipo_mov = (dados.get('tipo_movimento') or '').strip()
+    data_mov = (dados.get('data_movimentacao') or '').strip()
+    responsavel = (dados.get('responsavel') or g.operador_mobile).strip()
+    obs = (dados.get('observacoes') or '').strip() or None
+    setor_destino = (dados.get('setor_equipamento') or '').strip() or None
+    destino_unidade_id = dados.get('destino_unidade_id')
+    contador_mono_novo = (str(dados.get('contador_mono_novo') or '')).strip()
+    contador_color_novo = (str(dados.get('contador_color_novo') or '')).strip()
+
+    if not tipo_mov:
+        return jsonify({'erro': 'Informe o tipo de movimentação.'}), 400
+    if not data_mov:
+        data_mov = date.today().isoformat()
+
+    contador_mono_anterior = int(equip['contador_mono'] or 0)
+    contador_color_anterior = int(equip['contador_color'] or 0)
+    try:
+        contador_mono_novo_int = int(contador_mono_novo) if contador_mono_novo else contador_mono_anterior
+    except (TypeError, ValueError):
+        contador_mono_novo_int = contador_mono_anterior
+    try:
+        contador_color_novo_int = int(contador_color_novo) if contador_color_novo else contador_color_anterior
+    except (TypeError, ValueError):
+        contador_color_novo_int = contador_color_anterior
+
+    destino_unidade_nome = None
+    if destino_unidade_id:
+        cur.execute("SELECT nome FROM unidades WHERE id=%s", (destino_unidade_id,))
+        u = cur.fetchone()
+        if u:
+            destino_unidade_nome = u['nome']
+
+    cur.execute("""
+        INSERT INTO movimentacoes (equipamento_id, data_movimentacao, tipo_movimento,
+            origem_local, origem_unidade, destino_local, destino_unidade, responsavel, observacoes,
+            contador_mono_anterior, contador_mono_novo, contador_color_anterior, contador_color_novo)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    """, (equip_id, data_mov, tipo_mov,
+          equip['local_atual_nome'], equip['unidade_nome'] or equip['local_atual_nome'],
+          destino_unidade_nome or "Estoque Rench", destino_unidade_nome,
+          responsavel, obs,
+          contador_mono_anterior, contador_mono_novo_int,
+          contador_color_anterior, contador_color_novo_int))
+
+    cur.execute("""
+        UPDATE equipamentos SET unidade_id=%s, local_atual_nome=%s, cliente_atual=%s,
+            contador_mono=%s, contador_color=%s, setor_equipamento=%s WHERE id=%s
+    """, (destino_unidade_id, destino_unidade_nome, None,
+          contador_mono_novo_int, contador_color_novo_int, setor_destino, equip_id))
+    db.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/mobile/entregas', methods=['POST'])
+@api_mobile_auth
+def api_mobile_entrega_criar():
+    dados = request.get_json(silent=True) or {}
+    try:
+        unidade_id = int(dados.get('unidade_id') or 0)
+    except (TypeError, ValueError):
+        unidade_id = 0
+    data_entrega = (dados.get('data_entrega') or date.today().isoformat()).strip()
+    responsavel = (dados.get('responsavel') or g.operador_mobile).strip()
+    observacoes = (dados.get('observacoes') or '').strip()
+    parada_id = dados.get('parada_id') or None
+
+    if not unidade_id:
+        return jsonify({'erro': 'Selecione a unidade da entrega.'}), 400
+    if not observacoes:
+        return jsonify({'erro': 'Informe a observação da entrega.'}), 400
+
+    itens = []
+    for i in (dados.get('itens') or []):
+        if not isinstance(i, dict):
+            continue
+        tipo = (i.get('tipo_suprimento') or '').strip()
+        try:
+            quantidade = int(i.get('quantidade') or 0)
+        except (TypeError, ValueError):
+            quantidade = 0
+        if not tipo or quantidade <= 0:
+            continue
+        itens.append({
+            'tipo_suprimento': tipo,
+            'modelo_impressora': (i.get('modelo_impressora') or '').strip(),
+            'quantidade': quantidade,
+            'marca': (i.get('marca') or '').strip() or None,
+            'cor_selecionada': (i.get('cor_selecionada') or '').strip() or None,
+            'motivo_padrao': (i.get('motivo_padrao') or '').strip(),
+            'defeito': (i.get('defeito') or '').strip(),
+            'outro': (i.get('motivo') or '').strip(),
+        })
+    if not itens:
+        return jsonify({'erro': 'Adicione pelo menos um suprimento antes de salvar a entrega.'}), 400
+
+    db = get_db()
+    cur = db.cursor()
+    parada_resolvida, viagem_id_saida, alocacao, erros_viagem = validar_saida_contra_viagem(
+        cur, parada_id, unidade_id, itens)
+    if erros_viagem:
+        return jsonify({'erro': 'Saída bloqueada: ' + ' '.join(erros_viagem)}), 400
+    if not viagem_id_saida and observacoes not in ENVIOS_SEM_VIAGEM:
+        return jsonify({'erro': 'Saída sem viagem só é permitida para envio pelo escritório '
+                                '(motoboy/correio) ou retirada no local. Para entregar em '
+                                'atendimento, a saída deve estar na carga de uma viagem '
+                                'conferida.'}), 400
+    if parada_resolvida:
+        parada_id = parada_resolvida
+
+    cur.execute("""
+        INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes, parada_id)
+        VALUES (%s, %s, %s, %s, %s) RETURNING id
+    """, (unidade_id, data_entrega, responsavel, observacoes, parada_id))
+    entrega_id = cur.fetchone()['id']
+
+    faltantes = debitar_estoque_entrega(cur, entrega_id, itens, responsavel=responsavel, alocacao=alocacao)
+    if faltantes:
+        db.rollback()
+        msgs = []
+        for f in faltantes:
+            desc = f"{f['tipo']} {f['modelo']}"
+            if f.get('marca'):
+                desc += f" ({f['marca']})"
+            msgs.append(f"{desc}: solicitado {f['solicitado']}, em estoque {f['saldo']}")
+        return jsonify({'erro': 'Estoque insuficiente: ' + '; '.join(msgs)}), 400
+
+    for item in itens:
+        mp = item['motivo_padrao']
+        defeito = item['defeito']
+        outro = item['outro']
+        motivo_texto = None
+        if mp == 'outro':
+            motivo_texto = (outro or '').strip() or None
+        elif mp:
+            motivo_texto = mp
+        cur.execute("""
+            INSERT INTO suprimentos_itens (entrega_id, tipo_suprimento, modelo_impressora,
+                cor_selecionada, marca, quantidade, motivo_padrao, defeito, motivo)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (entrega_id, item['tipo_suprimento'], item['modelo_impressora'].strip() or None,
+              item.get('cor_selecionada'), item.get('marca'), item['quantidade'],
+              mp or None, defeito.strip() or None, motivo_texto))
+
+    vinculo = vincular_entrega_a_viagem(cur, entrega_id, alocacao=alocacao)
+    db.commit()
+
+    cur.execute("SELECT u.nome FROM unidades u WHERE u.id=%s", (unidade_id,))
+    unidade_row = cur.fetchone()
+    unidade_nome = unidade_row['nome'] if unidade_row else 'Unidade'
+    try:
+        enviar_notificacao_push('Saida de suprimento', f'Entrega registrada para {unidade_nome}', url_for('suprimento_mobile'))
+    except Exception:
+        pass
+    if vinculo and vinculo.get('chamado_id'):
+        resumo = '; '.join(
+            f"{i['quantidade']}x {i['tipo_suprimento']} {i['modelo_impressora'] or ''}".strip()
+            for i in itens)
+        helpdesk_registrar_evento_suprimentos(
+            vinculo['chamado_id'],
+            f"[Suprimentos] Saída vinculada à viagem (entrega #{entrega_id}): {resumo}")
+
+    return jsonify({'ok': True, 'entrega_id': entrega_id, 'unidade': unidade_nome})
+
+
 # Para produção (Render / Gunicorn)
 # Inicializa o banco automaticamente se estiver vazio
 with app.app_context():
