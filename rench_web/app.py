@@ -5938,6 +5938,342 @@ def api_mobile_estoque_ajuste():
     return jsonify({'ok': True, 'estoque_id': estoque_id, 'saldo': nova_qtd})
 
 
+@app.route('/api/mobile/unidades')
+@api_mobile_auth
+def api_mobile_unidades():
+    db = get_db()
+    cur = db.cursor()
+    locais = _carregar_locais(cur)
+    return jsonify({'locais': [dict(l) for l in locais]})
+
+
+def _api_mobile_itens(dados):
+    """Normaliza a lista de itens enviada em JSON pela app."""
+    itens = []
+    for item in (dados.get('itens') or []):
+        if not isinstance(item, dict):
+            continue
+        tipo = (item.get('tipo_suprimento') or '').strip()
+        try:
+            quantidade = int(item.get('quantidade') or 0)
+        except (TypeError, ValueError):
+            quantidade = 0
+        if not tipo or quantidade <= 0:
+            continue
+        itens.append({
+            'tipo_suprimento': tipo,
+            'modelo_impressora': (item.get('modelo_impressora') or '').strip() or None,
+            'marca': (item.get('marca') or '').strip() or None,
+            'quantidade': quantidade,
+        })
+    return itens
+
+
+_STATUS_VIAGEM_LABEL = {
+    'separacao': 'Em separação',
+    'conferido': 'Conferido',
+    'em_rota': 'Em rota',
+    'aguardando_retorno': 'Aguardando retorno',
+    'concluido': 'Concluída',
+    'cancelado': 'Cancelada',
+}
+
+
+@app.route('/api/mobile/viagens')
+@api_mobile_auth
+def api_mobile_viagens():
+    db = get_db()
+    cur = db.cursor()
+    status_filtro = request.args.get('status', '').strip()
+    sql = """
+        SELECT v.*,
+               (SELECT COUNT(*) FROM viagens_paradas vp WHERE vp.viagem_id = v.id) AS total_paradas,
+               (SELECT COUNT(*) FROM viagens_paradas vp WHERE vp.viagem_id = v.id
+                   AND vp.status='atendida') AS paradas_atendidas,
+               (SELECT COALESCE(SUM(vi.quantidade_carregada), 0) FROM viagens_itens vi
+                   WHERE vi.viagem_id = v.id) AS total_itens
+               ,(SELECT STRING_AGG(
+                    COALESCE(u.nome, 'Unidade não identificada'),
+                    ' · ' ORDER BY vp.ordem
+                 )
+                 FROM viagens_paradas vp
+                 LEFT JOIN unidades u ON u.id = vp.unidade_id
+                 WHERE vp.viagem_id = v.id) AS unidades_rota
+        FROM viagens v
+    """
+    params = []
+    if status_filtro:
+        sql += " WHERE v.status=%s"
+        params.append(status_filtro)
+    sql += " ORDER BY v.id DESC LIMIT 50"
+    cur.execute(sql, params)
+    viagens = []
+    for v in cur.fetchall():
+        d = dict(v)
+        d['status_label'] = _STATUS_VIAGEM_LABEL.get(v['status'], v['status'])
+        viagens.append(d)
+    return jsonify({'viagens': viagens})
+
+
+@app.route('/api/mobile/viagens/<int:viagem_id>')
+@api_mobile_auth
+def api_mobile_viagem_detalhe(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        return jsonify({'erro': 'Viagem nao encontrada.'}), 404
+    paradas, itens, coletas, entregas = _carregar_detalhes_viagem(cur, viagem_id)
+    d = dict(viagem)
+    d['status_label'] = _STATUS_VIAGEM_LABEL.get(viagem['status'], viagem['status'])
+    return jsonify({
+        'viagem': d,
+        'paradas': [dict(p) for p in paradas],
+        'itens': [dict(i) for i in itens],
+        'coletas': [dict(c) for c in coletas],
+        'entregas': [dict(e) for e in entregas],
+    })
+
+
+@app.route('/api/mobile/viagens', methods=['POST'])
+@api_mobile_auth
+def api_mobile_viagem_criar():
+    dados = request.get_json(silent=True) or {}
+    responsavel_atendimento = (dados.get('responsavel_atendimento') or '').strip()
+    observacoes = (dados.get('observacoes') or '').strip() or None
+    if not responsavel_atendimento:
+        responsavel_atendimento = g.operador_mobile
+
+    paradas_brutas = dados.get('paradas') or []
+    paradas = []
+    for p in paradas_brutas:
+        if not isinstance(p, dict):
+            continue
+        try:
+            unidade_id = int(p.get('unidade_id') or 0)
+        except (TypeError, ValueError):
+            unidade_id = 0
+        if not unidade_id:
+            continue
+        chamado_id = None
+        protocolo = None
+        try:
+            chamado_id = int(p.get('chamado_id') or 0) or None
+        except (TypeError, ValueError):
+            chamado_id = None
+        protocolo = (p.get('chamado_protocolo') or '').strip() or None
+        if not chamado_id:
+            protocolo = None
+        paradas.append({'unidade_id': unidade_id, 'chamado_id': chamado_id,
+                        'chamado_protocolo': protocolo})
+
+    itens = _api_mobile_itens(dados)
+    if not itens:
+        return jsonify({'erro': 'Adicione pelo menos um suprimento à viagem.'}), 400
+
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT nextval('viagem_numero_seq') AS seq")
+    seq = int(cur.fetchone()['seq'])
+    numero = f"VJ-{seq:06d}"
+
+    cur.execute("""
+        INSERT INTO viagens (numero, responsavel_separacao, responsavel_atendimento, observacoes)
+        VALUES (%s, %s, %s, %s) RETURNING id
+    """, (numero, g.operador_mobile, responsavel_atendimento, observacoes))
+    viagem_id = cur.fetchone()['id']
+
+    for idx, parada in enumerate(paradas):
+        cur.execute("""
+            INSERT INTO viagens_paradas (viagem_id, ordem, unidade_id, chamado_id, chamado_protocolo)
+            VALUES (%s, %s, %s, %s, %s) RETURNING id
+        """, (viagem_id, idx + 1, parada['unidade_id'], parada['chamado_id'], parada['chamado_protocolo']))
+        parada_id = cur.fetchone()['id']
+        if parada['chamado_id']:
+            cur.execute("""
+                INSERT INTO viagens_paradas_chamados (parada_id, chamado_id, chamado_protocolo)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (parada_id, chamado_id) DO NOTHING
+            """, (parada_id, parada['chamado_id'], parada['chamado_protocolo']))
+
+    for item in itens:
+        cur.execute("""
+            INSERT INTO viagens_itens (viagem_id, tipo_suprimento, modelo_impressora, marca,
+                                       origem, quantidade_carregada)
+            VALUES (%s, %s, %s, %s, 'rench', %s)
+        """, (viagem_id, item['tipo_suprimento'], item['modelo_impressora'],
+              item['marca'], item['quantidade']))
+
+    db.commit()
+    return jsonify({'ok': True, 'viagem_id': viagem_id, 'numero': numero})
+
+
+@app.route('/api/mobile/viagens/<int:viagem_id>/conferir', methods=['POST'])
+@api_mobile_auth
+def api_mobile_viagem_conferir(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        return jsonify({'erro': 'Viagem nao encontrada.'}), 404
+    dados = request.get_json(silent=True) or {}
+    responsavel = (dados.get('responsavel_conferencia') or '').strip() or g.operador_mobile
+    if (viagem['responsavel_separacao']
+            and responsavel.strip().lower() == viagem['responsavel_separacao'].strip().lower()):
+        return jsonify({'erro': 'A conferência deve ser registrada por outra pessoa, '
+                                'diferente de quem fez a separação.'}), 400
+    if viagem['status'] != 'separacao':
+        return jsonify({'erro': 'Só viagens em separação podem ser conferidas.'}), 400
+    cur.execute("""
+        UPDATE viagens SET status='conferido', responsavel_conferencia=%s,
+            data_conferencia=CURRENT_TIMESTAMP
+        WHERE id=%s AND status='separacao'
+    """, (responsavel, viagem_id))
+    db.commit()
+    return jsonify({'ok': True, 'status': 'conferido'})
+
+
+@app.route('/api/mobile/viagens/<int:viagem_id>/iniciar', methods=['POST'])
+@api_mobile_auth
+def api_mobile_viagem_iniciar(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("UPDATE viagens SET status='em_rota' WHERE id=%s AND status='conferido'", (viagem_id,))
+    db.commit()
+    return jsonify({'ok': True, 'status': 'em_rota'})
+
+
+@app.route('/api/mobile/viagens/<int:viagem_id>/cancelar', methods=['POST'])
+@api_mobile_auth
+def api_mobile_viagem_cancelar(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("UPDATE viagens SET status='cancelado' WHERE id=%s AND status IN ('separacao','conferido')", (viagem_id,))
+    db.commit()
+    return jsonify({'ok': True, 'status': 'cancelado'})
+
+
+@app.route('/api/mobile/viagens/<int:viagem_id>/itens/adicionar', methods=['POST'])
+@api_mobile_auth
+def api_mobile_viagem_item_adicionar(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        return jsonify({'erro': 'Viagem nao encontrada.'}), 404
+    if viagem['status'] not in ('separacao', 'conferido'):
+        return jsonify({'erro': 'Só é possível alterar os itens antes de iniciar a rota.'}), 400
+    itens = _api_mobile_itens(request.get_json(silent=True) or {})
+    if not itens:
+        return jsonify({'erro': 'Selecione pelo menos um suprimento para adicionar.'}), 400
+    for item in itens:
+        cur.execute("""
+            SELECT id FROM viagens_itens
+            WHERE viagem_id=%s AND origem='rench' AND tipo_suprimento=%s
+              AND COALESCE(modelo_impressora,'')=COALESCE(%s,'')
+              AND COALESCE(marca,'')=COALESCE(%s,'')
+        """, (viagem_id, item['tipo_suprimento'], item['modelo_impressora'], item['marca']))
+        row = cur.fetchone()
+        if row:
+            cur.execute("""
+                UPDATE viagens_itens SET quantidade_carregada=quantidade_carregada+%s
+                WHERE id=%s
+            """, (item['quantidade'], row['id']))
+        else:
+            cur.execute("""
+                INSERT INTO viagens_itens (viagem_id, tipo_suprimento, modelo_impressora, marca,
+                                           origem, quantidade_carregada)
+                VALUES (%s, %s, %s, %s, 'rench', %s)
+            """, (viagem_id, item['tipo_suprimento'], item['modelo_impressora'],
+                  item['marca'], item['quantidade']))
+    db.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/mobile/viagens/<int:viagem_id>/itens/<int:item_id>/remover', methods=['POST'])
+@api_mobile_auth
+def api_mobile_viagem_item_remover(viagem_id, item_id):
+    db = get_db()
+    cur = db.cursor()
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        return jsonify({'erro': 'Viagem nao encontrada.'}), 404
+    if viagem['status'] not in ('separacao', 'conferido'):
+        return jsonify({'erro': 'Só é possível alterar os itens antes de iniciar a rota.'}), 400
+    cur.execute("""
+        DELETE FROM viagens_itens
+        WHERE id=%s AND viagem_id=%s AND origem='rench'
+          AND COALESCE(quantidade_entregue,0)=0
+          AND COALESCE(quantidade_usada_manual,0)=0
+    """, (item_id, viagem_id))
+    removido = cur.rowcount
+    db.commit()
+    if not removido:
+        return jsonify({'erro': 'Este item não pode ser removido (já foi entregue ou usado).'}), 400
+    return jsonify({'ok': True})
+
+
+@app.route('/api/mobile/viagens/<int:viagem_id>/coleta', methods=['POST'])
+@api_mobile_auth
+def api_mobile_viagem_coleta(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        return jsonify({'erro': 'Viagem nao encontrada.'}), 404
+    if viagem['status'] not in ('conferido', 'em_rota', 'aguardando_retorno'):
+        return jsonify({'erro': 'Coletas só podem ser registradas em viagens ativas.'}), 400
+
+    dados = request.get_json(silent=True) or {}
+    fornecedor = (dados.get('fornecedor') or '').strip()
+    data_coleta = (dados.get('data_coleta') or '').strip() or None
+    documento = (dados.get('documento') or '').strip() or None
+    observacoes = (dados.get('observacoes') or '').strip() or None
+    pode_usar = bool(dados.get('pode_usar_cliente', True))
+
+    if not fornecedor:
+        return jsonify({'erro': 'Informe o fornecedor da coleta.'}), 400
+    itens = _api_mobile_itens(dados)
+    if not itens:
+        return jsonify({'erro': 'Adicione pelo menos um item coletado.'}), 400
+
+    cur.execute("""
+        INSERT INTO viagens_coletas (viagem_id, fornecedor, data_coleta, responsavel, documento, observacoes)
+        VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+    """, (viagem_id, fornecedor, data_coleta, g.operador_mobile, documento, observacoes))
+    coleta_id = cur.fetchone()['id']
+    for item in itens:
+        cur.execute("""
+            INSERT INTO viagens_itens (viagem_id, coleta_id, tipo_suprimento, modelo_impressora,
+                                       marca, origem, fornecedor, pode_usar_cliente, quantidade_carregada)
+            VALUES (%s, %s, %s, %s, %s, 'fornecedor', %s, %s, %s)
+        """, (viagem_id, coleta_id, item['tipo_suprimento'], item['modelo_impressora'],
+              item['marca'], fornecedor, pode_usar, item['quantidade']))
+    db.commit()
+    return jsonify({'ok': True, 'coleta_id': coleta_id})
+
+
+@app.route('/api/mobile/viagens/<int:viagem_id>/uso', methods=['POST'])
+@api_mobile_auth
+def api_mobile_viagem_uso(viagem_id):
+    db = get_db()
+    cur = db.cursor()
+    dados = request.get_json(silent=True) or {}
+    try:
+        item_id = int(dados.get('item_id') or 0)
+        quantidade = int(dados.get('quantidade') or 0)
+    except (TypeError, ValueError):
+        item_id = quantidade = 0
+    if not item_id or quantidade <= 0:
+        return jsonify({'erro': 'Informe o item e a quantidade utilizada.'}), 400
+    cur.execute("""
+        UPDATE viagens_itens SET quantidade_usada_manual = quantidade_usada_manual + %s
+        WHERE id=%s AND viagem_id=%s
+    """, (quantidade, item_id, viagem_id))
+    db.commit()
+    return jsonify({'ok': True})
+
+
 # Para produção (Render / Gunicorn)
 # Inicializa o banco automaticamente se estiver vazio
 with app.app_context():
