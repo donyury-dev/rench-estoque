@@ -6465,6 +6465,68 @@ def api_mobile_equipamento_movimentar(equip_id):
     return jsonify({'ok': True})
 
 
+@app.route('/api/mobile/equipamentos', methods=['POST'])
+@api_mobile_auth
+def api_mobile_equipamento_novo():
+    dados = request.get_json(silent=True) or {}
+    tipo = (dados.get('tipo_equipamento') or '').strip()
+    if not tipo:
+        return jsonify({'erro': 'Informe o tipo de equipamento.'}), 400
+    unidade_id = dados.get('unidade_id') or None
+
+    db = get_db()
+    cur = db.cursor()
+    local_atual_nome = (dados.get('local_atual_nome') or 'Estoque Rench').strip()
+    cliente_atual = None
+    if unidade_id:
+        cur.execute("""
+            SELECT u.nome AS unidade_nome, e.nome AS empresa_nome FROM unidades u
+            JOIN empresas e ON e.id = u.empresa_id WHERE u.id=%s
+        """, (unidade_id,))
+        unidade = cur.fetchone()
+        if unidade:
+            local_atual_nome = unidade['unidade_nome']
+            cliente_atual = unidade['empresa_nome']
+
+    campos = {
+        'codigo': gerar_codigo_rastreio(cur, tipo),
+        'tipo_equipamento': tipo,
+        'fabricante': (dados.get('fabricante') or '').strip() or None,
+        'modelo': (dados.get('modelo') or '').strip() or None,
+        'numero_serie': (dados.get('numero_serie') or '').strip() or None,
+        'patrimonio': (dados.get('patrimonio') or '').strip() or None,
+        'setor_equipamento': (dados.get('setor_equipamento') or '').strip() or None,
+        'status': 'ativo',
+        'condicao_uso': (dados.get('condicao_uso') or 'nao_informada'),
+        'unidade_id': unidade_id,
+        'local_atual_nome': local_atual_nome,
+        'cliente_atual': cliente_atual,
+        'observacoes': (dados.get('observacoes') or '').strip() or None,
+    }
+    if tipo == 'impressora':
+        for k in ['funcao', 'tipo_impressao', 'tamanho_papel', 'funcionalidades']:
+            v = (dados.get(k) or '').strip()
+            if v:
+                campos[k] = v
+        try:
+            campos['contador_mono'] = int(dados.get('contador_mono') or 0)
+        except (TypeError, ValueError):
+            campos['contador_mono'] = 0
+        try:
+            campos['contador_color'] = int(dados.get('contador_color') or 0)
+        except (TypeError, ValueError):
+            campos['contador_color'] = 0
+
+    colunas = [k for k, v in campos.items() if v is not None]
+    valores = [campos[k] for k in colunas]
+    placeholders = ','.join(['%s'] * len(colunas))
+    cur.execute(f"INSERT INTO equipamentos ({','.join(colunas)}) VALUES ({placeholders})", valores)
+    db.commit()
+    cur.execute("SELECT id, codigo FROM equipamentos WHERE codigo=%s", (campos['codigo'],))
+    novo = cur.fetchone()
+    return jsonify({'ok': True, 'id': novo['id'], 'codigo': novo['codigo']})
+
+
 @app.route('/api/mobile/entregas', methods=['POST'])
 @api_mobile_auth
 def api_mobile_entrega_criar():
