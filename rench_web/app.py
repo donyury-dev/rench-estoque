@@ -6588,6 +6588,62 @@ def api_mobile_equipamento_movimentar(equip_id):
     return jsonify({'ok': True})
 
 
+@app.route('/api/mobile/equipamentos/<int:equip_id>', methods=['PUT', 'PATCH'])
+@api_mobile_auth
+def api_mobile_equipamento_editar(equip_id):
+    dados = request.get_json(silent=True) or {}
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT id FROM equipamentos WHERE id=%s AND ativo=1", (equip_id,))
+    if not cur.fetchone():
+        return jsonify({'erro': 'Equipamento nao encontrado.'}), 404
+
+    unidade_id = dados.get('unidade_id') or None
+    local_atual_nome = (dados.get('local_atual_nome') or '').strip() or None
+    cliente_atual = None
+    if unidade_id:
+        cur.execute("""
+            SELECT u.nome AS unidade_nome, e.nome AS empresa_nome
+            FROM unidades u JOIN empresas e ON e.id=u.empresa_id
+            WHERE u.id=%s AND u.ativo=1
+        """, (unidade_id,))
+        unidade = cur.fetchone()
+        if not unidade:
+            return jsonify({'erro': 'Unidade nao encontrada.'}), 404
+        local_atual_nome = unidade['unidade_nome']
+        cliente_atual = unidade['empresa_nome']
+
+    campos = {
+        'fabricante': (dados.get('fabricante') or '').strip() or None,
+        'modelo': (dados.get('modelo') or '').strip() or None,
+        'numero_serie': (dados.get('numero_serie') or '').strip() or None,
+        'patrimonio': (dados.get('patrimonio') or '').strip() or None,
+        'setor_equipamento': (dados.get('setor_equipamento') or '').strip() or None,
+        'status': (dados.get('status') or 'ativo').strip(),
+        'condicao_uso': (dados.get('condicao_uso') or 'nao_informada').strip(),
+        'unidade_id': unidade_id,
+        'local_atual_nome': local_atual_nome,
+        'cliente_atual': cliente_atual,
+        'observacoes': (dados.get('observacoes') or '').strip() or None,
+        'funcao': (dados.get('funcao') or '').strip() or None,
+        'tipo_impressao': (dados.get('tipo_impressao') or '').strip() or None,
+        'tamanho_papel': (dados.get('tamanho_papel') or '').strip() or None,
+        'funcionalidades': (dados.get('funcionalidades') or '').strip() or None,
+    }
+    for campo in ('contador_mono', 'contador_color'):
+        if campo in dados:
+            try:
+                campos[campo] = int(dados[campo] or 0)
+            except (TypeError, ValueError):
+                return jsonify({'erro': f'Valor inválido para {campo}.'}), 400
+
+    set_sql = ', '.join(f'{campo}=%s' for campo in campos)
+    cur.execute(f"UPDATE equipamentos SET {set_sql} WHERE id=%s",
+                list(campos.values()) + [equip_id])
+    db.commit()
+    return jsonify({'ok': True})
+
+
 @app.route('/api/mobile/equipamentos', methods=['POST'])
 @api_mobile_auth
 def api_mobile_equipamento_novo():
