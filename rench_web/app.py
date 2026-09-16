@@ -6161,8 +6161,8 @@ def api_mobile_viagem_item_adicionar(viagem_id):
     viagem = _buscar_viagem(cur, viagem_id)
     if not viagem:
         return jsonify({'erro': 'Viagem nao encontrada.'}), 404
-    if viagem['status'] not in ('separacao', 'conferido'):
-        return jsonify({'erro': 'Só é possível alterar os itens antes de iniciar a rota.'}), 400
+    if viagem['status'] not in ('separacao', 'conferido', 'em_rota', 'aguardando_retorno'):
+        return jsonify({'erro': 'Só é possível adicionar itens em viagens ativas.'}), 400
     itens = _api_mobile_itens(request.get_json(silent=True) or {})
     if not itens:
         return jsonify({'erro': 'Selecione pelo menos um suprimento para adicionar.'}), 400
@@ -6188,6 +6188,49 @@ def api_mobile_viagem_item_adicionar(viagem_id):
                   item['marca'], item['quantidade']))
     db.commit()
     return jsonify({'ok': True})
+
+
+@app.route('/api/mobile/viagens/<int:viagem_id>/paradas', methods=['POST'])
+@api_mobile_auth
+def api_mobile_viagem_parada_adicionar(viagem_id):
+    """Adiciona uma nova parada em uma viagem ativa (ex.: surgiu chamado no caminho)."""
+    db = get_db()
+    cur = db.cursor()
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        return jsonify({'erro': 'Viagem nao encontrada.'}), 404
+    if viagem['status'] not in ('separacao', 'conferido', 'em_rota', 'aguardando_retorno'):
+        return jsonify({'erro': 'Só é possível adicionar paradas em viagens ativas.'}), 400
+
+    dados = request.get_json(silent=True) or {}
+    try:
+        unidade_id = int(dados.get('unidade_id') or 0)
+    except (TypeError, ValueError):
+        unidade_id = 0
+    if not unidade_id:
+        return jsonify({'erro': 'Selecione a unidade da nova parada.'}), 400
+
+    cur.execute("SELECT id, nome FROM unidades WHERE id=%s AND ativo=1", (unidade_id,))
+    unidade = cur.fetchone()
+    if not unidade:
+        return jsonify({'erro': 'Unidade não encontrada.'}), 404
+
+    cur.execute("""
+        INSERT INTO viagens_paradas (viagem_id, ordem, unidade_id)
+        VALUES (%s, (SELECT COALESCE(MAX(ordem), 0) + 1 FROM viagens_paradas WHERE viagem_id=%s), %s)
+        RETURNING id, ordem
+    """, (viagem_id, viagem_id, unidade_id))
+    parada = cur.fetchone()
+
+    # Se a viagem ja estava aguardando retorno e ganhou parada nova,
+    # ela volta a ficar em rota ate a nova parada ser atendida.
+    cur.execute("""
+        UPDATE viagens SET status='em_rota'
+        WHERE id=%s AND status='aguardando_retorno'
+    """, (viagem_id,))
+
+    db.commit()
+    return jsonify({'ok': True, 'parada_id': parada['id'], 'ordem': parada['ordem']})
 
 
 @app.route('/api/mobile/viagens/<int:viagem_id>/itens/<int:item_id>/remover', methods=['POST'])
