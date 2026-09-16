@@ -6274,6 +6274,86 @@ def api_mobile_viagem_uso(viagem_id):
     return jsonify({'ok': True})
 
 
+@app.route('/api/mobile/viagens/<int:viagem_id>/retorno', methods=['POST'])
+@api_mobile_auth
+def api_mobile_viagem_retorno(viagem_id):
+    """Confere o retorno da viagem e a conclui (mesma logica da rota web)."""
+    db = get_db()
+    cur = db.cursor()
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        return jsonify({'erro': 'Viagem nao encontrada.'}), 404
+    if viagem['status'] not in ('em_rota', 'aguardando_retorno'):
+        return jsonify({'erro': 'O retorno só pode ser conferido em viagens em andamento.'}), 400
+
+    dados = request.get_json(silent=True) or {}
+    responsavel_retorno = (dados.get('responsavel_retorno') or '').strip() or g.operador_mobile
+    assinatura = (dados.get('assinatura') or '').strip() or None
+    observacoes = (dados.get('observacoes') or '').strip() or None
+    retornos = dados.get('retornos') or {}
+
+    if not assinatura or not assinatura.startswith('data:image'):
+        return jsonify({'erro': 'Assine no quadro de assinatura digital antes de concluir.'}), 400
+
+    cur.execute("SELECT * FROM viagens_itens WHERE viagem_id=%s", (viagem_id,))
+    itens = cur.fetchall()
+    divergencias = []
+    fornecedor_retornos = []
+    for item in itens:
+        esperado = (
+            (item['quantidade_carregada'] or 0)
+            - (item['quantidade_entregue'] or 0)
+            - (item['quantidade_usada_manual'] or 0)
+        )
+        bruto = retornos.get(str(item['id']))
+        if bruto is None:
+            continue
+        try:
+            retornada = int(bruto)
+        except (TypeError, ValueError):
+            return jsonify({'erro': f"Quantidade de retorno inválida para o item {item['tipo_suprimento']}."}), 400
+        divergencia = None
+        if retornada < 0:
+            retornada = 0
+        if retornada != esperado:
+            divergencia = f'esperado {esperado}, retornou {retornada}'
+            divergencias.append(
+                f"{item['tipo_suprimento']} {item['modelo_impressora'] or ''} "
+                f"({item['fornecedor'] if item['origem'] == 'fornecedor' else 'Rench'}): {divergencia}")
+        cur.execute("""
+            UPDATE viagens_itens SET quantidade_retornada=%s, divergencia=%s WHERE id=%s
+        """, (retornada, divergencia, item['id']))
+        if item['origem'] == 'fornecedor' and retornada > 0:
+            fornecedor_retornos.append((item, retornada))
+
+    if divergencias and not observacoes:
+        db.rollback()
+        return jsonify({
+            'erro': 'Existem diferenças no retorno. Informe o que aconteceu nas observações.',
+            'divergencias': divergencias,
+        }), 400
+
+    # Itens coletados em fornecedor que voltaram ao escritorio entram no
+    # estoque (eles nunca passaram pelo estoque da Rench antes).
+    for item, retornada in fornecedor_retornos:
+        tipo, modelo, marca = _chave_estoque(
+            item['tipo_suprimento'], item['modelo_impressora'], item['marca'])
+        estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo, modelo, marca)
+        movimentar_estoque(
+            cur, estoque_id, 'entrada', retornada, saldo,
+            motivo=(f"Retorno da viagem {viagem['numero']} - fornecedor "
+                    f"{item['fornecedor'] or '-'} (item de coleta)"),
+            responsavel=responsavel_retorno)
+
+    cur.execute("""
+        UPDATE viagens SET status='concluido', responsavel_retorno=%s,
+            data_retorno=CURRENT_TIMESTAMP, observacoes_retorno=%s, assinatura_retorno=%s
+        WHERE id=%s
+    """, (responsavel_retorno, observacoes, assinatura, viagem_id))
+    db.commit()
+    return jsonify({'ok': True})
+
+
 # --- API mobile: delega para os endpoints de sessao (mesma logica do PWA) ---
 # Chama a funcao original via __wrapped__ para ignorar o login_required de sessao.
 
