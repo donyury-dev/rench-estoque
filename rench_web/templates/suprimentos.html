@@ -113,7 +113,7 @@
             <tbody>
               {% for item in e.itens %}
               <tr>
-                <td><span class="badge bg-soft-primary">{{item.tipo}}</span></td>
+                <td><span class="badge bg-soft-primary">{{item.tipo}}{% if item.cor and not item.tipo.endswith(item.cor) %} {{item.cor}}{% endif %}</span></td>
                 <td>{{item.modelo or '-'}}{% if item.marca %} <span class="text-muted small">({{item.marca}})</span>{% endif %}</td>
                 <td><strong>{{item.quantidade}}</strong></td>
                 <td class="text-muted small">

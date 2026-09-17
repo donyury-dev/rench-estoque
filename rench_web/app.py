@@ -2788,7 +2788,7 @@ def lista_suprimentos():
         SELECT se.id, se.data_entrega, se.responsavel, se.observacoes,
                u.nome as unidade_nome, emp.nome as empresa_nome,
                si.id as item_id, si.tipo_suprimento, si.modelo_impressora, si.marca, si.quantidade,
-               si.motivo_padrao, si.defeito, si.motivo
+               si.cor_selecionada, si.motivo_padrao, si.defeito, si.motivo
         FROM suprimentos_entregas se
         JOIN unidades u ON u.id = se.unidade_id
         JOIN empresas emp ON emp.id = u.empresa_id
@@ -2837,6 +2837,7 @@ def lista_suprimentos():
         if r['item_id']:
             entregas[eid]['itens'].append({
                 'tipo': r['tipo_suprimento'],
+                'cor': r['cor_selecionada'],
                 'modelo': r['modelo_impressora'],
                 'marca': r['marca'],
                 'quantidade': r['quantidade'],
@@ -4948,7 +4949,7 @@ def api_suprimentos_historico():
     resultado = []
     for e in entregas:
         cur.execute("""
-            SELECT tipo_suprimento, modelo_impressora, marca, quantidade, motivo_padrao, defeito, motivo
+            SELECT tipo_suprimento, modelo_impressora, marca, quantidade, cor_selecionada, motivo_padrao, defeito, motivo
             FROM suprimentos_itens
             WHERE entrega_id=%s
         """, (e['id'],))
@@ -4956,6 +4957,9 @@ def api_suprimentos_historico():
         itens_fmt = []
         for item in itens:
             nome = item['tipo_suprimento']
+            cor_item = (item['cor_selecionada'] or '').strip()
+            if cor_item and not nome.endswith(cor_item):
+                nome += ' ' + cor_item
             if item['modelo_impressora']:
                 nome += ' ' + item['modelo_impressora']
             if item['marca']:
@@ -4963,6 +4967,7 @@ def api_suprimentos_historico():
             motivo = item['motivo'] or item['motivo_padrao'] or ''
             itens_fmt.append({
                 'nome': nome,
+                'cor': cor_item or None,
                 'quantidade': item['quantidade'],
                 'motivo': motivo
             })
