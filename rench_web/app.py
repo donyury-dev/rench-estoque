@@ -1424,6 +1424,7 @@ def helpdesk_buscar_chamados(busca='', limite=50):
         empresa = (t.get('companies') or {}).get('nome') if isinstance(t.get('companies'), dict) else None
         resultado.append({
             'id': t.get('id'),
+            'unit_id': t.get('unit_id'),
             'protocolo': t.get('protocolo'),
             'status': t.get('status'),
             'categoria': t.get('categoria'),
@@ -5952,6 +5953,17 @@ def api_mobile_unidades():
     return jsonify({'locais': [dict(l) for l in locais]})
 
 
+@app.route('/api/mobile/chamados')
+@api_mobile_auth
+def api_mobile_chamados():
+    """Retorna chamados abertos do Helpdesk para vincular às paradas da viagem."""
+    unidade_id = request.args.get('unidade_id', type=int)
+    chamados = helpdesk_buscar_chamados(limite=200)
+    if unidade_id:
+        chamados = [c for c in chamados if int(c.get('unit_id') or 0) == unidade_id]
+    return jsonify({'chamados': chamados, 'configurado': helpdesk_configurado()})
+
+
 def _api_mobile_itens(dados):
     """Normaliza a lista de itens enviada em JSON pela app."""
     itens = []
@@ -5959,6 +5971,9 @@ def _api_mobile_itens(dados):
         if not isinstance(item, dict):
             continue
         tipo = (item.get('tipo_suprimento') or '').strip()
+        cor = (item.get('cor') or '').strip()
+        if cor and not tipo.lower().endswith(cor.lower()) and tipo != 'Papel Fotografico':
+            tipo = f'{tipo} {cor}'
         try:
             quantidade = int(item.get('quantidade') or 0)
         except (TypeError, ValueError):
@@ -6069,8 +6084,25 @@ def api_mobile_viagem_criar():
         protocolo = (p.get('chamado_protocolo') or '').strip() or None
         if not chamado_id:
             protocolo = None
-        paradas.append({'unidade_id': unidade_id, 'chamado_id': chamado_id,
-                        'chamado_protocolo': protocolo})
+        chamados = []
+        for c in (p.get('chamados') or []):
+            if not isinstance(c, dict):
+                continue
+            try:
+                cid = int(c.get('id') or c.get('chamado_id') or 0)
+            except (TypeError, ValueError):
+                cid = 0
+            if cid:
+                chamados.append({
+                    'id': cid,
+                    'protocolo': (c.get('protocolo') or c.get('chamado_protocolo') or '').strip() or None,
+                })
+        if not chamados and chamado_id:
+            chamados.append({'id': chamado_id, 'protocolo': protocolo})
+        primary = chamados[0] if chamados else {'id': None, 'protocolo': None}
+        paradas.append({'unidade_id': unidade_id, 'chamados': chamados,
+                        'chamado_id': primary['id'],
+                        'chamado_protocolo': primary['protocolo']})
 
     itens = _api_mobile_itens(dados)
     if not itens:
@@ -6094,12 +6126,12 @@ def api_mobile_viagem_criar():
             VALUES (%s, %s, %s, %s, %s) RETURNING id
         """, (viagem_id, idx + 1, parada['unidade_id'], parada['chamado_id'], parada['chamado_protocolo']))
         parada_id = cur.fetchone()['id']
-        if parada['chamado_id']:
+        for chamado in parada['chamados']:
             cur.execute("""
                 INSERT INTO viagens_paradas_chamados (parada_id, chamado_id, chamado_protocolo)
                 VALUES (%s, %s, %s)
                 ON CONFLICT (parada_id, chamado_id) DO NOTHING
-            """, (parada_id, parada['chamado_id'], parada['chamado_protocolo']))
+            """, (parada_id, chamado['id'], chamado['protocolo']))
 
     for item in itens:
         cur.execute("""
