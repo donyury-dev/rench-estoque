@@ -1203,6 +1203,19 @@ def vincular_entrega_a_viagem(cur, entrega_id, alocacao=None):
 
     viagem_id = parada['viagem_id']
 
+    # Todos os chamados vinculados à parada (tabela auxiliar + principal)
+    cur.execute("""
+        SELECT chamado_id, chamado_protocolo FROM viagens_paradas_chamados
+        WHERE parada_id=%s ORDER BY id
+    """, (parada_id,))
+    chamados_parada = [dict(r) for r in cur.fetchall() if r['chamado_id']]
+    if parada['chamado_id'] and all(
+            c['chamado_id'] != parada['chamado_id'] for c in chamados_parada):
+        chamados_parada.append({
+            'chamado_id': parada['chamado_id'],
+            'chamado_protocolo': parada['chamado_protocolo'],
+        })
+
     cur.execute("""
         UPDATE suprimentos_entregas
         SET viagem_id=%s, chamado_id=%s, chamado_protocolo=%s
@@ -1266,6 +1279,7 @@ def vincular_entrega_a_viagem(cur, entrega_id, alocacao=None):
         'parada_id': parada_id,
         'chamado_id': parada['chamado_id'],
         'chamado_protocolo': parada['chamado_protocolo'],
+        'chamados': chamados_parada,
     }
 
 
@@ -3066,13 +3080,14 @@ def suprimento_mobile():
         unidade_row = cur.fetchone()
         unidade_nome = unidade_row['nome'] if unidade_row else 'Unidade'
         enviar_notificacao_push('Saida de suprimento', f'Entrega registrada para {unidade_nome}', url_for('suprimento_mobile'))
-        if vinculo and vinculo.get('chamado_id'):
+        if vinculo and vinculo.get('chamados'):
             resumo = '; '.join(
                 f"{i['quantidade']}x {i['tipo_suprimento']} {i['modelo_impressora'] or ''}".strip()
                 for i in itens)
-            helpdesk_registrar_evento_suprimentos(
-                vinculo['chamado_id'],
-                f"[Suprimentos] Saída vinculada à viagem (entrega #{entrega_id}): {resumo}")
+            for ch in vinculo['chamados']:
+                helpdesk_registrar_evento_suprimentos(
+                    ch['chamado_id'],
+                    f"[Suprimentos] Saída vinculada à viagem (entrega #{entrega_id}): {resumo}")
         return redirect(url_for('suprimento_mobile'))
 
     cur.execute("""
@@ -3187,13 +3202,14 @@ def novo_suprimento():
         unidade_row = cur.fetchone()
         unidade_nome = unidade_row['nome'] if unidade_row else 'Unidade'
         enviar_notificacao_push('Saida de suprimento', f'Entrega registrada para {unidade_nome}', url_for('lista_suprimentos'))
-        if vinculo and vinculo.get('chamado_id'):
+        if vinculo and vinculo.get('chamados'):
             resumo = '; '.join(
                 f"{i['quantidade']}x {i['tipo_suprimento']} {i['modelo_impressora'] or ''}".strip()
                 for i in itens)
-            helpdesk_registrar_evento_suprimentos(
-                vinculo['chamado_id'],
-                f"[Suprimentos] Saída vinculada à viagem (entrega #{entrega_id}): {resumo}")
+            for ch in vinculo['chamados']:
+                helpdesk_registrar_evento_suprimentos(
+                    ch['chamado_id'],
+                    f"[Suprimentos] Saída vinculada à viagem (entrega #{entrega_id}): {resumo}")
         return redirect(url_for('lista_suprimentos'))
 
     cur.execute("""
@@ -5956,11 +5972,24 @@ def api_mobile_unidades():
 @app.route('/api/mobile/chamados')
 @api_mobile_auth
 def api_mobile_chamados():
-    """Retorna chamados abertos do Helpdesk para vincular às paradas da viagem."""
+    """Retorna chamados abertos do Helpdesk para vincular às paradas da viagem.
+
+    Os IDs de unidade do estoque e do helpdesk são independentes, então o
+    filtro é feito pelo NOME da unidade (com tolerância a acentos).
+    """
     unidade_id = request.args.get('unidade_id', type=int)
     chamados = helpdesk_buscar_chamados(limite=200)
     if unidade_id:
-        chamados = [c for c in chamados if int(c.get('unit_id') or 0) == unidade_id]
+        db = get_db()
+        cur = db.cursor()
+        cur.execute("SELECT nome FROM unidades WHERE id=%s", (unidade_id,))
+        row = cur.fetchone()
+        alvo = _remover_acentos((row['nome'] or '') if row else '').strip().casefold()
+        if alvo:
+            chamados = [
+                c for c in chamados
+                if _remover_acentos(c.get('unidade') or '').strip().casefold() == alvo
+            ]
     return jsonify({'chamados': chamados, 'configurado': helpdesk_configurado()})
 
 
@@ -6843,13 +6872,14 @@ def api_mobile_entrega_criar():
         enviar_notificacao_push('Saida de suprimento', f'Entrega registrada para {unidade_nome}', url_for('suprimento_mobile'))
     except Exception:
         pass
-    if vinculo and vinculo.get('chamado_id'):
+    if vinculo and vinculo.get('chamados'):
         resumo = '; '.join(
             f"{i['quantidade']}x {i['tipo_suprimento']} {i['modelo_impressora'] or ''}".strip()
             for i in itens)
-        helpdesk_registrar_evento_suprimentos(
-            vinculo['chamado_id'],
-            f"[Suprimentos] Saída vinculada à viagem (entrega #{entrega_id}): {resumo}")
+        for ch in vinculo['chamados']:
+            helpdesk_registrar_evento_suprimentos(
+                ch['chamado_id'],
+                f"[Suprimentos] Saída vinculada à viagem (entrega #{entrega_id}): {resumo}")
 
     return jsonify({'ok': True, 'entrega_id': entrega_id, 'unidade': unidade_nome})
 
