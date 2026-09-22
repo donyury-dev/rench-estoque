@@ -31,7 +31,7 @@
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" href="#erros" style="color:#b02a37;font-weight:600;">
+    <a href="javascript:void(0)" onclick="alternarErros()" style="color:#b02a37;font-weight:600;text-decoration:none;display:block;padding:0.5rem 1rem;cursor:pointer;">
       <i class="bi bi-bug me-1"></i> Erros{% if erros %} <span class="badge bg-danger">{{erros|length}}</span>{% endif %}
     </a>
   </li>
@@ -154,4 +154,13 @@
     </tbody>
   </table>
 </div>
+
+<script>
+function alternarErros() {
+  var q = document.getElementById('erros');
+  if (q) {
+    q.style.display = (q.style.display === 'none') ? '' : 'none';
+  }
+}
+</script>
 {% endblock %}
