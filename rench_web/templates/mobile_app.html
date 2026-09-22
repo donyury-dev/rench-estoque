@@ -580,6 +580,12 @@
       <!-- ABA AUDITORIA -->
       <div id="aba-auditoria" class="tab-content {{'active' if aba=='auditoria' else ''}}">
         <div class="scroll-area">
+          <div class="card" style="border:2px solid #f1b0b7;background:#fdf3f4;">
+            <div class="card-title" style="color:#b02a37;"><i class="bi bi-bug"></i> Log de Erros do Sistema</div>
+            <div id="erros-resultado" style="margin-top:8px;">
+              <div class="hist-empty">Carregando...</div>
+            </div>
+          </div>
           <div class="card">
             <div class="card-title"><i class="bi bi-shield-check"></i> Auditoria de alterações</div>
             <div class="mb-2">
@@ -2424,6 +2430,7 @@
         document.querySelector(`.nav-tab[onclick="mostrarAba('${aba}')"]`)?.classList.add('active');
         document.getElementById('aba-' + aba)?.classList.add('active');
       }
+      if(aba === 'auditoria') carregarErros();
       window.scrollTo(0,0);
     }
 
@@ -2841,6 +2848,39 @@
       const dataFim = document.getElementById('hist-data-fim').value;
       if(dataInicio || dataFim){
         document.getElementById('hist-periodo').value = '';
+      }
+    }
+
+    async function carregarErros(){
+      const container = document.getElementById('erros-resultado');
+      if(!container) return;
+      container.innerHTML = '<div class="hist-empty">Carregando...</div>';
+      try{
+        const r = await fetch(`/api/auditoria/estoque?limite=1&_=${Date.now()}`);
+        const data = await r.json();
+        if(!r.ok || !data.erros || data.erros.length === 0){
+          container.innerHTML = '<div class="hist-empty" style="color:#2e7d32;">Nenhum erro registrado. Sistema saudavel.</div>';
+          return;
+        }
+        let html = '';
+        data.erros.forEach(e => {
+          html += `
+            <div class="hist-item" style="border-left:3px solid #b02a37;">
+              <div class="top">
+                <span class="tipo" style="color:#b02a37;">${e.contexto}</span>
+                <span class="qtd" style="font-size:11px;color:#999;">${e.data_erro}</span>
+              </div>
+              <div class="info">
+                <strong style="color:#b02a37;">Erro:</strong> ${e.mensagem}<br>
+                ${e.detalhes ? '<span style="color:#777;font-size:11px;">' + e.detalhes + '</span><br>' : ''}
+                ${e.responsavel ? '<span style="color:#999;">Resp: ' + e.responsavel + '</span>' : ''}
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      } catch(err){
+        container.innerHTML = '<div class="hist-empty">Erro de conexão.</div>';
       }
     }
 

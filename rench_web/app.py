@@ -5150,7 +5150,22 @@ def api_auditoria_estoque():
             'data_movimento': r['data_movimento'].strftime('%d/%m/%Y %H:%M') if r['data_movimento'] else None
         })
 
-    return jsonify({'movimentacoes': movimentacoes})
+    cur.execute(
+        "SELECT id, contexto, mensagem, detalhes, responsavel, data_erro FROM estoque_erros ORDER BY data_erro DESC, id DESC LIMIT 50"
+    )
+    erros_rows = cur.fetchall()
+    erros = []
+    for e in erros_rows:
+        erros.append({
+            'id': e['id'],
+            'contexto': e['contexto'],
+            'mensagem': e['mensagem'],
+            'detalhes': e['detalhes'],
+            'responsavel': e['responsavel'],
+            'data_erro': e['data_erro'].strftime('%d/%m/%Y %H:%M') if e['data_erro'] else None
+        })
+
+    return jsonify({'movimentacoes': movimentacoes, 'erros': erros})
 
 
 @app.route('/api/estoque/ajuste', methods=['POST'])
