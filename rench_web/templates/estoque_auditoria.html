@@ -66,6 +66,7 @@
         <th>Saldo Antes</th>
         <th>Saldo Depois</th>
         <th>Motivo</th>
+        <th>Origem</th>
         <th>Responsável</th>
         <th>Unidade / Empresa</th>
       </tr>
@@ -94,6 +95,12 @@
         <td>{{m.saldo_antes}}</td>
         <td>{{m.saldo_depois}}</td>
         <td>{{m.motivo or '-'}}</td>
+        <td>
+          {% if m.origem %}
+            <span class="badge badge-impressora">{{m.origem}}</span>
+          {% else %}-{% endif %}
+          {% if m.viagem_numero %}<br><small class="text-muted">Viagem {{m.viagem_numero}}</small>{% endif %}
+        </td>
         <td>{{m.responsavel or '-'}}</td>
         <td>
           {% if m.unidade_nome %}
@@ -105,7 +112,7 @@
       </tr>
       {% else %}
       <tr>
-        <td colspan="9" class="text-center text-muted py-4">Nenhuma alteração encontrada.</td>
+        <td colspan="10" class="text-center text-muted py-4">Nenhuma alteração encontrada.</td>
       </tr>
       {% endfor %}
     </tbody>

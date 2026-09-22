@@ -866,6 +866,9 @@ def init_db():
         )
     """)
 
+    cur.execute("ALTER TABLE estoque_movimentacoes ADD COLUMN IF NOT EXISTS origem VARCHAR(60)")
+    cur.execute("ALTER TABLE estoque_movimentacoes ADD COLUMN IF NOT EXISTS viagem_id INTEGER")
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS modelos_impressora (
             id SERIAL PRIMARY KEY,
@@ -1076,13 +1079,13 @@ def buscar_ou_criar_estoque(cur, tipo_suprimento, modelo_impressora, marca=None)
     return cur.fetchone()['id'], 0
 
 
-def movimentar_estoque(cur, estoque_id, tipo_movimento, quantidade, saldo_antes, motivo=None, responsavel=None, entrega_id=None):
+def movimentar_estoque(cur, estoque_id, tipo_movimento, quantidade, saldo_antes, motivo=None, responsavel=None, entrega_id=None, origem=None, viagem_id=None):
     saldo_depois = saldo_antes + quantidade
     cur.execute("""
         INSERT INTO estoque_movimentacoes
-        (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, entrega_id)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-    """, (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, entrega_id))
+        (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, entrega_id, origem, viagem_id)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """, (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, entrega_id, origem, viagem_id))
     cur.execute(
         "UPDATE estoque SET quantidade=%s, data_atualizacao=CURRENT_TIMESTAMP WHERE id=%s",
         (saldo_depois, estoque_id)
@@ -1141,7 +1144,8 @@ def debitar_estoque_entrega(cur, entrega_id, itens, responsavel=None, alocacao=N
             cur, estoque_id, 'saida', -qtd, saldo,
             motivo=f'Entrega para unidade (entrega_id={entrega_id})',
             responsavel=responsavel,
-            entrega_id=entrega_id
+            entrega_id=entrega_id,
+            origem='entrega'
         )
     return []
 
@@ -1490,7 +1494,8 @@ def estornar_estoque_entrega(cur, entrega_id, responsavel=None):
             cur, estoque_id, 'entrada', qtd, saldo,
             motivo=f'Estorno por exclusao de entrega (entrega_id={entrega_id})',
             responsavel=responsavel,
-            entrega_id=entrega_id
+            entrega_id=entrega_id,
+            origem='estorno entrega'
         )
         cur.execute("UPDATE suprimentos_itens SET estorno_estoque=1 WHERE entrega_id=%s", (entrega_id,))
 
@@ -3588,8 +3593,8 @@ def viagem_item_adicionar(viagem_id):
     if not viagem:
         flash('Viagem nao encontrada.', 'danger')
         return redirect(url_for('lista_viagens'))
-    if viagem['status'] not in ('separacao', 'conferido'):
-        flash('Só é possível alterar os itens antes de iniciar a rota.', 'danger')
+    if viagem['status'] not in ('separacao', 'conferido', 'em_rota', 'aguardando_retorno'):
+        flash('Só é possível adicionar itens em viagens ativas.', 'danger')
         return _redirect_viagem(viagem_id)
     itens = _coletar_itens_viagem(request.form)
     if not itens:
@@ -3809,7 +3814,9 @@ def viagem_retorno(viagem_id):
                 cur, estoque_id, 'entrada', retornada, saldo,
                 motivo=(f"Retorno da viagem {viagem['numero']} - fornecedor "
                         f"{item['fornecedor'] or '-'} (item de coleta)"),
-                responsavel=responsavel_retorno)
+                responsavel=responsavel_retorno,
+                origem='retorno viagem',
+                viagem_id=viagem['id'])
 
         cur.execute("""
             UPDATE viagens SET status='concluido', responsavel_retorno=%s,
@@ -4485,7 +4492,8 @@ def estoque_entrada():
         movimentar_estoque(
             cur, estoque_id, 'entrada', quantidade, saldo,
             motivo=motivo or 'Entrada manual de estoque',
-            responsavel=responsavel
+            responsavel=responsavel,
+            origem='entrada manual'
         )
         db.commit()
         descricao = f"{tipo_final} {modelo}" + (f" ({marca})" if marca else "")
@@ -4549,7 +4557,8 @@ def estoque_ajuste(estoque_id):
         if diferenca != 0:
             movimentar_estoque(
                 cur, estoque_id, tipo_movimento, diferenca, item['quantidade'],
-                motivo=motivo, responsavel=responsavel
+                motivo=motivo, responsavel=responsavel,
+                origem='ajuste'
             )
         db.commit()
         flash('Ajuste salvo com sucesso!', 'success')
@@ -4709,14 +4718,16 @@ def estoque_auditoria():
 
     sql = """
         SELECT em.id, em.tipo_movimento, em.quantidade, em.saldo_antes, em.saldo_depois,
-               em.motivo, em.responsavel, em.data_movimento,
+               em.motivo, em.responsavel, em.data_movimento, em.origem, em.viagem_id,
                e.tipo_suprimento, e.modelo_impressora, e.marca,
-               u.nome as unidade_nome, emp.nome as empresa_nome
+               u.nome as unidade_nome, emp.nome as empresa_nome,
+               v.numero as viagem_numero
         FROM estoque_movimentacoes em
         JOIN estoque e ON e.id = em.estoque_id
         LEFT JOIN suprimentos_entregas se ON se.id = em.entrega_id
         LEFT JOIN unidades u ON u.id = se.unidade_id
         LEFT JOIN empresas emp ON emp.id = u.empresa_id
+        LEFT JOIN viagens v ON v.id = em.viagem_id
         WHERE 1=1
     """
     params = []
@@ -4755,6 +4766,8 @@ def estoque_auditoria():
             'marca': r['marca'],
             'unidade_nome': r['unidade_nome'],
             'empresa_nome': r['empresa_nome'],
+            'origem': r['origem'],
+            'viagem_numero': r['viagem_numero'],
             'data_movimento': r['data_movimento'].strftime('%d/%m/%Y %H:%M') if r['data_movimento'] else None
         })
 
@@ -5014,14 +5027,16 @@ def api_auditoria_estoque():
 
     sql = """
         SELECT em.id, em.tipo_movimento, em.quantidade, em.saldo_antes, em.saldo_depois,
-               em.motivo, em.responsavel, em.data_movimento,
+               em.motivo, em.responsavel, em.data_movimento, em.origem, em.viagem_id,
                e.tipo_suprimento, e.modelo_impressora, e.marca,
-               u.nome as unidade_nome, emp.nome as empresa_nome
+               u.nome as unidade_nome, emp.nome as empresa_nome,
+               v.numero as viagem_numero
         FROM estoque_movimentacoes em
         JOIN estoque e ON e.id = em.estoque_id
         LEFT JOIN suprimentos_entregas se ON se.id = em.entrega_id
         LEFT JOIN unidades u ON u.id = se.unidade_id
         LEFT JOIN empresas emp ON emp.id = u.empresa_id
+        LEFT JOIN viagens v ON v.id = em.viagem_id
         WHERE 1=1
     """
     params = []
@@ -5061,6 +5076,8 @@ def api_auditoria_estoque():
             'marca': r['marca'],
             'unidade_nome': r['unidade_nome'],
             'empresa_nome': r['empresa_nome'],
+            'origem': r['origem'],
+            'viagem_numero': r['viagem_numero'],
             'data_movimento': r['data_movimento'].strftime('%d/%m/%Y %H:%M') if r['data_movimento'] else None
         })
 
@@ -5111,7 +5128,8 @@ def api_estoque_ajuste():
     if diferenca != 0:
         movimentar_estoque(
             cur, estoque_id, tipo_movimento, diferenca, saldo,
-            motivo=motivo, responsavel=responsavel
+            motivo=motivo, responsavel=responsavel,
+            origem='ajuste app'
         )
     db.commit()
     return jsonify({'ok': True, 'mensagem': f'{tipo_final} {modelo}: saldo ajustado para {nova_qtd}'})
@@ -5336,7 +5354,8 @@ def api_estoque_entrada():
     movimentar_estoque(
         cur, estoque_id, 'entrada', quantidade, saldo,
         motivo=motivo or 'Entrada via app mobile',
-        responsavel=responsavel
+        responsavel=responsavel,
+        origem='entrada app'
     )
     db.commit()
     return jsonify({'ok': True, 'mensagem': f'{tipo_final} {modelo}: +{quantidade}'})
@@ -5892,7 +5911,8 @@ def api_mobile_estoque_entrada():
     movimentar_estoque(
         cur, estoque_id, 'entrada', quantidade, saldo,
         motivo=motivo or 'Entrada manual de estoque',
-        responsavel=g.operador_mobile
+        responsavel=g.operador_mobile,
+        origem='entrada app'
     )
     db.commit()
     cur.execute("SELECT quantidade FROM estoque WHERE id=%s", (estoque_id,))
@@ -5954,7 +5974,8 @@ def api_mobile_estoque_ajuste():
     if diferenca != 0:
         movimentar_estoque(
             cur, estoque_id, tipo_movimento, diferenca, item['quantidade'],
-            motivo=motivo, responsavel=g.operador_mobile
+            motivo=motivo, responsavel=g.operador_mobile,
+            origem='ajuste app'
         )
     db.commit()
     return jsonify({'ok': True, 'estoque_id': estoque_id, 'saldo': nova_qtd})
@@ -6452,7 +6473,9 @@ def api_mobile_viagem_retorno(viagem_id):
             cur, estoque_id, 'entrada', retornada, saldo,
             motivo=(f"Retorno da viagem {viagem['numero']} - fornecedor "
                     f"{item['fornecedor'] or '-'} (item de coleta)"),
-            responsavel=responsavel_retorno)
+            responsavel=responsavel_retorno,
+            origem='retorno viagem',
+            viagem_id=viagem['id'])
 
     cur.execute("""
         UPDATE viagens SET status='concluido', responsavel_retorno=%s,

@@ -124,7 +124,7 @@
         </table>
       </div>
 
-      {% if viagem.status in ('separacao', 'conferido') %}
+      {% if viagem.status in ('separacao', 'conferido', 'em_rota', 'aguardando_retorno') %}
       <hr>
       <h6 class="fw-bold"><i class="bi bi-plus-circle me-1"></i>Adicionar suprimentos à viagem</h6>
       <form method="POST" action="{{url_for('viagem_item_adicionar', viagem_id=viagem.id)}}" id="form-add-itens">
