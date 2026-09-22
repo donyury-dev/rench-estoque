@@ -8,6 +8,7 @@ import json
 import re
 from datetime import datetime, date, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, g, session
+from werkzeug.exceptions import HTTPException
 from functools import wraps
 from urllib.parse import urlparse
 import urllib.request
@@ -870,6 +871,17 @@ def init_db():
     cur.execute("ALTER TABLE estoque_movimentacoes ADD COLUMN IF NOT EXISTS viagem_id INTEGER")
 
     cur.execute("""
+        CREATE TABLE IF NOT EXISTS estoque_erros (
+            id SERIAL PRIMARY KEY,
+            contexto VARCHAR(255),
+            mensagem TEXT,
+            detalhes TEXT,
+            responsavel VARCHAR(255),
+            data_erro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS modelos_impressora (
             id SERIAL PRIMARY KEY,
             nome VARCHAR(100) NOT NULL UNIQUE,
@@ -1079,17 +1091,59 @@ def buscar_ou_criar_estoque(cur, tipo_suprimento, modelo_impressora, marca=None)
     return cur.fetchone()['id'], 0
 
 
+def registrar_erro(contexto, mensagem, detalhes=None, responsavel=None):
+    """Grava uma falha do sistema em estoque_erros (conexao propria, nao interfere na transacao atual)."""
+    try:
+        result = urlparse(DATABASE_URL)
+        conn = psycopg2.connect(
+            host=result.hostname,
+            port=result.port or 6543,
+            user=result.username,
+            password=result.password,
+            dbname=result.path.lstrip('/'),
+            connect_timeout=10
+        )
+        conn.cursor_factory = psycopg2.extras.RealDictCursor
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO estoque_erros (contexto, mensagem, detalhes, responsavel) VALUES (%s, %s, %s, %s)",
+            (str(contexto or 'sistema')[:255], str(mensagem or 'erro desconhecido'), str(detalhes) if detalhes else None, str(responsavel) if responsavel else None)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception:
+        pass
+
+
+@app.errorhandler(Exception)
+def _tratar_erro_sistema(e):
+    if isinstance(e, HTTPException):
+        return e
+    registrar_erro('web', f'{type(e).__name__}: {e}', f'{request.method} {request.path}', session.get('operador') or session.get('usuario'))
+    return e
+
+
 def movimentar_estoque(cur, estoque_id, tipo_movimento, quantidade, saldo_antes, motivo=None, responsavel=None, entrega_id=None, origem=None, viagem_id=None):
-    saldo_depois = saldo_antes + quantidade
-    cur.execute("""
-        INSERT INTO estoque_movimentacoes
-        (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, entrega_id, origem, viagem_id)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-    """, (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, entrega_id, origem, viagem_id))
-    cur.execute(
-        "UPDATE estoque SET quantidade=%s, data_atualizacao=CURRENT_TIMESTAMP WHERE id=%s",
-        (saldo_depois, estoque_id)
-    )
+    try:
+        saldo_depois = saldo_antes + quantidade
+        cur.execute("""
+            INSERT INTO estoque_movimentacoes
+            (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, entrega_id, origem, viagem_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (estoque_id, tipo_movimento, quantidade, saldo_antes, saldo_depois, motivo, responsavel, entrega_id, origem, viagem_id))
+        cur.execute(
+            "UPDATE estoque SET quantidade=%s, data_atualizacao=CURRENT_TIMESTAMP WHERE id=%s",
+            (saldo_depois, estoque_id)
+        )
+    except Exception as e:
+        registrar_erro(
+            f'estoque/{tipo_movimento}',
+            f'{type(e).__name__}: {e}',
+            f'estoque_id={estoque_id} qtd={quantidade} saldo_antes={saldo_antes} motivo={motivo} entrega_id={entrega_id} origem={origem} viagem_id={viagem_id}',
+            responsavel
+        )
+        raise
 
 
 def verificar_saldo(cur, tipo_suprimento, modelo_impressora, quantidade, marca=None):
@@ -4751,6 +4805,21 @@ def estoque_auditoria():
     cur.execute(sql, params)
     rows = cur.fetchall()
 
+    cur.execute(
+        "SELECT id, contexto, mensagem, detalhes, responsavel, data_erro FROM estoque_erros ORDER BY data_erro DESC, id DESC LIMIT 50"
+    )
+    erros_rows = cur.fetchall()
+    erros = []
+    for e in erros_rows:
+        erros.append({
+            'id': e['id'],
+            'contexto': e['contexto'],
+            'mensagem': e['mensagem'],
+            'detalhes': e['detalhes'],
+            'responsavel': e['responsavel'],
+            'data_erro': e['data_erro'].strftime('%d/%m/%Y %H:%M') if e['data_erro'] else None
+        })
+
     movimentacoes = []
     for r in rows:
         movimentacoes.append({
@@ -4772,7 +4841,7 @@ def estoque_auditoria():
         })
 
     return render_template('estoque_auditoria.html', movimentacoes=movimentacoes,
-                           tipo_movimento=tipo_movimento, busca=busca)
+                           tipo_movimento=tipo_movimento, busca=busca, erros=erros)
 
 
 @app.route('/estoque/historico/<int:estoque_id>')
