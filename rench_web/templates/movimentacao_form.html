@@ -68,7 +68,7 @@
   <div class="col-lg-8">
     <div class="card card-dashboard p-4">
       <h5 class="fw-bold mb-3"><i class="bi bi-arrow-left-right me-2"></i>Registrar nova movimentação</h5>
-      <form method="POST">
+      <form method="POST" onsubmit="return submeterMovimentacaoWeb(event)">
         <div class="row g-3">
           <div class="col-md-6">
             <label class="form-label fw-bold">Tipo de Movimento *</label>
@@ -76,6 +76,7 @@
               <option value="">Selecione...</option>
               <option value="entrada_estoque">Entrada no estoque da Rench</option>
               <option value="saida_cliente">Saída para cliente / locação</option>
+              <option value="substituicao">Substituição em cliente</option>
               <option value="retorno_cliente">Retorno do cliente para Rench</option>
               <option value="envio_manutencao">Envio para manutenção</option>
               <option value="retorno_manutencao">Retorno de manutenção</option>
@@ -97,7 +98,7 @@
           <div class="col-md-6">
             <label class="form-label fw-bold">Destino - Unidade *</label>
             <input type="text" id="busca_destino_unidade" class="form-control form-control-sm mb-1" placeholder="Buscar unidade...">
-            <select name="destino_unidade_id" id="destino_unidade_id" class="form-select" required>
+            <select name="destino_unidade_id" id="destino_unidade_id" class="form-select" required onchange="carregarEquipUnidadeWeb()">
               <option value="">Selecione...</option>
             </select>
           </div>
@@ -147,6 +148,49 @@
           <div class="col-12">
             <label class="form-label fw-bold">Observações</label>
             <textarea name="observacoes" class="form-control" rows="4" placeholder="Motivo da movimentação, estado do equipamento, observações do cliente..."></textarea>
+          </div>
+
+          {# Fluxo de substituição #}
+          <div class="col-12" id="secao_substituicao" style="display:none;">
+            <h6 class="fw-bold border-bottom pb-2 mb-3" style="color:var(--primary)"><i class="bi bi-arrow-repeat me-2"></i>Substituição na unidade de destino</h6>
+            <div class="col-12 mb-3">
+              <label class="form-label fw-bold">O que fazer na unidade?</label>
+              <div id="lista_substituicao" class="border rounded p-2" style="max-height:260px;overflow-y:auto;background:#f8f9fa;">
+                <div class="text-muted small p-2">Escolha o cliente e a unidade de destino para carregar os equipamentos.</div>
+              </div>
+            </div>
+            <div class="col-12 mb-3" id="bloco_destino_substituido" style="display:none;">
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label fw-bold">Destino do substituído *</label>
+                  <select id="destino_substituido" class="form-select" onchange="document.getElementById('bloco_assistencia').style.display = (this.value==='manutencao' ? 'block' : 'none');">
+                    <option value="estoque">Estoque da Rench</option>
+                    <option value="manutencao">Manutenção (assistência técnica)</option>
+                  </select>
+                </div>
+                <div class="col-md-4" id="bloco_assistencia" style="display:none;">
+                  <label class="form-label fw-bold">Assistência técnica *</label>
+                  <select id="assistencia_substituido" class="form-select">
+                    <option value="">Selecione...</option>
+                    {% for l in locais if l.empresa_tipo == 'assistencia' and l.unidade_id %}
+                    <option value="{{l.empresa_id}}">{{l.empresa_nome}} - {{l.unidade_nome}}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-bold">Condição de uso do substituído</label>
+                  <select id="condicao_substituido" class="form-select">
+                    <option value="bom">Bom</option>
+                    <option value="regular">Regular</option>
+                    <option value="ruim">Ruim</option>
+                    <option value="defeituoso" selected>Com defeito</option>
+                    <option value="manutencao">Em manutenção</option>
+                    <option value="novo">Novo</option>
+                    <option value="nao_informada">Não informada</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -228,6 +272,15 @@ function ajustarMovimento(tipo) {
   const empSel = document.getElementById('destino_empresa_id');
   const unidadeSel = document.getElementById('destino_unidade_id');
   const buscaUnidade = document.getElementById('busca_destino_unidade');
+  const secSub = document.getElementById('secao_substituicao');
+  if (secSub) {
+    secSub.style.display = (tipo === 'substituicao') ? 'block' : 'none';
+    if (tipo !== 'substituicao') {
+      const bloco = document.getElementById('bloco_destino_substituido');
+      if (bloco) bloco.style.display = 'none';
+      window._substituidoWebId = null;
+    }
+  }
   const renchId = Object.keys(destEmpresas).find(id => destEmpresas[id].tipo === 'rench');
   const assistenciaIds = Object.keys(destEmpresas).filter(id => destEmpresas[id].tipo === 'assistencia');
   const clienteIds = Object.keys(destEmpresas).filter(id => destEmpresas[id].tipo === 'cliente');
@@ -239,7 +292,8 @@ function ajustarMovimento(tipo) {
     retorno_cliente: 'Use quando o equipamento volta de um cliente para a Rench. Selecione RENCH como empresa.',
     envio_manutencao: 'Use quando o equipamento vai para assistência técnica. Selecione R10 como empresa.',
     retorno_manutencao: 'Use quando o equipamento retorna da assistência. Selecione RENCH como empresa.',
-    transferencia: 'Use quando mudar de unidade, setor, depósito ou cliente dentro do mesmo grupo.'
+    transferencia: 'Use quando mudar de unidade, setor, depósito ou cliente dentro do mesmo grupo.',
+    substituicao: 'Use quando levar este equipamento para trocar por um que já está na unidade do cliente. Selecione o CLIENTE e a unidade de destino.'
   };
   if (mensagens[tipo]) {
     dica.innerHTML = '<i class="bi bi-info-circle"></i> ' + mensagens[tipo];
@@ -268,6 +322,95 @@ function ajustarMovimento(tipo) {
     empSel.options[0].textContent = 'Selecione o cliente...';
   } else {
     empSel.options[0].textContent = 'Selecione...';
+  }
+}
+
+window._substituidoWebId = null;
+function carregarEquipUnidadeWeb(){
+  const tipo = document.querySelector('select[name="tipo_movimento"]')?.value;
+  const unidadeId = document.getElementById('destino_unidade_id')?.value;
+  const box = document.getElementById('lista_substituicao');
+  const bloco = document.getElementById('bloco_destino_substituido');
+  if(!box || tipo !== 'substituicao') return;
+  if(!unidadeId){
+    box.innerHTML = '<div class="text-muted small p-2">Escolha o cliente e a unidade de destino para carregar os equipamentos.</div>';
+    if(bloco) bloco.style.display = 'none';
+    window._substituidoWebId = null;
+    return;
+  }
+  box.innerHTML = '<div class="text-muted small p-2">Carregando...</div>';
+  fetch('/equipamentos-api/por-unidade/' + unidadeId)
+    .then(r => r.json())
+    .then(dados => {
+      const lista = (dados.equipamentos || []).filter(e => e.tipo_equipamento === 'impressora');
+      if(!lista.length){
+        box.innerHTML = '<div class="small p-2" style="color:#2e7d32;">Nenhum equipamento na unidade — a impressora será apenas adicionada.</div>';
+        if(bloco) bloco.style.display = 'none';
+        window._substituidoWebId = null;
+        return;
+      }
+      let html = '<div class="form-check p-2" style="cursor:pointer;" onclick="selecionarSubstituidoWeb(null, this)">'
+        + '<input class="form-check-input" type="radio" name="substituido_radio" checked>'
+        + '<span class="fw-bold ms-1 small">Apenas adicionar à unidade</span></div>';
+      lista.forEach(e => {
+        const obs = e.observacoes ? ' · <em>Obs: ' + e.observacoes + '</em>' : '';
+        html += '<div class="form-check p-2 border-top" style="cursor:pointer;" onclick="selecionarSubstituidoWeb(' + e.id + ', this)">'
+          + '<input class="form-check-input" type="radio" name="substituido_radio">'
+          + '<span class="ms-1 small"><strong>' + (e.modelo || 'Sem modelo') + '</strong> · ' + (e.codigo || '')
+          + '<br><span class="text-muted">Série: ' + (e.numero_serie || '-') + obs + '</span></span></div>';
+      });
+      box.innerHTML = html;
+    })
+    .catch(() => { box.innerHTML = '<div class="small p-2" style="color:#b02a37;">Falha ao carregar equipamentos da unidade.</div>'; });
+}
+function selecionarSubstituidoWeb(id, el){
+  window._substituidoWebId = id;
+  const box = document.getElementById('lista_substituicao');
+  box.querySelectorAll('input[type="radio"]').forEach(r => { r.checked = false; });
+  const radio = el.querySelector('input[type="radio"]');
+  if (radio) radio.checked = true;
+  const bloco = document.getElementById('bloco_destino_substituido');
+  if (id !== null && bloco) bloco.style.display = 'block';
+  if (id === null && bloco) bloco.style.display = 'none';
+}
+async function submeterMovimentacaoWeb(ev){
+  const tipo = document.querySelector('select[name="tipo_movimento"]')?.value;
+  if(tipo !== 'substituicao') return true;
+  ev.preventDefault();
+  const unidadeId = document.getElementById('destino_unidade_id')?.value;
+  if(!unidadeId){ alert('Selecione o cliente e a unidade de destino.'); return false; }
+  const dados = {
+    equip_novo_id: {{ equip.id }},
+    unidade_destino_id: unidadeId,
+    data_movimentacao: document.querySelector('input[name="data_movimentacao"]')?.value || '',
+    responsavel: document.querySelector('select[name="responsavel"]')?.value || '',
+    observacoes: document.querySelector('textarea[name="observacoes"]')?.value || '',
+    setor_equipamento: document.querySelector('input[name="setor_equipamento"]')?.value || '',
+    contador_mono_novo: document.querySelector('input[name="contador_mono_novo"]')?.value || '',
+    contador_color_novo: document.querySelector('input[name="contador_color_novo"]')?.value || '',
+  };
+  if(window._substituidoWebId !== null && window._substituidoWebId !== undefined){
+    dados.equip_substituido_id = window._substituidoWebId;
+    dados.destino_substituido = document.getElementById('destino_substituido').value;
+    if(dados.destino_substituido === 'manutencao'){
+      dados.assistencia_empresa_id = document.getElementById('assistencia_substituido').value;
+      if(!dados.assistencia_empresa_id){ alert('Selecione a assistência técnica.'); return false; }
+    }
+    dados.condicao_uso_substituido = document.getElementById('condicao_substituido').value;
+  }
+  try{
+    const r = await fetch('/equipamentos-api/substituicao', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(dados)
+    });
+    const resp = await r.json();
+    if(!r.ok){ alert(resp.erro || 'Falha ao registrar substituição.'); return false; }
+    window.location.href = '{{url_for("detalhe_equipamento", equip_id=equip.id)}}';
+    return false;
+  } catch(e){
+    alert('Falha de conexão. Tente novamente.');
+    return false;
   }
 }
 </script>

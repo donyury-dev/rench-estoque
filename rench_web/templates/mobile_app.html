@@ -999,10 +999,13 @@
                 <p><strong>Contador Mono:</strong> {{equip.contador_mono or 0}}</p>
                 <p><strong>Contador Color:</strong> {{equip.contador_color or 0}}</p>
               {% endif %}
-              {% if equip.observacoes %}
-                <p><strong>Obs:</strong> {{equip.observacoes}}</p>
-              {% endif %}
             </div>
+            {% if equip.observacoes %}
+            <div class="card" style="border:2px solid #ffe08a;background:#fffbe8;">
+              <div class="card-title" style="color:#8a6d00;"><i class="bi bi-journal-text"></i> Observações do Equipamento</div>
+              <p style="white-space:pre-line;margin-bottom:0;">{{equip.observacoes}}</p>
+            </div>
+            {% endif %}
 
             <div class="card">
               <div class="card-title"><i class="bi bi-clock-history"></i> Histórico de Movimentações</div>
@@ -1124,7 +1127,7 @@
         <!-- MOVIMENTAR EQUIPAMENTO -->
         {% if equip and aba == 'equipamento_movimentar' %}
         <div id="aba-equipamento_movimentar" class="tab-content active">
-          <form method="POST" action="{{url_for('mobile_equipamento_movimentar', equip_id=equip.id)}}" class="scroll-area">
+          <form method="POST" action="{{url_for('mobile_equipamento_movimentar', equip_id=equip.id)}}" class="scroll-area" onsubmit="return submeterMovimentacaoEquip(event)">
             <div class="card">
               <div class="card-title"><i class="bi bi-arrow-left-right"></i> Movimentar {{equip.codigo}}</div>
               <p><strong>Modelo:</strong> {{equip.modelo or '-'}}</p>
@@ -1132,10 +1135,11 @@
 
               <div class="form-group">
                 <label>Tipo de Movimentação *</label>
-                <select name="tipo_movimento" id="tipo-movimento-equip" required onchange="atualizarDestinoMovimentacao()">
+                <select name="tipo_movimento" id="tipo-movimento-equip" required onchange="atualizarDestinoMovimentacao(); alternarSubstituicaoMov();">
                   <option value="">Selecione...</option>
                   <option value="entrada_estoque">Entrada no estoque da Rench</option>
                   <option value="saida_cliente">Saída para cliente / locação</option>
+                  <option value="substituicao">Substituição em cliente</option>
                   <option value="retorno_cliente">Retorno do cliente para Rench</option>
                   <option value="envio_manutencao">Envio para manutenção</option>
                   <option value="retorno_manutencao">Retorno de manutenção</option>
@@ -1183,6 +1187,44 @@
                 </div>
                 <div id="avisoUnidadesClienteMov" class="small text-muted mt-1" style="display:none">
                   Selecione primeiro o cliente para carregar as unidades.
+                </div>
+              </div>
+              <div id="secao-substituicao-mov" style="display:none">
+                <div class="form-group">
+                  <label>O que fazer na unidade?</label>
+                  <div id="lista-substituicao-mov" style="border:1px solid #ddd;border-radius:8px;padding:6px;max-height:260px;overflow-y:auto;">
+                    <div style="padding:8px;font-size:13px;color:#777;">Selecione o destino (unidade) para carregar os equipamentos.</div>
+                  </div>
+                </div>
+                <div id="secao-destino-substituido-mov" style="display:none">
+                  <div class="form-group">
+                    <label>Destino do equipamento substituído *</label>
+                    <select id="destino-substituido-mov" onchange="document.getElementById('secao-assistencia-mov').style.display = (this.value==='manutencao' ? 'block' : 'none');">
+                      <option value="estoque">Estoque da Rench</option>
+                      <option value="manutencao">Manutenção (assistência técnica)</option>
+                    </select>
+                  </div>
+                  <div class="form-group" id="secao-assistencia-mov" style="display:none">
+                    <label>Assistência técnica *</label>
+                    <select id="assistencia-substituido-mov">
+                      <option value="">Selecione...</option>
+                      {% for l in locais if l.empresa_tipo == 'assistencia' and l.unidade_id %}
+                      <option value="{{l.empresa_id}}">{{l.empresa_nome}} - {{l.unidade_nome}}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Condição de uso do equipamento substituído</label>
+                    <select id="condicao-substituido-mov">
+                      <option value="bom">Bom</option>
+                      <option value="regular">Regular</option>
+                      <option value="ruim">Ruim</option>
+                      <option value="defeituoso" selected>Com defeito</option>
+                      <option value="manutencao">Em manutenção</option>
+                      <option value="novo">Novo</option>
+                      <option value="nao_informada">Não informada</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               <div class="form-group">
@@ -2355,6 +2397,106 @@
       if(text) text.textContent = el.dataset.texto + ' (' + el.dataset.empresa + ')';
       const list = document.getElementById(listId);
       if(list) list.classList.remove('show');
+      if(inputId === 'destino_unidade_id') carregarEquipUnidadeMov();
+    }
+
+    var _substituidoMovId = null;
+    function alternarSubstituicaoMov(){
+      const tipo = document.getElementById('tipo-movimento-equip')?.value;
+      const sec = document.getElementById('secao-substituicao-mov');
+      if(!sec) return;
+      sec.style.display = (tipo === 'substituicao') ? 'block' : 'none';
+      if(tipo === 'substituicao') carregarEquipUnidadeMov();
+    }
+    function carregarEquipUnidadeMov(){
+      const tipo = document.getElementById('tipo-movimento-equip')?.value;
+      const unidadeId = document.getElementById('destino_unidade_id')?.value;
+      const box = document.getElementById('lista-substituicao-mov');
+      const secSub = document.getElementById('secao-destino-substituido-mov');
+      if(!box || tipo !== 'substituicao') return;
+      if(!unidadeId){
+        box.innerHTML = '<div style="padding:8px;font-size:13px;color:#777;">Selecione o destino (unidade) para carregar os equipamentos.</div>';
+        if(secSub) secSub.style.display = 'none';
+        _substituidoMovId = null;
+        return;
+      }
+      box.innerHTML = '<div style="padding:8px;font-size:13px;color:#777;">Carregando...</div>';
+      fetch('/equipamentos-api/por-unidade/' + unidadeId)
+        .then(r => r.json())
+        .then(dados => {
+          const lista = (dados.equipamentos || []).filter(e => e.tipo_equipamento === 'impressora');
+          if(!lista.length){
+            box.innerHTML = '<div style="padding:8px;font-size:13px;color:#2e7d32;">Nenhum equipamento na unidade — a impressora será apenas adicionada.</div>';
+            if(secSub) secSub.style.display = 'none';
+            _substituidoMovId = null;
+            return;
+          }
+          let html = '<div class="select-item" data-id="" onclick="selecionarSubstituidoMov(null,this)" style="font-weight:600;">Apenas adicionar à unidade</div>';
+          lista.forEach(e => {
+            const obs = e.observacoes ? ' · Obs: ' + e.observacoes : '';
+            html += '<div class="select-item" data-id="' + e.id + '" onclick="selecionarSubstituidoMov(' + e.id + ',this)">'
+              + (e.modelo || 'Sem modelo') + ' · ' + (e.codigo || '')
+              + '<br><small style="color:#777;">Série: ' + (e.numero_serie || '-') + obs + '</small></div>';
+          });
+          box.innerHTML = html;
+        })
+        .catch(() => { box.innerHTML = '<div style="padding:8px;font-size:13px;color:#b02a37;">Falha ao carregar equipamentos.</div>'; });
+    }
+    function selecionarSubstituidoMov(id, el){
+      _substituidoMovId = id;
+      const box = document.getElementById('lista-substituicao-mov');
+      [...box.children].forEach(c => { c.style.background = ''; c.style.fontWeight = (c.dataset.id === '') ? '600' : ''; });
+      const secSub = document.getElementById('secao-destino-substituido-mov');
+      if(id !== null){
+        el.style.background = '#eef4ff';
+        if(secSub) secSub.style.display = 'block';
+      } else {
+        if(secSub) secSub.style.display = 'none';
+      }
+    }
+    async function submeterMovimentacaoEquip(ev){
+      const tipo = document.getElementById('tipo-movimento-equip')?.value;
+      if(tipo !== 'substituicao' || !_substituidoMovBound()) return true;
+      ev.preventDefault();
+      const unidadeId = document.getElementById('destino_unidade_id')?.value;
+      if(!unidadeId){ alert('Selecione a unidade de destino.'); return false; }
+      const fd = new FormData(ev.target);
+      const dados = {
+        equip_novo_id: {{ equip.id }},
+        unidade_destino_id: unidadeId,
+        data_movimentacao: fd.get('data_movimentacao') || '',
+        responsavel: fd.get('responsavel') || '',
+        observacoes: fd.get('observacoes') || '',
+        setor_equipamento: fd.get('setor_equipamento') || '',
+        contador_mono_novo: fd.get('contador_mono_novo') || '',
+        contador_color_novo: fd.get('contador_color_novo') || '',
+      };
+      if(_substituidoMovId !== null){
+        dados.equip_substituido_id = _substituidoMovId;
+        dados.destino_substituido = document.getElementById('destino-substituido-mov').value;
+        if(dados.destino_substituido === 'manutencao'){
+          dados.assistencia_empresa_id = document.getElementById('assistencia-substituido-mov').value;
+          if(!dados.assistencia_empresa_id){ alert('Selecione a assistência técnica.'); return false; }
+        }
+        dados.condicao_uso_substituido = document.getElementById('condicao-substituido-mov').value;
+      }
+      try{
+        const r = await fetch('/equipamentos-api/substituicao', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(dados)
+        });
+        const resp = await r.json();
+        if(!r.ok){ alert(resp.erro || 'Falha ao registrar substituição.'); return false; }
+        window.location.href = '{{url_for("mobile_equipamento_detalhe", equip_id=equip.id)}}';
+        return false;
+      } catch(e){
+        alert('Falha de conexão. Tente novamente.');
+        return false;
+      }
+    }
+    function _substituidoMovBound(){
+      return !!document.getElementById('lista-substituicao-mov');
     }
 
     function abrirLista(){

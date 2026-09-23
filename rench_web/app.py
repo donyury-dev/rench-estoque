@@ -6761,6 +6761,233 @@ def api_mobile_equipamento_movimentar(equip_id):
     return jsonify({'ok': True})
 
 
+@app.route('/api/mobile/equipamentos/por-unidade/<int:unidade_id>')
+@api_mobile_auth
+def api_mobile_equipamentos_por_unidade(unidade_id):
+    """Lista equipamentos ativos de uma unidade (para escolher qual substituir)."""
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        SELECT e.id, e.codigo, e.tipo_equipamento, e.fabricante, e.modelo,
+               e.numero_serie, e.condicao_uso, e.observacoes, e.status
+        FROM equipamentos e
+        WHERE e.ativo=1 AND e.unidade_id=%s
+        ORDER BY e.tipo_equipamento, e.modelo
+    """, (unidade_id,))
+    rows = cur.fetchall()
+    equipamentos = []
+    for r in rows:
+        equipamentos.append({
+            'id': r['id'],
+            'codigo': r['codigo'],
+            'tipo_equipamento': r['tipo_equipamento'],
+            'fabricante': r['fabricante'],
+            'modelo': r['modelo'],
+            'numero_serie': r['numero_serie'],
+            'condicao_uso': r['condicao_uso'],
+            'observacoes': r['observacoes'],
+            'status': r['status'],
+        })
+    return jsonify({'equipamentos': equipamentos})
+
+
+@app.route('/api/mobile/equipamentos/substituicao', methods=['POST'])
+@api_mobile_auth
+def api_mobile_equipamento_substituicao():
+    dados = request.get_json(silent=True) or {}
+    resp, status = _executar_substituicao(dados, g.operador_mobile)
+    return jsonify(resp), status
+
+
+@app.route('/equipamentos-api/por-unidade/<int:unidade_id>')
+@login_required
+def web_equipamentos_por_unidade(unidade_id):
+    """Versao com login de sessao (web/pagina do celular) da listagem por unidade."""
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        SELECT e.id, e.codigo, e.tipo_equipamento, e.fabricante, e.modelo,
+               e.numero_serie, e.condicao_uso, e.observacoes, e.status
+        FROM equipamentos e
+        WHERE e.ativo=1 AND e.unidade_id=%s
+        ORDER BY e.tipo_equipamento, e.modelo
+    """, (unidade_id,))
+    return jsonify({'equipamentos': [dict(r) for r in cur.fetchall()]})
+
+
+@app.route('/equipamentos-api/substituicao', methods=['POST'])
+@login_required
+def web_equipamento_substituicao():
+    dados = request.get_json(silent=True) or {}
+    resp, status = _executar_substituicao(
+        dados, session.get('operador') or session.get('usuario') or 'Rench')
+    return jsonify(resp), status
+
+
+def _executar_substituicao(dados, operador_padrao):
+    """Registra a troca: equipamento novo entra na unidade e o substituido sai
+    para o estoque Rench (automatico) ou para uma assistencia tecnica."""
+    db = get_db()
+    cur = db.cursor()
+
+    equip_novo_id = dados.get('equip_novo_id')
+    unidade_destino_id = dados.get('unidade_destino_id')
+    equip_substituido_id = dados.get('equip_substituido_id')
+    destino_substituido = (dados.get('destino_substituido') or '').strip()
+    assistencia_empresa_id = dados.get('assistencia_empresa_id')
+    condicao_uso_substituido = (dados.get('condicao_uso_substituido') or '').strip()
+    condicao_uso_novo = (dados.get('condicao_uso_novo') or '').strip()
+    data_mov = (dados.get('data_movimentacao') or '').strip() or date.today().isoformat()
+    responsavel = (dados.get('responsavel') or operador_padrao).strip()
+    obs = (dados.get('observacoes') or '').strip() or None
+    setor_destino = (dados.get('setor_equipamento') or '').strip() or None
+    contador_mono_novo = (str(dados.get('contador_mono_novo') or '')).strip()
+    contador_color_novo = (str(dados.get('contador_color_novo') or '')).strip()
+
+    if not equip_novo_id:
+        return ({'erro': 'Informe o equipamento que esta sendo levado.'}, 400)
+    if not unidade_destino_id:
+        return ({'erro': 'Selecione a unidade de destino.'}, 400)
+    if equip_substituido_id and destino_substituido not in ('estoque', 'manutencao'):
+        return ({'erro': 'Escolha o destino do equipamento substituido.'}, 400)
+    if equip_substituido_id and equip_substituido_id == equip_novo_id:
+        return ({'erro': 'O equipamento substituido nao pode ser o mesmo que esta sendo levado.'}, 400)
+
+    cur.execute("""
+        SELECT e.*, u.nome as unidade_nome
+        FROM equipamentos e LEFT JOIN unidades u ON u.id = e.unidade_id
+        WHERE e.id=%s AND e.ativo=1
+    """, (equip_novo_id,))
+    equip_novo = cur.fetchone()
+    if not equip_novo:
+        return ({'erro': 'Equipamento a ser levado nao encontrado.'}, 404)
+
+    cur.execute("""
+        SELECT u.id, u.nome, emp.nome as empresa_nome
+        FROM unidades u JOIN empresas emp ON emp.id = u.empresa_id
+        WHERE u.id=%s AND u.ativo=1
+    """, (unidade_destino_id,))
+    unidade_dest = cur.fetchone()
+    if not unidade_dest:
+        return ({'erro': 'Unidade de destino nao encontrada.'}, 404)
+
+    equip_substituido = None
+    unidade_sub_destino = None
+    destino_sub_nome = None
+    if equip_substituido_id:
+        cur.execute("""
+            SELECT e.*, u.nome as unidade_nome
+            FROM equipamentos e LEFT JOIN unidades u ON u.id = e.unidade_id
+            WHERE e.id=%s AND e.ativo=1
+        """, (equip_substituido_id,))
+        equip_substituido = cur.fetchone()
+        if not equip_substituido:
+            return ({'erro': 'Equipamento a ser substituido nao encontrado.'}, 404)
+
+        if destino_substituido == 'estoque':
+            cur.execute("""
+                SELECT u.id, u.nome FROM unidades u
+                JOIN empresas e ON e.id=u.empresa_id
+                WHERE e.tipo='rench' AND u.ativo=1
+                ORDER BY CASE WHEN u.nome ILIKE '%estoque%' THEN 0 ELSE 1 END, u.id
+                LIMIT 1
+            """)
+            row = cur.fetchone()
+            if not row:
+                return ({'erro': 'Unidade de estoque da Rench nao encontrada.'}, 400)
+            unidade_sub_destino = row
+            destino_sub_nome = row['nome']
+        else:
+            if not assistencia_empresa_id:
+                return ({'erro': 'Selecione a assistencia tecnica.'}, 400)
+            cur.execute("""
+                SELECT u.id, u.nome, emp.nome as empresa_nome FROM unidades u
+                JOIN empresas e ON e.id=u.empresa_id
+                WHERE e.id=%s AND e.tipo='assistencia' AND u.ativo=1
+                ORDER BY u.id LIMIT 1
+            """, (assistencia_empresa_id,))
+            row = cur.fetchone()
+            if not row:
+                return ({'erro': 'Assistencia tecnica nao encontrada.'}, 400)
+            unidade_sub_destino = row
+            destino_sub_nome = row['nome']
+
+    def _int_or_prev(valor, anterior):
+        try:
+            return int(valor) if str(valor or '').strip() else anterior
+        except (TypeError, ValueError):
+            return anterior
+
+    mono_anterior_novo = int(equip_novo['contador_mono'] or 0)
+    color_anterior_novo = int(equip_novo['contador_color'] or 0)
+    mono_novo_int = _int_or_prev(contador_mono_novo, mono_anterior_novo)
+    color_novo_int = _int_or_prev(contador_color_novo, color_anterior_novo)
+
+    substituicao_obs = obs
+    if equip_substituido:
+        texto_troca = f"Substituiu {equip_substituido['codigo'] or equip_substituido['modelo']}"
+        substituicao_obs = f"{obs} | {texto_troca}" if obs else texto_troca
+
+    cur.execute("""
+        INSERT INTO movimentacoes (equipamento_id, data_movimentacao, tipo_movimento,
+            origem_local, origem_unidade, destino_local, destino_unidade, responsavel, observacoes,
+            contador_mono_anterior, contador_mono_novo, contador_color_anterior, contador_color_novo)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    """, (equip_novo_id, data_mov,
+          'substituicao' if equip_substituido else 'instalacao_cliente',
+          equip_novo['local_atual_nome'], equip_novo['unidade_nome'] or equip_novo['local_atual_nome'],
+          unidade_dest['nome'], unidade_dest['nome'], responsavel, substituicao_obs,
+          mono_anterior_novo, mono_novo_int, color_anterior_novo, color_novo_int))
+
+    update_novo = """
+        UPDATE equipamentos SET unidade_id=%s, local_atual_nome=%s, cliente_atual=%s,
+            contador_mono=%s, contador_color=%s, setor_equipamento=%s
+    """
+    params_novo = [unidade_destino_id, unidade_dest['nome'], unidade_dest['empresa_nome'],
+                   mono_novo_int, color_novo_int, setor_destino]
+    if condicao_uso_novo:
+        update_novo += ", condicao_uso=%s"
+        params_novo.append(condicao_uso_novo)
+    update_novo += " WHERE id=%s"
+    params_novo.append(equip_novo_id)
+    cur.execute(update_novo, params_novo)
+
+    if equip_substituido:
+        mono_anterior_sub = int(equip_substituido['contador_mono'] or 0)
+        color_anterior_sub = int(equip_substituido['contador_color'] or 0)
+        texto_recolhido = f"Recolhido por troca: {equip_novo['codigo'] or equip_novo['modelo']} foi para {unidade_dest['nome']}"
+        obs_sub = f"{obs} | {texto_recolhido}" if obs else texto_recolhido
+        cur.execute("""
+            INSERT INTO movimentacoes (equipamento_id, data_movimentacao, tipo_movimento,
+                origem_local, origem_unidade, destino_local, destino_unidade, responsavel, observacoes,
+                contador_mono_anterior, contador_mono_novo, contador_color_anterior, contador_color_novo)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (equip_substituido_id, data_mov, 'substituicao',
+              equip_substituido['local_atual_nome'],
+              equip_substituido['unidade_nome'] or equip_substituido['local_atual_nome'],
+              destino_sub_nome, destino_sub_nome, responsavel, obs_sub,
+              mono_anterior_sub, mono_anterior_sub, color_anterior_sub, color_anterior_sub))
+
+        update_sub = """
+            UPDATE equipamentos SET unidade_id=%s, local_atual_nome=%s, cliente_atual=%s
+        """
+        params_sub = [unidade_sub_destino['id'], destino_sub_nome, unidade_sub_destino.get('empresa_nome')]
+        if condicao_uso_substituido:
+            update_sub += ", condicao_uso=%s"
+            params_sub.append(condicao_uso_substituido)
+        update_sub += " WHERE id=%s"
+        params_sub.append(equip_substituido_id)
+        cur.execute(update_sub, params_sub)
+
+    db.commit()
+    return ({
+        'ok': True,
+        'mensagem': ('Substituição registrada com sucesso!' if equip_substituido
+                     else 'Equipamento adicionado à unidade com sucesso!'),
+        'substituido_para': destino_sub_nome if equip_substituido else None,
+    }, 200)
+
+
 @app.route('/api/mobile/equipamentos/<int:equip_id>', methods=['PUT', 'PATCH'])
 @api_mobile_auth
 def api_mobile_equipamento_editar(equip_id):
