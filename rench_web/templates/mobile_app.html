@@ -742,6 +742,7 @@
                     <span class="badge-tipo">{{e.tipo_equipamento}}</span>
                     <div class="modelo">{{e.modelo or 'Sem modelo'}}</div>
                     <div class="codigo">{{e.codigo}}</div>
+                    <div class="unidade-sub" style="font-size:.8rem;color:#6c757d;">{{e.local_nome or 'Sem unidade'}}</div>
                     <div class="condicao-mobile {{'condicao-boa' if e.condicao_uso=='boa' else ('condicao-defeito' if e.condicao_uso=='defeito' else ('condicao-manutencao' if e.condicao_uso=='manutencao' else 'condicao-nao-informada'))}}">
                       {{'Boa — pronta para uso' if e.condicao_uso=='boa' else ('Com defeito' if e.condicao_uso=='defeito' else ('Em manutenção' if e.condicao_uso=='manutencao' else 'Condição não informada'))}}
                     </div>
@@ -752,6 +753,8 @@
                   {% if e.patrimonio %}<div>Patrimônio: {{e.patrimonio}}</div>{% endif %}
                   <div>Local: {{e.local_nome or 'Não definido'}} {{' - ' + e.setor_equipamento if e.setor_equipamento else ''}}</div>
                   {% if e.empresa_nome %}<div>Cliente: {{e.empresa_nome}}</div>{% endif %}
+                  <div>Unidade: {{e.local_nome or 'Não definido'}}</div>
+                  <div>Código: {{e.codigo}}</div>
                 </div>
                 <div class="acoes">
                   <a href="{{url_for('mobile_equipamento_detalhe', equip_id=e.id)}}" class="btn-small">Detalhes</a>

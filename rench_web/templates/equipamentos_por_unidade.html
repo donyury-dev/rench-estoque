@@ -58,6 +58,7 @@
         <th>Série / Rastreio</th>
         <th>Local atual</th>
         <th>Condição de uso</th>
+        <th>Observações</th>
         <th style="width:110px;">Ações</th>
       </tr>
     </thead>
@@ -88,6 +89,15 @@
           {% endif %}
         </td>
         <td>
+          {% if e.observacoes %}
+            <span title="{{e.observacoes}}" style="color:#8a6d00;background:#fffbe8;border:1px solid #ffe08a;border-radius:6px;padding:2px 6px;display:inline-block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;">
+              <i class="bi bi-journal-text me-1"></i>{{e.observacoes}}
+            </span>
+          {% else %}
+            <small class="text-muted">-</small>
+          {% endif %}
+        </td>
+        <td>
           <div class="d-flex gap-1">
             <a href="{{url_for('detalhe_equipamento', equip_id=e.id)}}" class="btn btn-sm btn-outline-primary" title="Ficha"><i class="bi bi-eye"></i></a>
             <a href="{{url_for('editar_equipamento', equip_id=e.id)}}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
@@ -97,7 +107,7 @@
       </tr>
     {% else %}
       <tr>
-        <td colspan="5" class="text-center py-5 text-muted">
+        <td colspan="6" class="text-center py-5 text-muted">
           <i class="bi bi-inbox" style="font-size:42px;"></i>
           <p class="mt-3 mb-1">Nenhum equipamento encontrado nesta unidade.</p>
         </td>
