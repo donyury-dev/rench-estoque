@@ -124,6 +124,23 @@
             <input class="form-control" value="{{equip.local_atual_nome or 'Não informado'}}" disabled>
           </div>
 
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Condição de uso do equipamento *</label>
+            <select name="condicao_uso" class="form-select" required>
+              {% if equip.condicao_uso and equip.condicao_uso != 'nao_informada' %}
+              <option value="boa" {{'selected' if equip.condicao_uso=='boa' else ''}}>Boa — pronta para uso</option>
+              <option value="defeito" {{'selected' if equip.condicao_uso=='defeito' else ''}}>Com defeito</option>
+              <option value="manutencao" {{'selected' if equip.condicao_uso=='manutencao' else ''}}>Em manutenção</option>
+              {% else %}
+              <option value="" selected disabled>Selecione a condição...</option>
+              <option value="boa">Boa — pronta para uso</option>
+              <option value="defeito">Com defeito</option>
+              <option value="manutencao">Em manutenção</option>
+              {% endif %}
+            </select>
+            <small class="text-muted">Condição do equipamento após esta movimentação</small>
+          </div>
+
           {# Contadores #}
           <div class="col-12 mt-2">
             <h6 class="fw-bold border-bottom pb-2 mb-3" style="color:var(--primary)"><i class="bi bi-printer me-2"></i>Contadores de Impressão</h6>
@@ -388,6 +405,7 @@ async function submeterMovimentacaoWeb(ev){
     setor_equipamento: document.querySelector('input[name="setor_equipamento"]')?.value || '',
     contador_mono_novo: document.querySelector('input[name="contador_mono_novo"]')?.value || '',
     contador_color_novo: document.querySelector('input[name="contador_color_novo"]')?.value || '',
+    condicao_uso_novo: document.querySelector('select[name="condicao_uso"]')?.value || '',
   };
   if(window._substituidoWebId !== null && window._substituidoWebId !== undefined){
     dados.equip_substituido_id = window._substituidoWebId;

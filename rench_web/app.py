@@ -2346,6 +2346,10 @@ def movimentar(equip_id):
         setor_destino = request.form.get('setor_equipamento', '').strip() or None
         contador_mono_novo = request.form.get('contador_mono_novo', '').strip()
         contador_color_novo = request.form.get('contador_color_novo', '').strip()
+        condicao_uso = request.form.get('condicao_uso', '').strip()
+        if condicao_uso not in ('boa', 'defeito', 'manutencao'):
+            flash('Informe a condição de uso do equipamento para registrar a movimentação.', 'danger')
+            return redirect(url_for('movimentar', equip_id=equip_id))
 
         if tipo_mov in ('entrada_estoque', 'retorno_cliente', 'retorno_manutencao'):
             cur.execute("""
@@ -2482,9 +2486,9 @@ def movimentar(equip_id):
 
         cur.execute("""
             UPDATE equipamentos SET unidade_id=%s, local_atual_nome=%s, cliente_atual=%s,
-                contador_mono=%s, contador_color=%s, setor_equipamento=%s WHERE id=%s
+                contador_mono=%s, contador_color=%s, setor_equipamento=%s, condicao_uso=%s WHERE id=%s
         """, (destino_unidade_id, destino_unidade_nome, None,
-              contador_mono_novo_int, contador_color_novo_int, setor_destino, equip_id))
+              contador_mono_novo_int, contador_color_novo_int, setor_destino, condicao_uso, equip_id))
 
         db.commit()
         flash("Movimentacao registrada com sucesso!", "success")
@@ -5735,6 +5739,10 @@ def mobile_equipamento_movimentar(equip_id):
         setor_destino = request.form.get('setor_equipamento', '').strip() or None
         contador_mono_novo = request.form.get('contador_mono_novo', '').strip()
         contador_color_novo = request.form.get('contador_color_novo', '').strip()
+        condicao_uso = request.form.get('condicao_uso', '').strip()
+        if condicao_uso not in ('boa', 'defeito', 'manutencao'):
+            flash('Informe a condição de uso do equipamento para registrar a movimentação.', 'danger')
+            return redirect(url_for('mobile_equipamento_movimentar', equip_id=equip_id))
 
         contador_mono_anterior = int(equip['contador_mono'] or 0)
         contador_color_anterior = int(equip['contador_color'] or 0)
@@ -5762,9 +5770,9 @@ def mobile_equipamento_movimentar(equip_id):
 
         cur.execute("""
             UPDATE equipamentos SET unidade_id=%s, local_atual_nome=%s, cliente_atual=%s,
-                contador_mono=%s, contador_color=%s, setor_equipamento=%s WHERE id=%s
+                contador_mono=%s, contador_color=%s, setor_equipamento=%s, condicao_uso=%s WHERE id=%s
         """, (destino_unidade_id, destino_unidade_nome, None,
-              contador_mono_novo_int, contador_color_novo_int, setor_destino, equip_id))
+              contador_mono_novo_int, contador_color_novo_int, setor_destino, condicao_uso, equip_id))
         db.commit()
         flash('Movimentacao registrada com sucesso!', 'success')
         return redirect(url_for('mobile_equipamento_detalhe', equip_id=equip_id))

@@ -1243,6 +1243,21 @@
                   {% endfor %}
                 </select>
               </div>
+              <div class="form-group">
+                <label>Condição de uso *</label>
+                <select name="condicao_uso" required>
+                  {% if equip.condicao_uso and equip.condicao_uso != 'nao_informada' %}
+                  <option value="boa" {{'selected' if equip.condicao_uso=='boa' else ''}}>Boa — pronta para uso</option>
+                  <option value="defeito" {{'selected' if equip.condicao_uso=='defeito' else ''}}>Com defeito</option>
+                  <option value="manutencao" {{'selected' if equip.condicao_uso=='manutencao' else ''}}>Em manutenção</option>
+                  {% else %}
+                  <option value="" selected disabled>Selecione a condição...</option>
+                  <option value="boa">Boa — pronta para uso</option>
+                  <option value="defeito">Com defeito</option>
+                  <option value="manutencao">Em manutenção</option>
+                  {% endif %}
+                </select>
+              </div>
               
               {% if equip.tipo_equipamento == 'impressora' %}
               <div class="row">
@@ -2470,6 +2485,7 @@
         data_movimentacao: fd.get('data_movimentacao') || '',
         responsavel: fd.get('responsavel') || '',
         observacoes: fd.get('observacoes') || '',
+        condicao_uso_novo: fd.get('condicao_uso') || '',
         setor_equipamento: fd.get('setor_equipamento') || '',
         contador_mono_novo: fd.get('contador_mono_novo') || '',
         contador_color_novo: fd.get('contador_color_novo') || '',
