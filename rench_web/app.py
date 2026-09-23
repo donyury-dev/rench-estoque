@@ -880,6 +880,7 @@ def init_db():
             data_erro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    cur.execute("ALTER TABLE estoque_erros ADD COLUMN IF NOT EXISTS oculto INTEGER DEFAULT 0")
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS modelos_impressora (
@@ -4810,9 +4811,11 @@ def estoque_auditoria():
     rows = cur.fetchall()
 
     cur.execute(
-        "SELECT id, contexto, mensagem, detalhes, responsavel, data_erro FROM estoque_erros ORDER BY data_erro DESC, id DESC LIMIT 50"
+        "SELECT id, contexto, mensagem, detalhes, responsavel, data_erro FROM estoque_erros WHERE COALESCE(oculto,0)=0 ORDER BY data_erro DESC, id DESC LIMIT 50"
     )
     erros_rows = cur.fetchall()
+    cur.execute("SELECT COUNT(*) AS total FROM estoque_erros WHERE COALESCE(oculto,0)=1")
+    total_ocultos = cur.fetchone()['total']
     erros = []
     for e in erros_rows:
         erros.append({
@@ -4845,7 +4848,30 @@ def estoque_auditoria():
         })
 
     return render_template('estoque_auditoria.html', movimentacoes=movimentacoes,
-                           tipo_movimento=tipo_movimento, busca=busca, erros=erros)
+                           tipo_movimento=tipo_movimento, busca=busca, erros=erros,
+                           erros_ocultos=total_ocultos)
+
+
+@app.route('/estoque/auditoria/erros/limpar', methods=['POST'])
+@login_required
+def estoque_erros_limpar():
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("UPDATE estoque_erros SET oculto=1 WHERE COALESCE(oculto,0)=0")
+    db.commit()
+    flash('Log de erros limpo. Use "Restaurar" para trazer de volta.', 'success')
+    return redirect(url_for('estoque_auditoria'))
+
+
+@app.route('/estoque/auditoria/erros/restaurar', methods=['POST'])
+@login_required
+def estoque_erros_restaurar():
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("UPDATE estoque_erros SET oculto=0 WHERE COALESCE(oculto,0)=1")
+    db.commit()
+    flash('Log de erros restaurado.', 'success')
+    return redirect(url_for('estoque_auditoria'))
 
 
 @app.route('/estoque/historico/<int:estoque_id>')
@@ -5155,7 +5181,7 @@ def api_auditoria_estoque():
         })
 
     cur.execute(
-        "SELECT id, contexto, mensagem, detalhes, responsavel, data_erro FROM estoque_erros ORDER BY data_erro DESC, id DESC LIMIT 50"
+        "SELECT id, contexto, mensagem, detalhes, responsavel, data_erro FROM estoque_erros WHERE COALESCE(oculto,0)=0 ORDER BY data_erro DESC, id DESC LIMIT 50"
     )
     erros_rows = cur.fetchall()
     erros = []

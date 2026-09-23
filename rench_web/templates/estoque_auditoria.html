@@ -37,9 +37,19 @@
   </li>
 </ul>
 
-{% if erros %}
+{% if erros or erros_ocultos %}
 <div id="erros" class="card p-3 mb-4" style="border:2px solid #f1b0b7;background:#fdf3f4;">
-  <h5 class="mb-3" style="color:#b02a37;"><i class="bi bi-bug me-1"></i> Log de Erros do Sistema</h5>
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <h5 class="mb-0" style="color:#b02a37;"><i class="bi bi-bug me-1"></i> Log de Erros do Sistema</h5>
+    <div class="d-flex gap-2">
+      <form method="POST" action="{{url_for('estoque_erros_limpar')}}" onsubmit="return confirm('Limpar o log de erros? Os registros ficam ocultos e podem ser restaurados.');">
+        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-eraser me-1"></i> Limpar</button>
+      </form>
+      <form method="POST" action="{{url_for('estoque_erros_restaurar')}}">
+        <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar{% if erros_ocultos %} ({{erros_ocultos}}){% endif %}</button>
+      </form>
+    </div>
+  </div>
   <p class="text-muted small">Falhas capturadas automaticamente (atendimentos, estoque e site). Se algo não funcionar, aparecera aqui.</p>
   <div class="table-responsive">
     <table class="table table-hover align-middle mb-0">
@@ -60,7 +70,7 @@
           <td><small class="text-muted">{{e.detalhes or '-'}}</small></td>
         </tr>
         {% else %}
-        <tr><td colspan="4" class="text-center text-muted py-3">Nenhum erro registrado.</td></tr>
+        <tr><td colspan="4" class="text-center text-muted py-3">Nenhum erro visível. {% if erros_ocultos %}O log foi limpo — use "Restaurar" para ver novamente os {{erros_ocultos}} registros.{% endif %}</td></tr>
         {% endfor %}
       </tbody>
     </table>
