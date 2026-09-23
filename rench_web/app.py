@@ -2296,7 +2296,7 @@ def equipamentos_por_unidade():
             FROM equipamentos e
             LEFT JOIN unidades u ON e.unidade_id = u.id
             LEFT JOIN empresas emp ON emp.id = u.empresa_id
-            WHERE e.ativo=1 AND (e.unidade_id = %s OR e.local_atual_nome = (SELECT nome FROM unidades WHERE id=%s))
+            WHERE e.ativo=1 AND (e.unidade_id = %s OR (e.unidade_id IS NULL AND e.local_atual_nome = (SELECT nome FROM unidades WHERE id=%s)))
         """
         params = [unidade_id, unidade_id]
         if tipo:
