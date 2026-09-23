@@ -2507,7 +2507,7 @@
         });
         const resp = await r.json();
         if(!r.ok){ alert(resp.erro || 'Falha ao registrar substituição.'); return false; }
-        window.location.href = '{{url_for("mobile_equipamento_detalhe", equip_id=equip.id)}}';
+        window.location.href = '{{url_for("mobile_equipamento_detalhe", equip_id=equip.id) if equip is defined else "/"}}';
         return false;
       } catch(e){
         alert('Falha de conexão. Tente novamente.');
