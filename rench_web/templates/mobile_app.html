@@ -3214,6 +3214,25 @@
       fd.append('responsavel', resp);
       fd.append('motivo', motivo);
 
+      // Confirmacao organizada antes de dar a entrada
+      const partes = [tipo];
+      if(tipo !== 'Papel Fotografico'){
+        if(cor) partes.push(cor);
+        if(modelo) partes.push(modelo);
+      }
+      if(marca) partes.push('(' + marca + ')');
+      const unidadeEntrada = parseInt(document.getElementById('unidade-papel-entrada')?.value || '1');
+      const unidadeTexto = tipo === 'Papel Fotografico' ? (unidadeEntrada === 1 ? 'Folhas' : unidadeEntrada === 20 ? 'Pacote 20 folhas' : unidadeEntrada === 50 ? 'Pacote 50 folhas' : 'Caixa 1600 folhas') : '';
+      const linhas = [
+        '- Suprimento: ' + partes.join(' '),
+        '- Quantidade: ' + qtd + (tipo === 'Papel Fotografico' ? ' folhas (' + unidadeTexto + ')' : '')
+      ];
+      if(resp) linhas.push('- Responsável: ' + resp);
+      if(motivo) linhas.push('- Motivo: ' + motivo);
+      if(!confirm('Confirmar entrada\n\n' + linhas.join('\n') + '\n\nConfirma a entrada?')){
+        return false;
+      }
+
       try{
         const r = await fetch('/api/estoque/entrada', {method:'POST', body:fd});
         const data = await r.json();

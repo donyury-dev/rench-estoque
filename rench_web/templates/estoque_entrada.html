@@ -228,12 +228,38 @@
 
   // antes de enviar, converte quantidade para folhas se for papel fotografico
   document.getElementById('form-entrada').addEventListener('submit', function(e){
+    e.preventDefault();
     normalizarCampoModelo();
+    const tipo = document.getElementById('tipo').value;
+    const papel = tipo === 'Papel Fotografico';
     document.getElementById('cor').disabled = false;
-    if(document.getElementById('tipo').value === 'Papel Fotografico'){
-      const qtd = parseInt(document.getElementById('qtd').value || '1');
-      const unidade = parseInt(document.getElementById('unidade-papel').value || '1');
-      document.getElementById('qtd').value = qtd * unidade;
+    const qtdInformada = parseInt(document.getElementById('qtd').value || '1');
+    const unidade = parseInt(document.getElementById('unidade-papel').value || '1');
+    const qtdFinal = papel ? qtdInformada * unidade : qtdInformada;
+
+    const partes = [tipo];
+    if(!papel){
+      const corVal = document.getElementById('cor').value;
+      if(corVal) partes.push(corVal);
+      const modeloVal = document.getElementById('modelo').value.trim();
+      if(modeloVal) partes.push(modeloVal);
+    }
+    const marcaVal = document.getElementById('marca').value;
+    if(marcaVal) partes.push('(' + marcaVal + ')');
+
+    const unidadeTexto = papel ? (unidade === 1 ? 'Folhas' : unidade === 20 ? 'Pacote 20 folhas' : unidade === 50 ? 'Pacote 50 folhas' : 'Caixa 1600 folhas') : '';
+    const linhas = [
+      '- Suprimento: ' + partes.join(' '),
+      '- Quantidade: ' + qtdFinal + (papel ? ' folhas (' + unidadeTexto + ')' : '')
+    ];
+    const respEl = document.querySelector('#form-entrada select[name="responsavel"]');
+    if(respEl && respEl.value) linhas.push('- Responsável: ' + respEl.value);
+    const motivoEl = document.querySelector('#form-entrada input[name="motivo"]');
+    if(motivoEl && motivoEl.value) linhas.push('- Motivo: ' + motivoEl.value);
+
+    if(confirm('Confirmar entrada\n\n' + linhas.join('\n') + '\n\nConfirma a entrada?')){
+      if(papel){ document.getElementById('qtd').value = qtdFinal; }
+      this.submit();
     }
   });
 
