@@ -2465,7 +2465,7 @@
       if(!unidadeId){ alert('Selecione a unidade de destino.'); return false; }
       const fd = new FormData(ev.target);
       const dados = {
-        equip_novo_id: {{ equip.id }},
+        equip_novo_id: {{ equip.id if equip is defined else 0 }},
         unidade_destino_id: unidadeId,
         data_movimentacao: fd.get('data_movimentacao') || '',
         responsavel: fd.get('responsavel') || '',
