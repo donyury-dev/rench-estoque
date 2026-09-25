@@ -6186,28 +6186,32 @@ def _api_mobile_itens(dados):
 
 def _reservados_estoque(cur):
     """Retorna um dict {estoque_id: quantidade} com o saldo reservado/em viagem ativa."""
-    cur.execute("""
-        SELECT e.id,
-               COALESCE(SUM(GREATEST(vi.quantidade_carregada - vi.quantidade_entregue - vi.quantidade_usada_manual, 0)), 0) AS reservado
-        FROM estoque e
-        LEFT JOIN (
-            SELECT vi.*
-            FROM viagens_itens vi
-            JOIN viagens v ON v.id = vi.viagem_id
-            WHERE v.status NOT IN ('concluido', 'cancelado')
-        ) vi ON (
-            e.tipo_suprimento = TRIM(CONCAT(vi.tipo_suprimento, ' ', COALESCE(vi.cor, '')))
-            AND (
-                (NULLIF(vi.modelo_impressora, '') IS NULL AND e.modelo_impressora IN ('', '-'))
-                OR e.modelo_impressora = UPPER(vi.modelo_impressora)
-                OR e.modelo_impressora = 'ES' || UPPER(vi.modelo_impressora)
-                OR 'ES' || e.modelo_impressora = UPPER(vi.modelo_impressora)
+    try:
+        cur.execute("""
+            SELECT e.id,
+                   COALESCE(SUM(GREATEST(vi.quantidade_carregada - vi.quantidade_entregue - vi.quantidade_usada_manual, 0)), 0) AS reservado
+            FROM estoque e
+            LEFT JOIN (
+                SELECT vi.*
+                FROM viagens_itens vi
+                JOIN viagens v ON v.id = vi.viagem_id
+                WHERE v.status NOT IN ('concluido', 'cancelado')
+            ) vi ON (
+                e.tipo_suprimento = TRIM(CONCAT(vi.tipo_suprimento, ' ', COALESCE(vi.cor, '')))
+                AND (
+                    (NULLIF(vi.modelo_impressora, '') IS NULL AND e.modelo_impressora IN ('', '-'))
+                    OR e.modelo_impressora = UPPER(vi.modelo_impressora)
+                    OR e.modelo_impressora = 'ES' || UPPER(vi.modelo_impressora)
+                    OR 'ES' || e.modelo_impressora = UPPER(vi.modelo_impressora)
+                )
+                AND COALESCE(e.marca, '') = COALESCE(vi.marca, '')
             )
-            AND COALESCE(e.marca, '') = COALESCE(vi.marca, '')
-        )
-        GROUP BY e.id
-    """)
-    return {r['id']: int(r['reservado'] or 0) for r in cur.fetchall()}
+            GROUP BY e.id
+        """)
+        return {r['id']: int(r['reservado'] or 0) for r in cur.fetchall()}
+    except Exception as exc:
+        app.logger.error('Erro ao calcular saldo reservado: %s', exc)
+        return {}
 
 
 _STATUS_VIAGEM_LABEL = {
