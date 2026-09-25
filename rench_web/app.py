@@ -3500,7 +3500,9 @@ def _carregar_estoque(cur):
         FROM estoque WHERE ativo=TRUE
         ORDER BY tipo_suprimento, modelo_impressora, marca
     """)
-    return cur.fetchall()
+    rows = cur.fetchall()
+    reservados = _reservados_estoque(cur)
+    return [{**dict(r), 'reservado': reservados.get(r['id'], 0)} for r in rows]
 
 
 @app.route('/viagens')
