@@ -307,11 +307,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
-const ESTOQUE_COLETA = [
-  {% for e in estoque %}
-  {id: {{e.id}}, tipo: {{ (e.tipo_suprimento ~ ' ' ~ (e.modelo_impressora or '') ~ (' (' ~ e.marca ~ ')' if e.marca else '')) | tojson }}, modelo: {{ (e.modelo_impressora or '') | tojson }}, marca: {{ (e.marca or '') | tojson }}}{{ ',' if not loop.last }}
-  {% endfor %}
-];
+const ESTOQUE_COLETA = [];
 
 const ESTOQUE_EDITAR = [
   {% for e in estoque %}
@@ -399,32 +395,51 @@ function addColetaItem(){
   const box = document.getElementById('coleta-itens');
   const div = document.createElement('div');
   div.className = 'border rounded p-2 mb-2 coleta-item-row';
-  let opcoes = '<option value="">Suprimento...</option>';
-  ESTOQUE_COLETA.forEach(e => {
-    opcoes += `<option value="${e.id}" data-tipo="${e.tipo}" data-modelo="${e.modelo}" data-marca="${e.marca}">${e.tipo}</option>`;
-  });
   div.innerHTML = `
-    <div class="d-flex gap-2 align-items-center">
-      <select class="form-select form-select-sm coleta-select" onchange="syncColeta(this)">${opcoes}</select>
-      <input type="number" class="form-control form-control-sm text-center" style="max-width:80px" name="quantidade[]" value="1" min="1">
-      <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.coleta-item-row').remove()"><i class="bi bi-x-lg"></i></button>
-    </div>
-    <input type="hidden" name="tipo_suprimento[]" value="">
-    <input type="hidden" name="modelo_impressora[]" value="">
-    <input type="hidden" name="marca[]" value="">`;
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label small">Tipo *</label>
+        <select class="form-select form-select-sm" name="tipo_suprimento[]" required>
+          <option value="">Selecione...</option>
+          <option value="Toner">Toner</option>
+          <option value="Drum">Drum</option>
+          <option value="Transfer">Transfer</option>
+          <option value="Fuser">Fuser</option>
+          <option value="Papel Fotografico">Papel Fotografico</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small">Cor</label>
+        <select class="form-select form-select-sm" name="cor[]">
+          <option value="">Sem cor</option>
+          <option value="Black">Black</option>
+          <option value="Ciano">Ciano</option>
+          <option value="Magenta">Magenta</option>
+          <option value="Amarelo">Amarelo</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">Modelo</label>
+        <input type="text" class="form-control form-control-sm" name="modelo_impressora[]" placeholder="Ex: C711, C911">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small">Marca</label>
+        <input type="text" class="form-control form-control-sm" name="marca[]" placeholder="Ex: R10">
+      </div>
+      <div class="col-md-1">
+        <label class="form-label small">Qtd *</label>
+        <input type="number" class="form-control form-control-sm text-center" name="quantidade[]" value="1" min="1" required>
+      </div>
+      <div class="col-md-1">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.coleta-item-row').remove()"><i class="bi bi-x-lg"></i></button>
+      </div>
+    </div>`;
   box.appendChild(div);
-  // sincroniza flag "pode usar" com o checkbox global
-  const usar = document.querySelector('.coleta-usar').checked ? '1' : '0';
-  document.querySelector('.coleta-usar-valor').value = usar;
 }
 
-function syncColeta(sel){
-  const opt = sel.selectedOptions[0];
-  const row = sel.closest('.coleta-item-row');
-  row.querySelector('[name="tipo_suprimento[]"]').value = opt?.dataset.tipo || '';
-  row.querySelector('[name="modelo_impressora[]"]').value = opt?.dataset.modelo || '';
-  row.querySelector('[name="marca[]"]').value = opt?.dataset.marca || '';
-}
+function syncColeta(sel){}
+
 
 document.querySelector('.coleta-usar')?.addEventListener('change', function(){
   document.querySelector('.coleta-usar-valor').value = this.checked ? '1' : '0';

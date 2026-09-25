@@ -809,6 +809,7 @@ def init_db():
             viagem_id INTEGER NOT NULL REFERENCES viagens(id) ON DELETE CASCADE,
             coleta_id INTEGER REFERENCES viagens_coletas(id) ON DELETE SET NULL,
             tipo_suprimento VARCHAR(100) NOT NULL,
+            cor VARCHAR(50),
             modelo_impressora VARCHAR(255),
             marca VARCHAR(100),
             origem VARCHAR(20) NOT NULL DEFAULT 'rench',
@@ -822,6 +823,7 @@ def init_db():
             observacoes TEXT
         )
     """)
+    cur.execute("ALTER TABLE viagens_itens ADD COLUMN IF NOT EXISTS cor VARCHAR(50)")
 
     cur.execute("CREATE SEQUENCE IF NOT EXISTS viagem_numero_seq START 1")
     cur.execute("""
@@ -3019,6 +3021,17 @@ def _coletar_itens_entrega(form):
     return itens
 
 
+def _estoque_mobile(cur):
+    cur.execute("""
+        SELECT id, tipo_suprimento, modelo_impressora, marca, quantidade, estoque_minimo
+        FROM estoque WHERE ativo=TRUE
+        ORDER BY tipo_suprimento, modelo_impressora
+    """)
+    rows = cur.fetchall()
+    reservados = _reservados_estoque(cur)
+    return [{**dict(r), 'reservado': reservados.get(r['id'], 0)} for r in rows]
+
+
 @app.route('/suprimentos/mobile', methods=['GET', 'POST'])
 @login_required
 def suprimento_mobile():
@@ -3041,8 +3054,7 @@ def suprimento_mobile():
                 ORDER BY emp.tipo DESC, emp.nome, u.nome
             """)
             locais = cur.fetchall()
-            cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade, estoque_minimo FROM estoque WHERE ativo=TRUE ORDER BY tipo_suprimento, modelo_impressora")
-            estoque = cur.fetchall()
+            estoque = _estoque_mobile(cur)
             cur.execute("""
                 SELECT m.* FROM modelos_impressora m
                 WHERE m.ativo = 1
@@ -3063,8 +3075,7 @@ def suprimento_mobile():
                 ORDER BY emp.tipo DESC, emp.nome, u.nome
             """)
             locais = cur.fetchall()
-            cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade, estoque_minimo FROM estoque WHERE ativo=TRUE ORDER BY tipo_suprimento, modelo_impressora")
-            estoque = cur.fetchall()
+            estoque = _estoque_mobile(cur)
             cur.execute("""
                 SELECT m.* FROM modelos_impressora m
                 WHERE m.ativo = 1
@@ -3078,7 +3089,24 @@ def suprimento_mobile():
             cur, parada_id, unidade_id, itens)
         if erros_viagem:
             flash('Saída bloqueada: ' + ' '.join(erros_viagem), 'danger')
-            return redirect(url_for('suprimento_mobile', aba='entrega'))
+            cur.execute("""
+                SELECT emp.id as empresa_id, emp.nome as empresa_nome,
+                       u.id as unidade_id, u.nome as unidade_nome
+                FROM empresas emp
+                LEFT JOIN unidades u ON u.empresa_id = emp.id AND u.ativo=1
+                WHERE emp.ativo=1
+                ORDER BY emp.tipo DESC, emp.nome, u.nome
+            """)
+            locais = cur.fetchall()
+            estoque = _estoque_mobile(cur)
+            cur.execute("""
+                SELECT m.* FROM modelos_impressora m
+                WHERE m.ativo = 1
+                ORDER BY m.ordem, m.nome
+            """)
+            modelos = cur.fetchall()
+            return render_template('mobile_app.html', modulo='estoque', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega', vapid_public_key=VAPID_PUBLIC_KEY)
+
         if not viagem_id_saida and observacoes not in ENVIOS_SEM_VIAGEM:
             flash('Saída sem viagem só é permitida para envio pelo escritório '
                   '(motoboy/correio) ou retirada no local. Para entregar em '
@@ -3113,8 +3141,7 @@ def suprimento_mobile():
                     ORDER BY emp.tipo DESC, emp.nome, u.nome
                 """)
                 locais = cur.fetchall()
-                cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade, estoque_minimo FROM estoque WHERE ativo=TRUE ORDER BY tipo_suprimento, modelo_impressora")
-                estoque = cur.fetchall()
+                estoque = _estoque_mobile(cur)
                 cur.execute("""
                     SELECT m.* FROM modelos_impressora m
                     WHERE m.ativo = 1
@@ -3164,17 +3191,14 @@ def suprimento_mobile():
     """)
     locais = cur.fetchall()
 
-    cur.execute("SELECT id, tipo_suprimento, modelo_impressora, quantidade FROM estoque WHERE ativo=TRUE ORDER BY tipo_suprimento, modelo_impressora")
-    estoque = cur.fetchall()
-
+    hoje = datetime.now().strftime('%Y-%m-%d')
+    estoque = _estoque_mobile(cur)
     cur.execute("""
         SELECT m.* FROM modelos_impressora m
         WHERE m.ativo = 1
         ORDER BY m.ordem, m.nome
     """)
     modelos = cur.fetchall()
-
-    hoje = datetime.now().strftime('%Y-%m-%d')
     return render_template('mobile_app.html', modulo='estoque', locais=locais, modelos_impressora=modelos, hoje=hoje, estoque=estoque, aba=request.args.get('aba', 'entrega'), vapid_public_key=VAPID_PUBLIC_KEY)
 
 @app.route('/suprimentos/novo', methods=['GET', 'POST'])
@@ -3311,8 +3335,9 @@ def excluir_suprimento(entrega_id):
 # ======================= VIAGENS / CHECKLIST DE SUPRIMENTOS =======================
 
 def _coletar_itens_viagem(form):
-    """Le linhas de itens (tipo, modelo, marca, quantidade) do formulario."""
+    """Le linhas de itens (tipo, cor, modelo, marca, quantidade) do formulario."""
     tipos = form.getlist('tipo_suprimento[]')
+    cores = form.getlist('cor[]')
     modelos = form.getlist('modelo_impressora[]')
     marcas = form.getlist('marca[]')
     quantidades = form.getlist('quantidade[]')
@@ -3333,6 +3358,7 @@ def _coletar_itens_viagem(form):
             continue
         itens.append({
             'tipo_suprimento': tipo,
+            'cor': (campo(cores, idx) or '').strip() or None,
             'modelo_impressora': (campo(modelos, idx) or '').strip() or None,
             'marca': (campo(marcas, idx) or '').strip() or None,
             'quantidade': quantidade,
@@ -3771,10 +3797,10 @@ def viagem_coleta(viagem_id):
     for idx, item in enumerate(itens):
         usar = (pode_usar[idx] if idx < len(pode_usar) else '1') not in ('0', 'false', '')
         cur.execute("""
-            INSERT INTO viagens_itens (viagem_id, coleta_id, tipo_suprimento, modelo_impressora,
+            INSERT INTO viagens_itens (viagem_id, coleta_id, tipo_suprimento, cor, modelo_impressora,
                                        marca, origem, fornecedor, pode_usar_cliente, quantidade_carregada)
-            VALUES (%s, %s, %s, %s, %s, 'fornecedor', %s, %s, %s)
-        """, (viagem_id, coleta_id, item['tipo_suprimento'], item['modelo_impressora'],
+            VALUES (%s, %s, %s, %s, %s, %s, 'fornecedor', %s, %s, %s)
+        """, (viagem_id, coleta_id, item['tipo_suprimento'], item['cor'], item['modelo_impressora'],
               item['marca'], fornecedor, usar, item['quantidade']))
 
     db.commit()
@@ -4420,6 +4446,7 @@ def controle_estoque():
     sql += " ORDER BY modelo_impressora, tipo_suprimento"
     cur.execute(sql, params)
     itens = cur.fetchall()
+    reservados = _reservados_estoque(cur)
 
     resultado = []
     for item in itens:
@@ -4433,7 +4460,7 @@ def controle_estoque():
             st = 'ok'
         if status and st != status:
             continue
-        resultado.append({**item, 'status': st})
+        resultado.append({**item, 'status': st, 'reservado': reservados.get(item['id'], 0)})
 
     # Agrupar por modelo (sem separar por marca)
     grupos = {}
@@ -5951,6 +5978,7 @@ def api_mobile_estoque():
         ORDER BY tipo_suprimento, modelo_impressora, marca
     """)
     itens = cur.fetchall()
+    reservados = _reservados_estoque(cur)
 
     cur.execute("SELECT DISTINCT tipo_suprimento FROM estoque WHERE ativo=TRUE ORDER BY tipo_suprimento")
     tipos = [r['tipo_suprimento'] for r in cur.fetchall()]
@@ -5963,7 +5991,7 @@ def api_mobile_estoque():
 
     return jsonify({
         'operador': g.operador_mobile,
-        'itens': [dict(i) for i in itens],
+        'itens': [{**dict(i), 'reservado': reservados.get(i['id'], 0)} for i in itens],
         'tipos': tipos,
         'modelos': [dict(m) for m in modelos],
     })
@@ -6139,9 +6167,7 @@ def _api_mobile_itens(dados):
         if not isinstance(item, dict):
             continue
         tipo = (item.get('tipo_suprimento') or '').strip()
-        cor = (item.get('cor') or '').strip()
-        if cor and not tipo.lower().endswith(cor.lower()) and tipo != 'Papel Fotografico':
-            tipo = f'{tipo} {cor}'
+        cor = (item.get('cor') or '').strip() or None
         try:
             quantidade = int(item.get('quantidade') or 0)
         except (TypeError, ValueError):
@@ -6150,11 +6176,38 @@ def _api_mobile_itens(dados):
             continue
         itens.append({
             'tipo_suprimento': tipo,
+            'cor': cor,
             'modelo_impressora': (item.get('modelo_impressora') or '').strip() or None,
             'marca': (item.get('marca') or '').strip() or None,
             'quantidade': quantidade,
         })
     return itens
+
+
+def _reservados_estoque(cur):
+    """Retorna um dict {estoque_id: quantidade} com o saldo reservado/em viagem ativa."""
+    cur.execute("""
+        SELECT e.id,
+               COALESCE(SUM(GREATEST(vi.quantidade_carregada - vi.quantidade_entregue - vi.quantidade_usada_manual, 0)), 0) AS reservado
+        FROM estoque e
+        LEFT JOIN (
+            SELECT vi.*
+            FROM viagens_itens vi
+            JOIN viagens v ON v.id = vi.viagem_id
+            WHERE v.status NOT IN ('concluido', 'cancelado')
+        ) vi ON (
+            e.tipo_suprimento = TRIM(CONCAT(vi.tipo_suprimento, ' ', COALESCE(vi.cor, '')))
+            AND (
+                (NULLIF(vi.modelo_impressora, '') IS NULL AND e.modelo_impressora IN ('', '-'))
+                OR e.modelo_impressora = UPPER(vi.modelo_impressora)
+                OR e.modelo_impressora = 'ES' || UPPER(vi.modelo_impressora)
+                OR 'ES' || e.modelo_impressora = UPPER(vi.modelo_impressora)
+            )
+            AND COALESCE(e.marca, '') = COALESCE(vi.marca, '')
+        )
+        GROUP BY e.id
+    """)
+    return {r['id']: int(r['reservado'] or 0) for r in cur.fetchall()}
 
 
 _STATUS_VIAGEM_LABEL = {
@@ -6492,10 +6545,10 @@ def api_mobile_viagem_coleta(viagem_id):
     coleta_id = cur.fetchone()['id']
     for item in itens:
         cur.execute("""
-            INSERT INTO viagens_itens (viagem_id, coleta_id, tipo_suprimento, modelo_impressora,
+            INSERT INTO viagens_itens (viagem_id, coleta_id, tipo_suprimento, cor, modelo_impressora,
                                        marca, origem, fornecedor, pode_usar_cliente, quantidade_carregada)
-            VALUES (%s, %s, %s, %s, %s, 'fornecedor', %s, %s, %s)
-        """, (viagem_id, coleta_id, item['tipo_suprimento'], item['modelo_impressora'],
+            VALUES (%s, %s, %s, %s, %s, %s, 'fornecedor', %s, %s, %s)
+        """, (viagem_id, coleta_id, item['tipo_suprimento'], item['cor'], item['modelo_impressora'],
               item['marca'], fornecedor, pode_usar, item['quantidade']))
     db.commit()
     return jsonify({'ok': True, 'coleta_id': coleta_id})
