@@ -387,7 +387,7 @@
                         <button type="button" class="btn-mini" onclick="event.stopPropagation(); abrirAjuste('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}', {{e.quantidade}}, {{e.estoque_minimo or 1}})">Ajustar</button>
                         <button type="button" class="btn-mini" onclick="event.stopPropagation(); abrirMovimentacoes('{{e.tipo_suprimento}}', '{{e.modelo_impressora or ''}}', '{{e.marca or ''}}')">Mov.</button>
                       </div>
-                      {% if e.reservado &gt; 0 %}
+                      {% if e.reservado > 0 %}
                       <div style="font-size:11px;color:#0c5460;margin-top:3px;"><i class="bi bi-truck"></i> {{e.reservado}} em viagem</div>
                       {% endif %}
                     </div>

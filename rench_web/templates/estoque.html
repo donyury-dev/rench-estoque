@@ -177,7 +177,7 @@
             <td>{% if item.marca %}<span class="badge bg-light text-dark border">{{item.marca}}</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
             <td class="text-center fw-bold">{{item.quantidade}}</td>
             <td class="text-center">
-              {% if item.reservado &gt; 0 %}
+              {% if item.reservado > 0 %}
                 <span class="badge bg-info text-dark" title="Em viagem / reservado">{{item.reservado}}</span>
               {% else %}
                 <span class="text-muted">-</span>
