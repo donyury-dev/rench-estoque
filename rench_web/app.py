@@ -1730,7 +1730,48 @@ def login_required(f):
 
 @app.context_processor
 def inject_globals():
-    return dict(vapid_public_key=VAPID_PUBLIC_KEY)
+    return dict(
+        vapid_public_key=VAPID_PUBLIC_KEY,
+        condicao_label=condicao_label,
+        condicao_badge=condicao_badge,
+        condicao_normalizada=condicao_normalizada,
+    )
+
+
+# Condições de uso padronizadas (mesmos valores no APK, web e PWA)
+_CONDICOES_USO = {
+    'nao_informada': 'Não informada',
+    'novo': 'Novo',
+    'bom': 'Bom',
+    'regular': 'Regular',
+    'ruim': 'Ruim',
+    'defeituoso': 'Com defeito',
+    'manutencao': 'Em manutenção',
+}
+# valores legados usados antes da padronizacao
+_CONDICOES_LEGADO = {'boa': 'bom', 'defeito': 'defeituoso'}
+
+
+def condicao_normalizada(valor):
+    v = (valor or '').strip()
+    return _CONDICOES_LEGADO.get(v, v)
+
+
+def condicao_label(valor):
+    return _CONDICOES_USO.get(condicao_normalizada(valor), 'Não informada')
+
+
+def condicao_badge(valor):
+    v = condicao_normalizada(valor)
+    if v in ('novo', 'bom'):
+        return 'bg-success'
+    if v in ('regular',):
+        return 'bg-info text-dark'
+    if v in ('ruim', 'defeituoso'):
+        return 'bg-danger'
+    if v == 'manutencao':
+        return 'bg-warning text-dark'
+    return 'bg-secondary'
 
 # ============================================================
 # NOTIFICACOES PUSH (PWA)
@@ -2349,8 +2390,8 @@ def movimentar(equip_id):
         setor_destino = request.form.get('setor_equipamento', '').strip() or None
         contador_mono_novo = request.form.get('contador_mono_novo', '').strip()
         contador_color_novo = request.form.get('contador_color_novo', '').strip()
-        condicao_uso = request.form.get('condicao_uso', '').strip()
-        if condicao_uso not in ('boa', 'defeito', 'manutencao'):
+        condicao_uso = condicao_normalizada(request.form.get('condicao_uso', '').strip())
+        if condicao_uso not in _CONDICOES_USO:
             flash('Informe a condição de uso do equipamento para registrar a movimentação.', 'danger')
             return redirect(url_for('movimentar', equip_id=equip_id))
 
@@ -3549,6 +3590,12 @@ def nova_viagem():
         paradas = _coletar_paradas_viagem(request.form)
         itens = _coletar_itens_viagem(request.form)
 
+        viagem_ativa = _viagem_ativa_do_operador(cur, operador_atual())
+        if viagem_ativa:
+            flash(f'Você já tem a viagem {viagem_ativa["numero"]} em andamento. '
+                  'Conclua o retorno dela antes de abrir uma nova.', 'danger')
+            return redirect(url_for('viagem_detalhe', viagem_id=viagem_ativa['id']))
+
         if not itens:
             flash('Adicione pelo menos um suprimento à viagem.', 'danger')
             return redirect(url_for('nova_viagem'))
@@ -3641,6 +3688,9 @@ def viagem_detalhe(viagem_id):
         flash('Viagem nao encontrada.', 'danger')
         return redirect(url_for('lista_viagens'))
     paradas, itens, coletas, entregas = _carregar_detalhes_viagem(cur, viagem_id)
+    if viagem['status'] == 'concluido':
+        # Viagem concluida: mostra apenas os itens que voltaram ao estoque.
+        itens = [i for i in itens if (i['quantidade_retornada'] or 0) > 0]
     return render_template('viagem_detalhe.html', viagem=viagem, paradas=paradas,
                            itens=itens, coletas=coletas, entregas=entregas,
                            estoque=_carregar_estoque(cur))
@@ -5794,8 +5844,8 @@ def mobile_equipamento_movimentar(equip_id):
         setor_destino = request.form.get('setor_equipamento', '').strip() or None
         contador_mono_novo = request.form.get('contador_mono_novo', '').strip()
         contador_color_novo = request.form.get('contador_color_novo', '').strip()
-        condicao_uso = request.form.get('condicao_uso', '').strip()
-        if condicao_uso not in ('boa', 'defeito', 'manutencao'):
+        condicao_uso = condicao_normalizada(request.form.get('condicao_uso', '').strip())
+        if condicao_uso not in _CONDICOES_USO:
             flash('Informe a condição de uso do equipamento para registrar a movimentação.', 'danger')
             return redirect(url_for('mobile_equipamento_movimentar', equip_id=equip_id))
 
@@ -6186,18 +6236,36 @@ def _api_mobile_itens(dados):
     return itens
 
 
+def _viagem_ativa_do_operador(cur, operador):
+    """Retorna a viagem em andamento do operador, se existir."""
+    if not operador:
+        return None
+    cur.execute("""
+        SELECT id, numero, status FROM viagens
+        WHERE responsavel_separacao = %s
+          AND status = ANY(%s)
+        ORDER BY id DESC LIMIT 1
+    """, (operador, list(_STATUS_VIAGENS_ATIVAS)))
+    return cur.fetchone()
+
+
+_STATUS_VIAGENS_ATIVAS = ('separacao', 'conferido', 'em_rota', 'aguardando_retorno')
+
+
 def _reservados_estoque(cur):
     """Retorna um dict {estoque_id: quantidade} com o saldo reservado/em viagem ativa."""
     try:
         cur.execute("""
             SELECT e.id,
-                   COALESCE(SUM(GREATEST(vi.quantidade_carregada - vi.quantidade_entregue - vi.quantidade_usada_manual, 0)), 0) AS reservado
+                   COALESCE(SUM(GREATEST(
+                       vi.quantidade_carregada - vi.quantidade_entregue
+                       - vi.quantidade_usada_manual - COALESCE(vi.quantidade_retornada, 0), 0)), 0) AS reservado
             FROM estoque e
-            LEFT JOIN (
+            JOIN (
                 SELECT vi.*
                 FROM viagens_itens vi
                 JOIN viagens v ON v.id = vi.viagem_id
-                WHERE v.status NOT IN ('concluido', 'cancelado')
+                WHERE v.status = ANY(%s)
             ) vi ON (
                 e.tipo_suprimento = TRIM(CONCAT(vi.tipo_suprimento, ' ', COALESCE(vi.cor, '')))
                 AND (
@@ -6209,7 +6277,7 @@ def _reservados_estoque(cur):
                 AND COALESCE(e.marca, '') = COALESCE(vi.marca, '')
             )
             GROUP BY e.id
-        """)
+        """, (list(_STATUS_VIAGENS_ATIVAS),))
         return {r['id']: int(r['reservado'] or 0) for r in cur.fetchall()}
     except Exception as exc:
         app.logger.error('Erro ao calcular saldo reservado: %s', exc)
@@ -6273,10 +6341,13 @@ def api_mobile_viagem_detalhe(viagem_id):
     paradas, itens, coletas, entregas = _carregar_detalhes_viagem(cur, viagem_id)
     d = dict(viagem)
     d['status_label'] = _STATUS_VIAGEM_LABEL.get(viagem['status'], viagem['status'])
+    itens_json = [dict(i) for i in itens]
+    if viagem['status'] == 'concluido':
+        itens_json = [i for i in itens_json if (i.get('quantidade_retornada') or 0) > 0]
     return jsonify({
         'viagem': d,
         'paradas': [dict(p) for p in paradas],
-        'itens': [dict(i) for i in itens],
+        'itens': itens_json,
         'coletas': [dict(c) for c in coletas],
         'entregas': [dict(e) for e in entregas],
     })
@@ -6337,6 +6408,15 @@ def api_mobile_viagem_criar():
 
     db = get_db()
     cur = db.cursor()
+
+    viagem_ativa = _viagem_ativa_do_operador(cur, g.operador_mobile)
+    if viagem_ativa:
+        return jsonify({
+            'erro': f'Você já tem a viagem {viagem_ativa["numero"]} em andamento. '
+                    'Conclua o retorno dela antes de abrir uma nova.',
+            'viagem_ativa_id': viagem_ativa['id'],
+        }), 400
+
     cur.execute("SELECT nextval('viagem_numero_seq') AS seq")
     seq = int(cur.fetchone()['seq'])
     numero = f"VJ-{seq:06d}"
@@ -6809,6 +6889,9 @@ def api_mobile_equipamento_movimentar(equip_id):
     destino_unidade_id = dados.get('destino_unidade_id')
     contador_mono_novo = (str(dados.get('contador_mono_novo') or '')).strip()
     contador_color_novo = (str(dados.get('contador_color_novo') or '')).strip()
+    condicao_uso_novo = condicao_normalizada((dados.get('condicao_uso_novo') or '').strip())
+    if condicao_uso_novo and condicao_uso_novo not in _CONDICOES_USO:
+        condicao_uso_novo = None
 
     if not tipo_mov:
         return jsonify({'erro': 'Informe o tipo de movimentação.'}), 400
@@ -6847,9 +6930,11 @@ def api_mobile_equipamento_movimentar(equip_id):
 
     cur.execute("""
         UPDATE equipamentos SET unidade_id=%s, local_atual_nome=%s, cliente_atual=%s,
-            contador_mono=%s, contador_color=%s, setor_equipamento=%s WHERE id=%s
+            contador_mono=%s, contador_color=%s, setor_equipamento=%s,
+            condicao_uso=COALESCE(NULLIF(%s, ''), condicao_uso) WHERE id=%s
     """, (destino_unidade_id, destino_unidade_nome, None,
-          contador_mono_novo_int, contador_color_novo_int, setor_destino, equip_id))
+          contador_mono_novo_int, contador_color_novo_int, setor_destino,
+          condicao_uso_novo, equip_id))
     db.commit()
     return jsonify({'ok': True})
 
@@ -6928,8 +7013,12 @@ def _executar_substituicao(dados, operador_padrao):
     equip_substituido_id = dados.get('equip_substituido_id')
     destino_substituido = (dados.get('destino_substituido') or '').strip()
     assistencia_empresa_id = dados.get('assistencia_empresa_id')
-    condicao_uso_substituido = (dados.get('condicao_uso_substituido') or '').strip()
-    condicao_uso_novo = (dados.get('condicao_uso_novo') or '').strip()
+    condicao_uso_substituido = condicao_normalizada((dados.get('condicao_uso_substituido') or '').strip())
+    if condicao_uso_substituido and condicao_uso_substituido not in _CONDICOES_USO:
+        condicao_uso_substituido = None
+    condicao_uso_novo = condicao_normalizada((dados.get('condicao_uso_novo') or '').strip())
+    if condicao_uso_novo and condicao_uso_novo not in _CONDICOES_USO:
+        condicao_uso_novo = None
     data_mov = (dados.get('data_movimentacao') or '').strip() or date.today().isoformat()
     responsavel = (dados.get('responsavel') or operador_padrao).strip()
     obs = (dados.get('observacoes') or '').strip() or None

@@ -85,15 +85,7 @@
           <small class="text-muted">{{e.cliente_atual or e.empresa_nome or '-'}}</small>
         </td>
         <td>
-          {% if e.condicao_uso == 'boa' %}
-            <span class="badge bg-success fs-6 px-3 py-2">✔ Boa — pronta para uso</span>
-          {% elif e.condicao_uso == 'defeito' %}
-            <span class="badge bg-danger fs-6 px-3 py-2">✖ Com defeito</span>
-          {% elif e.condicao_uso == 'manutencao' %}
-            <span class="badge bg-warning text-dark fs-6 px-3 py-2">⚠ Em manutenção</span>
-          {% else %}
-            <span class="badge bg-secondary fs-6 px-3 py-2">Condição não informada</span>
-          {% endif %}
+          <span class="badge {{condicao_badge(e.condicao_uso)}} fs-6 px-3 py-2">{{condicao_label(e.condicao_uso)}}</span>
         </td>
         <td>
           {% if e.observacoes %}

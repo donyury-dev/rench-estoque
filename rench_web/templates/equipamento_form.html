@@ -47,10 +47,9 @@
       <div class="col-md-3">
         <label class="form-label fw-bold">Condição de uso *</label>
         <select name="condicao_uso" class="form-select" required>
-          <option value="boa">Boa — pronta para uso</option>
-          <option value="defeito">Com defeito</option>
-          <option value="manutencao">Em manutenção</option>
-          <option value="nao_informada">Não informada</option>
+          {% for valor, rotulo in [('novo','Novo'), ('bom','Bom'), ('regular','Regular'), ('ruim','Ruim'), ('defeituoso','Com defeito'), ('manutencao','Em manutenção'), ('nao_informada','Não informada')] %}
+          <option value="{{valor}}">{{rotulo}}</option>
+          {% endfor %}
         </select>
       </div>
 

@@ -127,15 +127,16 @@
           <div class="col-md-6">
             <label class="form-label fw-bold">Condição de uso do equipamento *</label>
             <select name="condicao_uso" class="form-select" required>
-              {% if equip.condicao_uso and equip.condicao_uso != 'nao_informada' %}
-              <option value="boa" {{'selected' if equip.condicao_uso=='boa' else ''}}>Boa — pronta para uso</option>
-              <option value="defeito" {{'selected' if equip.condicao_uso=='defeito' else ''}}>Com defeito</option>
-              <option value="manutencao" {{'selected' if equip.condicao_uso=='manutencao' else ''}}>Em manutenção</option>
+              {% set cond_atual = condicao_normalizada(equip.condicao_uso or '') %}
+              {% if cond_atual and cond_atual != 'nao_informada' %}
+              {% for valor, rotulo in [('novo','Novo'), ('bom','Bom'), ('regular','Regular'), ('ruim','Ruim'), ('defeituoso','Com defeito'), ('manutencao','Em manutenção')] %}
+              <option value="{{valor}}" {{'selected' if cond_atual==valor else ''}}>{{rotulo}}</option>
+              {% endfor %}
               {% else %}
               <option value="" selected disabled>Selecione a condição...</option>
-              <option value="boa">Boa — pronta para uso</option>
-              <option value="defeito">Com defeito</option>
-              <option value="manutencao">Em manutenção</option>
+              {% for valor, rotulo in [('novo','Novo'), ('bom','Bom'), ('regular','Regular'), ('ruim','Ruim'), ('defeituoso','Com defeito'), ('manutencao','Em manutenção')] %}
+              <option value="{{valor}}">{{rotulo}}</option>
+              {% endfor %}
               {% endif %}
             </select>
             <small class="text-muted">Condição do equipamento após esta movimentação</small>

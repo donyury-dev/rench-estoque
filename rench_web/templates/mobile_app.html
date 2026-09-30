@@ -150,10 +150,11 @@
     .acoes-mini{display:flex;gap:5px;margin-top:4px;}
     .btn-mini{background:#fff;border:1px solid #850001;color:#850001;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:700;}
     .condicao-mobile{display:inline-block;margin-top:5px;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700;}
-    .condicao-boa{background:#d1e7dd;color:#0f5132;}
-    .condicao-defeito{background:#f8d7da;color:#842029;}
+    .condicao-novo,.condicao-bom{background:#d1e7dd;color:#0f5132;}
+    .condicao-regular{background:#cff4fc;color:#055160;}
+    .condicao-ruim,.condicao-defeituoso{background:#f8d7da;color:#842029;}
     .condicao-manutencao{background:#fff3cd;color:#664d03;}
-    .condicao-nao-informada{background:#e2e3e5;color:#41464b;}
+    .condicao-nao_informada{background:#e2e3e5;color:#41464b;}
     /* Modo app APK: apenas a aba Estoque do modulo de suprimentos */
     body.app-estoque-only #modulo-estoque .nav-tabs{display:none !important;}
     .mobile-categoria{margin:8px 0 2px;padding:6px 8px;border-bottom:1px solid #eee;color:#850001;font-size:13px;font-weight:700;}
@@ -746,8 +747,8 @@
                     <div class="modelo">{{e.modelo or 'Sem modelo'}}</div>
                     <div class="codigo">{{e.codigo}}</div>
                     <div class="unidade-sub" style="font-size:.8rem;color:#6c757d;">{{e.local_nome or 'Sem unidade'}}</div>
-                    <div class="condicao-mobile {{'condicao-boa' if e.condicao_uso=='boa' else ('condicao-defeito' if e.condicao_uso=='defeito' else ('condicao-manutencao' if e.condicao_uso=='manutencao' else 'condicao-nao-informada'))}}">
-                      {{'Boa — pronta para uso' if e.condicao_uso=='boa' else ('Com defeito' if e.condicao_uso=='defeito' else ('Em manutenção' if e.condicao_uso=='manutencao' else 'Condição não informada'))}}
+                    <div class="condicao-mobile condicao-{{condicao_normalizada(e.condicao_uso or 'nao_informada')}}">
+                      {{condicao_label(e.condicao_uso)}}
                     </div>
                   </div>
                 </div>
@@ -809,8 +810,11 @@
                 <label>Condição de uso *</label>
                 <select name="condicao_uso" required>
                   <option value="nao_informada" selected>Não informada</option>
-                  <option value="boa">Boa — pronta para uso</option>
-                  <option value="defeito">Com defeito</option>
+                  <option value="novo">Novo</option>
+                  <option value="bom">Bom</option>
+                  <option value="regular">Regular</option>
+                  <option value="ruim">Ruim</option>
+                  <option value="defeituoso">Com defeito</option>
                   <option value="manutencao">Em manutenção</option>
                 </select>
               </div>
@@ -1000,7 +1004,7 @@
               <p><strong>Patrimônio:</strong> {{equip.patrimonio or '-'}}</p>
               <p><strong>Local:</strong> {{equip.local_nome or 'Não definido'}} {{' - ' + equip.setor_equipamento if equip.setor_equipamento else ''}}</p>
               <p><strong>Status:</strong> {{equip.status}}</p>
-              <p><strong>Condição de uso:</strong> <span class="condicao-mobile {{'condicao-boa' if equip.condicao_uso=='boa' else ('condicao-defeito' if equip.condicao_uso=='defeito' else ('condicao-manutencao' if equip.condicao_uso=='manutencao' else 'condicao-nao-informada'))}}">{{'Boa — pronta para uso' if equip.condicao_uso=='boa' else ('Com defeito' if equip.condicao_uso=='defeito' else ('Em manutenção' if equip.condicao_uso=='manutencao' else 'Condição não informada'))}}</span></p>
+              <p><strong>Condição de uso:</strong> <span class="condicao-mobile condicao-{{condicao_normalizada(equip.condicao_uso or 'nao_informada')}}">{{condicao_label(equip.condicao_uso)}}</span></p>
               {% if equip.tipo_equipamento == 'impressora' %}
                 <p><strong>Contador Mono:</strong> {{equip.contador_mono or 0}}</p>
                 <p><strong>Contador Color:</strong> {{equip.contador_color or 0}}</p>
@@ -1101,10 +1105,10 @@
               <div class="form-group">
                 <label>Condição de uso *</label>
                 <select name="condicao_uso" required>
-                  <option value="boa" {{'selected' if equip.condicao_uso=='boa' else ''}}>Boa — pronta para uso</option>
-                  <option value="defeito" {{'selected' if equip.condicao_uso=='defeito' else ''}}>Com defeito</option>
-                  <option value="manutencao" {{'selected' if equip.condicao_uso=='manutencao' else ''}}>Em manutenção</option>
-                  <option value="nao_informada" {{'selected' if not equip.condicao_uso or equip.condicao_uso=='nao_informada' else ''}}>Não informada</option>
+                  {% set cond_atual_edit = condicao_normalizada(equip.condicao_uso or 'nao_informada') %}
+                  {% for valor, rotulo in [('novo','Novo'), ('bom','Bom'), ('regular','Regular'), ('ruim','Ruim'), ('defeituoso','Com defeito'), ('manutencao','Em manutenção'), ('nao_informada','Não informada')] %}
+                  <option value="{{valor}}" {{'selected' if cond_atual_edit==valor else ''}}>{{rotulo}}</option>
+                  {% endfor %}
                 </select>
               </div>
 
@@ -1249,15 +1253,16 @@
               <div class="form-group">
                 <label>Condição de uso *</label>
                 <select name="condicao_uso" required>
-                  {% if equip.condicao_uso and equip.condicao_uso != 'nao_informada' %}
-                  <option value="boa" {{'selected' if equip.condicao_uso=='boa' else ''}}>Boa — pronta para uso</option>
-                  <option value="defeito" {{'selected' if equip.condicao_uso=='defeito' else ''}}>Com defeito</option>
-                  <option value="manutencao" {{'selected' if equip.condicao_uso=='manutencao' else ''}}>Em manutenção</option>
+                  {% set cond_atual_mov = condicao_normalizada(equip.condicao_uso or '') %}
+                  {% if cond_atual_mov and cond_atual_mov != 'nao_informada' %}
+                  {% for valor, rotulo in [('novo','Novo'), ('bom','Bom'), ('regular','Regular'), ('ruim','Ruim'), ('defeituoso','Com defeito'), ('manutencao','Em manutenção')] %}
+                  <option value="{{valor}}" {{'selected' if cond_atual_mov==valor else ''}}>{{rotulo}}</option>
+                  {% endfor %}
                   {% else %}
                   <option value="" selected disabled>Selecione a condição...</option>
-                  <option value="boa">Boa — pronta para uso</option>
-                  <option value="defeito">Com defeito</option>
-                  <option value="manutencao">Em manutenção</option>
+                  {% for valor, rotulo in [('novo','Novo'), ('bom','Bom'), ('regular','Regular'), ('ruim','Ruim'), ('defeituoso','Com defeito'), ('manutencao','Em manutenção')] %}
+                  <option value="{{valor}}">{{rotulo}}</option>
+                  {% endfor %}
                   {% endif %}
                 </select>
               </div>
