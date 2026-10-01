@@ -1707,8 +1707,8 @@ SENHA_PADRAO_HASH = hashlib.sha256('ipascnma'.encode()).hexdigest()
 # Equipe que opera o sistema (login unico compartilhado)
 OPERADORES = ['Kaio', 'Renan', 'Gilvan', 'Christian']
 
-# Saidas sem viagem so sao permitidas para envio pelo escritorio ou retirada
-ENVIOS_SEM_VIAGEM = {'Enviado via motoboy', 'Enviado via correio', 'Retirado no local'}
+# Saidas sem viagem: qualquer forma de envio é aceita (a forma fica registrada
+# no campo de observações da entrega).
 
 
 def operador_atual():
@@ -3148,12 +3148,6 @@ def suprimento_mobile():
             modelos = cur.fetchall()
             return render_template('mobile_app.html', modulo='estoque', locais=locais, modelos_impressora=modelos, hoje=data_entrega, estoque=estoque, aba='entrega', vapid_public_key=VAPID_PUBLIC_KEY)
 
-        if not viagem_id_saida and observacoes not in ENVIOS_SEM_VIAGEM:
-            flash('Saída sem viagem só é permitida para envio pelo escritório '
-                  '(motoboy/correio) ou retirada no local. Para entregar em '
-                  'atendimento, a saída deve estar na carga de uma viagem '
-                  'conferida.', 'danger')
-            return redirect(url_for('suprimento_mobile', aba='entrega'))
         if parada_resolvida:
             parada_id = parada_resolvida
         cur.execute("""
@@ -3267,12 +3261,6 @@ def novo_suprimento():
             cur, parada_id, unidade_id, itens)
         if erros_viagem:
             flash('Saída bloqueada: ' + ' '.join(erros_viagem), 'danger')
-            return redirect(url_for('novo_suprimento'))
-        if not viagem_id_saida and observacoes not in ENVIOS_SEM_VIAGEM:
-            flash('Saída sem viagem só é permitida para envio pelo escritório '
-                  '(motoboy/correio) ou retirada no local. Para entregar em '
-                  'atendimento, a saída deve estar na carga de uma viagem '
-                  'conferida.', 'danger')
             return redirect(url_for('novo_suprimento'))
         if parada_resolvida:
             parada_id = parada_resolvida
@@ -7336,11 +7324,6 @@ def api_mobile_entrega_criar():
         cur, parada_id, unidade_id, itens)
     if erros_viagem:
         return jsonify({'erro': 'Saída bloqueada: ' + ' '.join(erros_viagem)}), 400
-    if not viagem_id_saida and observacoes not in ENVIOS_SEM_VIAGEM:
-        return jsonify({'erro': 'Saída sem viagem só é permitida para envio pelo escritório '
-                                '(motoboy/correio) ou retirada no local. Para entregar em '
-                                'atendimento, a saída deve estar na carga de uma viagem '
-                                'conferida.'}), 400
     if parada_resolvida:
         parada_id = parada_resolvida
 
