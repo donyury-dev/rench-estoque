@@ -1455,6 +1455,27 @@
               {% if i.marca %} · {{i.marca}}{% endif %}
               · entregue {{i.quantidade_entregue}} · retorno esperado {{esperado}}
             </div>
+            {% if viagem.status == 'separacao' %}
+            <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
+              <button type="button" id="conf-ok-{{i.id}}"
+                      class="btn btn-sm {{'btn-success' if i.conferido else 'btn-outline-success'}}"
+                      onclick="confItemOk({{ i.id }})">
+                <i class="bi bi-{{'check-circle-fill' if i.conferido else 'check-circle'}}"></i>
+                {{'Conferido' if i.conferido else 'Conferir'}}
+              </button>
+              <div class="d-flex align-items-center gap-1">
+                <span class="small text-muted">Falta:</span>
+                <button type="button" class="btn btn-sm btn-outline-danger" style="padding:0 8px;line-height:1.4" onclick="confItemFalta({{ i.id }}, -1)">&minus;</button>
+                <span id="conf-falta-{{i.id}}" class="fw-bold {{'text-danger' if i.quantidade_faltante else 'text-muted'}}">{{ i.quantidade_faltante or 0 }}</span>
+                <button type="button" class="btn btn-sm btn-outline-danger" style="padding:0 8px;line-height:1.4" onclick="confItemFalta({{ i.id }}, 1)">+</button>
+              </div>
+            </div>
+            {% elif i.conferido or i.quantidade_faltante %}
+            <div class="small mt-1">
+              {% if i.conferido %}<span class="badge bg-success">Item conferido</span>{% endif %}
+              {% if i.quantidade_faltante %}<span class="badge bg-danger">Faltou {{ i.quantidade_faltante }}</span>{% endif %}
+            </div>
+            {% endif %}
             {% if i.divergencia %}<div class="small text-danger"><i class="bi bi-exclamation-triangle"></i> {{i.divergencia}}</div>{% endif %}
           </div>
           {% else %}
@@ -1655,6 +1676,36 @@
   </template>
 
   <script>
+    {% if viagem is defined %}
+    // ─── Conferência por item (tique OK / falta) ───────────────────────────
+    function confItemUrl(itemId) {
+      return '{{ url_for("viagem_item_conferir", viagem_id=viagem.id, item_id=0) }}'
+        .replace('/0/', '/' + itemId + '/');
+    }
+    async function confItemPost(itemId, conferido, faltante) {
+      const fd = new FormData();
+      fd.append('origem', 'mobile');
+      if (conferido) fd.append('conferido', '1');
+      if (faltante !== null) fd.append('faltante', String(faltante));
+      try {
+        const r = await fetch(confItemUrl(itemId), { method: 'POST', body: fd });
+        if (!r.ok) throw new Error('erro');
+        location.reload();
+      } catch (e) {
+        alert('Não foi possível registrar a conferência do item.');
+      }
+    }
+    function confItemOk(itemId) {
+      const btn = document.getElementById('conf-ok-' + itemId);
+      confItemPost(itemId, !(btn && btn.classList.contains('btn-success')), null);
+    }
+    function confItemFalta(itemId, delta) {
+      const span = document.getElementById('conf-falta-' + itemId);
+      const atual = parseInt((span && span.textContent) || '0', 10) || 0;
+      confItemPost(itemId, false, Math.max(0, atual + delta));
+    }
+    {% endif %}
+
     const container = document.getElementById('itens-container');
     const template = document.getElementById('item-template');
     const MODELOS = {{ modelos_impressora|default([])|tojson }};

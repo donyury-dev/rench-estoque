@@ -824,6 +824,8 @@ def init_db():
         )
     """)
     cur.execute("ALTER TABLE viagens_itens ADD COLUMN IF NOT EXISTS cor VARCHAR(50)")
+    cur.execute("ALTER TABLE viagens_itens ADD COLUMN IF NOT EXISTS conferido BOOLEAN NOT NULL DEFAULT FALSE")
+    cur.execute("ALTER TABLE viagens_itens ADD COLUMN IF NOT EXISTS quantidade_faltante INTEGER NOT NULL DEFAULT 0")
 
     cur.execute("CREATE SEQUENCE IF NOT EXISTS viagem_numero_seq START 1")
     cur.execute("""
@@ -3709,6 +3711,51 @@ def viagem_conferir(viagem_id):
     return _redirect_viagem(viagem_id)
 
 
+def _atualizar_conferencia_item(cur, viagem_id, item_id, conferido, faltante):
+    """Marca um item da viagem como conferido (tique OK) ou registra quantidade faltante."""
+    cur.execute("""
+        SELECT quantidade_carregada FROM viagens_itens
+        WHERE id=%s AND viagem_id=%s
+    """, (item_id, viagem_id))
+    row = cur.fetchone()
+    if not row:
+        return False
+    max_q = row['quantidade_carregada'] or 0
+    try:
+        falta = int(faltante or 0)
+    except (TypeError, ValueError):
+        falta = 0
+    if conferido:
+        falta = 0
+    falta = max(0, min(falta, max_q))
+    cur.execute("""
+        UPDATE viagens_itens SET conferido=%s, quantidade_faltante=%s
+        WHERE id=%s AND viagem_id=%s
+    """, (bool(conferido), falta, item_id, viagem_id))
+    return True
+
+
+@app.route('/viagens/<int:viagem_id>/itens/<int:item_id>/conferir', methods=['POST'])
+@login_required
+def viagem_item_conferir(viagem_id, item_id):
+    db = get_db()
+    cur = db.cursor()
+    if not _buscar_viagem(cur, viagem_id):
+        flash('Viagem nao encontrada.', 'danger')
+        return redirect(url_for('lista_viagens'))
+    dados = request.get_json(silent=True) if request.is_json else request.form
+    conferido = str((dados or {}).get('conferido', '')).lower() in ('1', 'true', 'on', 'sim')
+    if not _atualizar_conferencia_item(cur, viagem_id, item_id, conferido, (dados or {}).get('faltante')):
+        db.rollback()
+        flash('Item nao encontrado.', 'danger')
+        return _redirect_viagem(viagem_id)
+    db.commit()
+    if request.is_json:
+        return jsonify({'ok': True})
+    flash('Conferência do item atualizada.', 'success')
+    return _redirect_viagem(viagem_id)
+
+
 @app.route('/viagens/<int:viagem_id>/itens/adicionar', methods=['POST'])
 @login_required
 def viagem_item_adicionar(viagem_id):
@@ -6463,6 +6510,21 @@ def api_mobile_viagem_conferir(viagem_id):
     """, (responsavel, viagem_id))
     db.commit()
     return jsonify({'ok': True, 'status': 'conferido'})
+
+
+@app.route('/api/mobile/viagens/<int:viagem_id>/itens/<int:item_id>/conferir', methods=['POST'])
+@api_mobile_auth
+def api_mobile_viagem_item_conferir(viagem_id, item_id):
+    """Tique de conferência por item (OK ou quantidade faltante)."""
+    db = get_db()
+    cur = db.cursor()
+    dados = request.get_json(silent=True) or {}
+    conferido = bool(dados.get('conferido'))
+    if not _atualizar_conferencia_item(cur, viagem_id, item_id, conferido, dados.get('faltante')):
+        db.rollback()
+        return jsonify({'erro': 'Item nao encontrado.'}), 404
+    db.commit()
+    return jsonify({'ok': True, 'conferido': conferido})
 
 
 @app.route('/api/mobile/viagens/<int:viagem_id>/iniciar', methods=['POST'])
