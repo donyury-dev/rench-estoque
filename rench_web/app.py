@@ -3387,10 +3387,13 @@ def _coletar_itens_viagem(form):
             quantidade = 0
         if quantidade <= 0:
             continue
+        modelo = (campo(modelos, idx) or '').strip() or None
+        if 'transformar' in tipo.lower() and (modelo or '').upper() != 'PARA TRANSFORMAR':
+            modelo = 'PARA TRANSFORMAR'
         itens.append({
             'tipo_suprimento': tipo,
             'cor': (campo(cores, idx) or '').strip() or None,
-            'modelo_impressora': (campo(modelos, idx) or '').strip() or None,
+            'modelo_impressora': modelo,
             'marca': (campo(marcas, idx) or '').strip() or None,
             'quantidade': quantidade,
         })
@@ -3616,10 +3619,10 @@ def nova_viagem():
 
         for item in itens:
             cur.execute("""
-                INSERT INTO viagens_itens (viagem_id, tipo_suprimento, modelo_impressora, marca,
+                INSERT INTO viagens_itens (viagem_id, tipo_suprimento, cor, modelo_impressora, marca,
                                            origem, quantidade_carregada)
-                VALUES (%s, %s, %s, %s, 'rench', %s)
-            """, (viagem_id, item['tipo_suprimento'], item['modelo_impressora'], item['marca'], item['quantidade']))
+                VALUES (%s, %s, %s, %s, %s, 'rench', %s)
+            """, (viagem_id, item['tipo_suprimento'], item.get('cor'), item['modelo_impressora'], item['marca'], item['quantidade']))
 
         db.commit()
         flash(f'Viagem {numero} criada com sucesso!', 'success')
@@ -3776,9 +3779,11 @@ def viagem_item_adicionar(viagem_id):
         cur.execute("""
             SELECT id FROM viagens_itens
             WHERE viagem_id=%s AND origem='rench' AND tipo_suprimento=%s
+              AND COALESCE(cor,'')=COALESCE(%s,'')
               AND COALESCE(modelo_impressora,'')=COALESCE(%s,'')
               AND COALESCE(marca,'')=COALESCE(%s,'')
-        """, (viagem_id, item['tipo_suprimento'], item['modelo_impressora'], item['marca']))
+        """, (viagem_id, item['tipo_suprimento'], item.get('cor'),
+              item['modelo_impressora'], item['marca']))
         row = cur.fetchone()
         if row:
             cur.execute("""
@@ -3787,10 +3792,10 @@ def viagem_item_adicionar(viagem_id):
             """, (item['quantidade'], row['id']))
         else:
             cur.execute("""
-                INSERT INTO viagens_itens (viagem_id, tipo_suprimento, modelo_impressora, marca,
+                INSERT INTO viagens_itens (viagem_id, tipo_suprimento, cor, modelo_impressora, marca,
                                            origem, quantidade_carregada)
-                VALUES (%s, %s, %s, %s, 'rench', %s)
-            """, (viagem_id, item['tipo_suprimento'], item['modelo_impressora'],
+                VALUES (%s, %s, %s, %s, %s, 'rench', %s)
+            """, (viagem_id, item['tipo_suprimento'], item.get('cor'), item['modelo_impressora'],
                   item['marca'], item['quantidade']))
     db.commit()
     flash('Itens adicionados à viagem.', 'success')
@@ -6261,10 +6266,13 @@ def _api_mobile_itens(dados):
             quantidade = 0
         if not tipo or quantidade <= 0:
             continue
+        modelo = (item.get('modelo_impressora') or '').strip() or None
+        if 'transformar' in tipo.lower() and (modelo or '').upper() != 'PARA TRANSFORMAR':
+            modelo = 'PARA TRANSFORMAR'
         itens.append({
             'tipo_suprimento': tipo,
             'cor': cor,
-            'modelo_impressora': (item.get('modelo_impressora') or '').strip() or None,
+            'modelo_impressora': modelo,
             'marca': (item.get('marca') or '').strip() or None,
             'quantidade': quantidade,
         })
@@ -6477,10 +6485,10 @@ def api_mobile_viagem_criar():
 
     for item in itens:
         cur.execute("""
-            INSERT INTO viagens_itens (viagem_id, tipo_suprimento, modelo_impressora, marca,
+            INSERT INTO viagens_itens (viagem_id, tipo_suprimento, cor, modelo_impressora, marca,
                                        origem, quantidade_carregada)
-            VALUES (%s, %s, %s, %s, 'rench', %s)
-        """, (viagem_id, item['tipo_suprimento'], item['modelo_impressora'],
+            VALUES (%s, %s, %s, %s, %s, 'rench', %s)
+        """, (viagem_id, item['tipo_suprimento'], item.get('cor'), item['modelo_impressora'],
               item['marca'], item['quantidade']))
 
     db.commit()
@@ -6564,9 +6572,11 @@ def api_mobile_viagem_item_adicionar(viagem_id):
         cur.execute("""
             SELECT id FROM viagens_itens
             WHERE viagem_id=%s AND origem='rench' AND tipo_suprimento=%s
+              AND COALESCE(cor,'')=COALESCE(%s,'')
               AND COALESCE(modelo_impressora,'')=COALESCE(%s,'')
               AND COALESCE(marca,'')=COALESCE(%s,'')
-        """, (viagem_id, item['tipo_suprimento'], item['modelo_impressora'], item['marca']))
+        """, (viagem_id, item['tipo_suprimento'], item.get('cor'),
+              item['modelo_impressora'], item['marca']))
         row = cur.fetchone()
         if row:
             cur.execute("""
@@ -6575,10 +6585,10 @@ def api_mobile_viagem_item_adicionar(viagem_id):
             """, (item['quantidade'], row['id']))
         else:
             cur.execute("""
-                INSERT INTO viagens_itens (viagem_id, tipo_suprimento, modelo_impressora, marca,
+                INSERT INTO viagens_itens (viagem_id, tipo_suprimento, cor, modelo_impressora, marca,
                                            origem, quantidade_carregada)
-                VALUES (%s, %s, %s, %s, 'rench', %s)
-            """, (viagem_id, item['tipo_suprimento'], item['modelo_impressora'],
+                VALUES (%s, %s, %s, %s, %s, 'rench', %s)
+            """, (viagem_id, item['tipo_suprimento'], item.get('cor'), item['modelo_impressora'],
                   item['marca'], item['quantidade']))
     db.commit()
     return jsonify({'ok': True})
