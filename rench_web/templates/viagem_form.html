@@ -117,13 +117,14 @@ function addParada(){
              placeholder="Digite para buscar a unidade..." oninput="syncParadaUnidade(this)" required>
       <input type="hidden" class="parada-unidade" name="parada_unidade_id[]">
       <button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirChamados(this)"><i class="bi bi-ticket"></i> Chamado</button>
-      <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.parada-row').remove()"><i class="bi bi-x-lg"></i></button>
+      <button type="button" class="btn btn-sm btn-outline-danger" onclick="removerParada(this)"><i class="bi bi-x-lg"></i></button>
     </div>
     <input type="hidden" class="parada-chamado-id" name="parada_chamado_id[]" value="">
     <input type="hidden" class="parada-protocolo" name="parada_chamado_protocolo[]" value="">
     <input type="hidden" class="parada-chamados-json" name="parada_chamados_json[]" value="[]">
     <div class="parada-info small text-muted">Sem chamado vinculado.</div>`;
   document.getElementById('lista-paradas').appendChild(div);
+  atualizarOpcoesParadasItem();
 }
 
 function syncParadaUnidade(input){
@@ -132,6 +133,12 @@ function syncParadaUnidade(input){
   const local = LOCAIS.find(l => (l.unidade + ' — ' + l.empresa).toLowerCase() === texto
     || l.unidade.toLowerCase() === texto);
   row.querySelector('.parada-unidade').value = local ? local.unidade_id : '';
+  atualizarOpcoesParadasItem();
+}
+
+function removerParada(btn){
+  btn.closest('.parada-row').remove();
+  atualizarOpcoesParadasItem();
 }
 
 function addItem(){
@@ -152,6 +159,12 @@ function addItem(){
       <input type="number" class="form-control form-control-sm text-center" style="max-width:90px" name="quantidade[]" value="1" min="1" required>
       <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.item-row').remove()"><i class="bi bi-x-lg"></i></button>
     </div>
+    <div class="d-flex align-items-center gap-2 mt-1">
+      <span class="small text-muted" style="white-space:nowrap;">Deixar em:</span>
+      <select class="form-select form-select-sm item-parada">
+        <option value="">Fica no carro (sem destino fixo)</option>
+      </select>
+    </div>
     <input type="hidden" name="tipo_suprimento[]" value="">
     <input type="hidden" name="modelo_impressora[]" value="">
     <input type="hidden" name="marca[]" value="">`;
@@ -163,6 +176,27 @@ function addItem(){
     opt.value = modelo;
     opt.textContent = modelo;
     selectModelo.appendChild(opt);
+  });
+  atualizarOpcoesParadasItem();
+}
+
+function paradasValidas(){
+  return [...document.querySelectorAll('.parada-row')]
+    .filter(r => r.querySelector('.parada-unidade').value);
+}
+
+function atualizarOpcoesParadasItem(){
+  const ops = paradasValidas();
+  document.querySelectorAll('.item-row').forEach(row => {
+    const sel = row.querySelector('.item-parada');
+    if(!sel) return;
+    const atual = sel.value;
+    sel.innerHTML = '<option value="">Fica no carro (sem destino fixo)</option>';
+    ops.forEach((r, i) => {
+      const nome = r.querySelector('.parada-unidade-busca').value.trim() || ('Parada ' + (i + 1));
+      sel.add(new Option((i + 1) + 'ª parada — ' + nome, String(i)));
+    });
+    sel.value = atual && [...sel.options].some(o => o.value === atual) ? atual : '';
   });
 }
 
@@ -284,7 +318,16 @@ document.getElementById('form-viagem').addEventListener('submit', (e) => {
   if(!document.querySelector('.item-row')){
     e.preventDefault();
     alert('Adicione pelo menos um suprimento à viagem.');
+    return;
   }
+  // grava o destino (parada) escolhido de cada item, alinhado por ordem
+  document.querySelectorAll('.item-row').forEach(row => {
+    const inp = document.createElement('input');
+    inp.type = 'hidden';
+    inp.name = 'item_parada[]';
+    inp.value = row.querySelector('.item-parada')?.value || '';
+    row.appendChild(inp);
+  });
 });
 
 addParada();

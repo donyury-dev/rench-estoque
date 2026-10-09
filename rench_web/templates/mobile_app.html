@@ -1455,6 +1455,9 @@
               {% if i.marca %} · {{i.marca}}{% endif %}
               · entregue {{i.quantidade_entregue}} · retorno esperado {{esperado}}
             </div>
+            {% if i.parada_unidade %}
+            <div class="small" style="color:#0a58ca"><i class="bi bi-geo-alt"></i> Deixar em: {{i.parada_unidade}}</div>
+            {% endif %}
             {% if viagem.status == 'separacao' %}
             <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
               <button type="button" id="conf-ok-{{i.id}}"
@@ -1759,6 +1762,7 @@
         <input type="hidden" class="vj-chamados-json" name="parada_chamados_json[]" value="[]">
         <div class="vj-parada-info small text-muted">Sem chamado vinculado.</div>`;
       box.appendChild(div);
+      vjAtualizarOpcoesParadasItem();
     }
 
     function vjSyncParadaUnidade(input){
@@ -1768,6 +1772,7 @@
         (l.unidade + ' — ' + l.empresa).toLowerCase() === texto ||
         l.unidade.toLowerCase() === texto);
       row.querySelector('.vj-parada-unidade').value = local ? local.unidade_id : '';
+      vjAtualizarOpcoesParadasItem();
     }
 
     async function vjBuscarChamado(btn){
@@ -1817,6 +1822,7 @@
         if(local){
           sel.value = local.unidade + ' — ' + local.empresa;
           row.querySelector('.vj-parada-unidade').value = local.unidade_id;
+          vjAtualizarOpcoesParadasItem();
         }
       }
     }
@@ -1840,6 +1846,12 @@
           </select>
           <input type="number" name="quantidade[]" value="1" min="1" style="width:70px;text-align:center">
         </div>
+        <div class="d-flex align-items-center gap-1 mt-1">
+          <span class="small text-muted" style="white-space:nowrap">Deixar em:</span>
+          <select class="vj-item-parada" style="flex:1">
+            <option value="">Fica no carro (sem destino fixo)</option>
+          </select>
+        </div>
         <input type="hidden" name="tipo_suprimento[]" value="">
         <input type="hidden" name="modelo_impressora[]" value="">
         <input type="hidden" name="marca[]" value="">`;
@@ -1847,7 +1859,39 @@
       const modelos = [...new Set(VJ_ESTOQUE.map(e => e.modelo).filter(Boolean))].sort();
       const modeloSelect = div.querySelector('.vj-item-modelo');
       modelos.forEach(modelo => modeloSelect.add(new Option(modelo, modelo)));
+      vjAtualizarOpcoesParadasItem();
     }
+
+    function vjParadasValidas(){
+      return [...document.querySelectorAll('#mob-lista-paradas .item-box')]
+        .filter(r => r.querySelector('.vj-parada-unidade') && r.querySelector('.vj-parada-unidade').value);
+    }
+
+    function vjAtualizarOpcoesParadasItem(){
+      const ops = vjParadasValidas();
+      document.querySelectorAll('#mob-lista-itens .item-box').forEach(row => {
+        const sel = row.querySelector('.vj-item-parada');
+        if(!sel) return;
+        const atual = sel.value;
+        sel.innerHTML = '<option value="">Fica no carro (sem destino fixo)</option>';
+        ops.forEach((r, i) => {
+          const nome = r.querySelector('.vj-parada-unidade-busca').value.trim() || ('Parada ' + (i + 1));
+          sel.add(new Option((i + 1) + 'ª parada — ' + nome, String(i)));
+        });
+        sel.value = atual && [...sel.options].some(o => o.value === atual) ? atual : '';
+      });
+    }
+
+    document.querySelector('#aba-viagem_nova form')?.addEventListener('submit', function(){
+      document.querySelectorAll('#mob-lista-itens .item-box').forEach(row => {
+        if(!row.querySelector('[name="tipo_suprimento[]"]').value) return;
+        const inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = 'item_parada[]';
+        inp.value = row.querySelector('.vj-item-parada')?.value || '';
+        this.appendChild(inp);
+      });
+    });
 
     function vjCarregarTipos(modeloSelect){
       const row = modeloSelect.closest('.item-box');

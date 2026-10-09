@@ -824,6 +824,7 @@ def init_db():
         )
     """)
     cur.execute("ALTER TABLE viagens_itens ADD COLUMN IF NOT EXISTS cor VARCHAR(50)")
+    cur.execute("ALTER TABLE viagens_itens ADD COLUMN IF NOT EXISTS parada_id BIGINT")
     cur.execute("ALTER TABLE viagens_itens ADD COLUMN IF NOT EXISTS conferido BOOLEAN NOT NULL DEFAULT FALSE")
     cur.execute("ALTER TABLE viagens_itens ADD COLUMN IF NOT EXISTS quantidade_faltante INTEGER NOT NULL DEFAULT 0")
 
@@ -3460,6 +3461,24 @@ def excluir_suprimento(entrega_id):
 
 # ======================= VIAGENS / CHECKLIST DE SUPRIMENTOS =======================
 
+def _anexar_parada_nos_itens(cur, itens):
+    """Anexa o nome da unidade da parada em cada item da viagem."""
+    ids = {i.get('parada_id') for i in itens if i.get('parada_id')}
+    if not ids:
+        return
+    cur.execute("""
+        SELECT p.id, p.ordem, u.nome AS unidade_nome
+        FROM viagens_paradas p
+        LEFT JOIN unidades u ON u.id = p.unidade_id
+        WHERE p.id = ANY(%s)
+    """, (list(ids),))
+    nomes = {r['id']: r for r in cur.fetchall()}
+    for i in itens:
+        info = nomes.get(i.get('parada_id'))
+        i['parada_unidade'] = (info['unidade_nome'] if info else None)
+        i['parada_ordem'] = (info['ordem'] if info else None)
+
+
 def _coletar_itens_viagem(form):
     """Le linhas de itens (tipo, cor, modelo, marca, quantidade) do formulario."""
     tipos = form.getlist('tipo_suprimento[]')
@@ -3467,6 +3486,7 @@ def _coletar_itens_viagem(form):
     modelos = form.getlist('modelo_impressora[]')
     marcas = form.getlist('marca[]')
     quantidades = form.getlist('quantidade[]')
+    paradas_idx = form.getlist('item_parada[]')
 
     def campo(lista, idx):
         return lista[idx] if idx < len(lista) else ''
@@ -3485,12 +3505,18 @@ def _coletar_itens_viagem(form):
         modelo = (campo(modelos, idx) or '').strip() or None
         if 'transformar' in tipo.lower() and (modelo or '').upper() != 'PARA TRANSFORMAR':
             modelo = 'PARA TRANSFORMAR'
+        raw_parada = (campo(paradas_idx, idx) or '').strip()
+        try:
+            parada_idx = int(raw_parada) if raw_parada != '' else None
+        except (TypeError, ValueError):
+            parada_idx = None
         itens.append({
             'tipo_suprimento': tipo,
             'cor': (campo(cores, idx) or '').strip() or None,
             'modelo_impressora': modelo,
             'marca': (campo(marcas, idx) or '').strip() or None,
             'quantidade': quantidade,
+            'parada_idx': parada_idx,
         })
     return itens
 
@@ -3704,6 +3730,7 @@ def nova_viagem():
                 VALUES (%s, %s, %s, %s, %s) RETURNING id
             """, (viagem_id, idx + 1, parada['unidade_id'], parada['chamado_id'], parada['chamado_protocolo']))
             parada_id = cur.fetchone()['id']
+            parada['db_id'] = parada_id
             for chamado_id, protocolo in parada['chamados']:
                 cur.execute("""
                     INSERT INTO viagens_paradas_chamados
@@ -3713,11 +3740,16 @@ def nova_viagem():
                 """, (parada_id, chamado_id, protocolo))
 
         for item in itens:
+            parada_db_id = None
+            pidx = item.get('parada_idx')
+            if pidx is not None and 0 <= pidx < len(paradas):
+                parada_db_id = paradas[pidx].get('db_id')
             cur.execute("""
                 INSERT INTO viagens_itens (viagem_id, tipo_suprimento, cor, modelo_impressora, marca,
-                                           origem, quantidade_carregada)
-                VALUES (%s, %s, %s, %s, %s, 'rench', %s)
-            """, (viagem_id, item['tipo_suprimento'], item.get('cor'), item['modelo_impressora'], item['marca'], item['quantidade']))
+                                           origem, quantidade_carregada, parada_id)
+                VALUES (%s, %s, %s, %s, %s, 'rench', %s, %s)
+            """, (viagem_id, item['tipo_suprimento'], item.get('cor'), item['modelo_impressora'],
+                  item['marca'], item['quantidade'], parada_db_id))
 
         db.commit()
         flash(f'Viagem {numero} criada com sucesso!', 'success')
@@ -3749,6 +3781,7 @@ def _carregar_detalhes_viagem(cur, viagem_id):
         ORDER BY origem DESC, tipo_suprimento, modelo_impressora, marca
     """, (viagem_id,))
     itens = cur.fetchall()
+    _anexar_parada_nos_itens(cur, itens)
 
     cur.execute("""
         SELECT * FROM viagens_coletas WHERE viagem_id=%s ORDER BY id
@@ -6364,12 +6397,18 @@ def _api_mobile_itens(dados):
         modelo = (item.get('modelo_impressora') or '').strip() or None
         if 'transformar' in tipo.lower() and (modelo or '').upper() != 'PARA TRANSFORMAR':
             modelo = 'PARA TRANSFORMAR'
+        raw_parada = item.get('parada_index')
+        try:
+            parada_index = int(raw_parada) if raw_parada is not None and raw_parada != '' else None
+        except (TypeError, ValueError):
+            parada_index = None
         itens.append({
             'tipo_suprimento': tipo,
             'cor': cor,
             'modelo_impressora': modelo,
             'marca': (item.get('marca') or '').strip() or None,
             'quantidade': quantidade,
+            'parada_index': parada_index,
         })
     return itens
 
@@ -6571,6 +6610,7 @@ def api_mobile_viagem_criar():
             VALUES (%s, %s, %s, %s, %s) RETURNING id
         """, (viagem_id, idx + 1, parada['unidade_id'], parada['chamado_id'], parada['chamado_protocolo']))
         parada_id = cur.fetchone()['id']
+        parada['db_id'] = parada_id
         for chamado in parada['chamados']:
             cur.execute("""
                 INSERT INTO viagens_paradas_chamados (parada_id, chamado_id, chamado_protocolo)
@@ -6579,12 +6619,16 @@ def api_mobile_viagem_criar():
             """, (parada_id, chamado['id'], chamado['protocolo']))
 
     for item in itens:
+        parada_db_id = None
+        pidx = item.get('parada_index')
+        if pidx is not None and 0 <= pidx < len(paradas):
+            parada_db_id = paradas[pidx].get('db_id')
         cur.execute("""
             INSERT INTO viagens_itens (viagem_id, tipo_suprimento, cor, modelo_impressora, marca,
-                                       origem, quantidade_carregada)
-            VALUES (%s, %s, %s, %s, %s, 'rench', %s)
+                                       origem, quantidade_carregada, parada_id)
+            VALUES (%s, %s, %s, %s, %s, 'rench', %s, %s)
         """, (viagem_id, item['tipo_suprimento'], item.get('cor'), item['modelo_impressora'],
-              item['marca'], item['quantidade']))
+              item['marca'], item['quantidade'], parada_db_id))
 
     db.commit()
     return jsonify({'ok': True, 'viagem_id': viagem_id, 'numero': numero})
