@@ -2352,10 +2352,23 @@ def equipamentos_por_unidade():
         cur.execute(sql, params)
         equipamentos = cur.fetchall()
 
+        cur.execute("""
+            SELECT e.id as empresa_id, e.nome as empresa_nome, e.tipo as empresa_tipo,
+                   u.id as unidade_id, u.nome as unidade_nome, u.setor
+            FROM empresas e
+            JOIN unidades u ON u.empresa_id = e.id AND u.ativo=1
+            WHERE e.ativo=1
+            ORDER BY e.tipo DESC, e.nome, u.nome
+        """)
+        locais_destino = cur.fetchall()
+    else:
+        locais_destino = []
+
     return render_template('equipamentos_por_unidade.html',
         empresas=empresas, unidades=unidades, equipamentos=equipamentos,
         filtro_empresa_id=empresa_id, filtro_unidade_id=unidade_id,
-        filtro_tipo=tipo, unidade_selecionada=unidade_selecionada
+        filtro_tipo=tipo, unidade_selecionada=unidade_selecionada,
+        locais_destino=locais_destino
     )
 
 
@@ -2565,6 +2578,88 @@ def movimentar(equip_id):
     historico_contadores = cur.fetchall()
 
     return render_template('movimentacao_form.html', equip=equip, locais=locais, historico_contadores=historico_contadores)
+
+@app.route('/equipamentos/mover-lote', methods=['POST'])
+@login_required
+def mover_equipamentos_lote():
+    """Move vários equipamentos de uma vez para uma unidade de destino."""
+    db = get_db()
+    cur = db.cursor()
+
+    ids = request.form.getlist('equip_ids')
+    destino_unidade_id = request.form.get('destino_unidade_id')
+    responsavel = request.form.get('responsavel', '').strip()
+    condicao_uso = condicao_normalizada(request.form.get('condicao_uso', '').strip())
+    obs = request.form.get('observacoes', '').strip() or None
+    voltar = url_for('equipamentos_por_unidade',
+                     empresa_id=request.form.get('voltar_empresa_id', ''),
+                     unidade_id=request.form.get('voltar_unidade_id', ''))
+
+    if not ids:
+        flash('Selecione pelo menos um equipamento para mover.', 'danger')
+        return redirect(voltar)
+    if condicao_uso not in _CONDICOES_USO:
+        flash('Informe a condição de uso para registrar a movimentação.', 'danger')
+        return redirect(voltar)
+    if not responsavel:
+        flash('Informe o responsável pela movimentação.', 'danger')
+        return redirect(voltar)
+
+    cur.execute("""
+        SELECT u.id, u.nome, e.tipo as empresa_tipo
+        FROM unidades u JOIN empresas e ON e.id=u.empresa_id
+        WHERE u.id=%s AND u.ativo=1
+    """, (destino_unidade_id,))
+    destino = cur.fetchone()
+    if not destino:
+        flash('Unidade de destino inválida.', 'danger')
+        return redirect(voltar)
+
+    tipos_mov = {'cliente': 'saida_cliente', 'rench': 'entrada_estoque', 'assistencia': 'envio_manutencao'}
+    tipo_mov = tipos_mov.get(destino['empresa_tipo'], 'saida_cliente')
+    data_mov = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    movidos = 0
+    falhas = 0
+    for eid in ids:
+        try:
+            equip_id = int(eid)
+        except (TypeError, ValueError):
+            falhas += 1
+            continue
+        cur.execute("""
+            SELECT e.*, u.nome as unidade_nome FROM equipamentos e
+            LEFT JOIN unidades u ON u.id=e.unidade_id
+            WHERE e.id=%s AND e.ativo=1
+        """, (equip_id,))
+        equip = cur.fetchone()
+        if not equip:
+            falhas += 1
+            continue
+        cur.execute("""
+            INSERT INTO movimentacoes (equipamento_id, data_movimentacao, tipo_movimento,
+                origem_local, origem_unidade, destino_local, destino_unidade, responsavel, observacoes,
+                contador_mono_anterior, contador_mono_novo, contador_color_anterior, contador_color_novo)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (equip_id, data_mov, tipo_mov,
+              equip['local_atual_nome'], equip['unidade_nome'] or equip['local_atual_nome'],
+              destino['nome'], destino['nome'], responsavel, obs,
+              int(equip['contador_mono'] or 0), int(equip['contador_mono'] or 0),
+              int(equip['contador_color'] or 0), int(equip['contador_color'] or 0)))
+        cur.execute("""
+            UPDATE equipamentos SET unidade_id=%s, local_atual_nome=%s, cliente_atual=NULL,
+                setor_equipamento=NULL, condicao_uso=%s WHERE id=%s
+        """, (destino['id'], destino['nome'], condicao_uso, equip_id))
+        movidos += 1
+
+    db.commit()
+    if movidos and not falhas:
+        flash(f"{movidos} equipamento(s) movido(s) para {destino['nome']} com sucesso!", 'success')
+    elif movidos:
+        flash(f"{movidos} equipamento(s) movido(s); {falhas} não encontrados.", 'warning')
+    else:
+        flash('Nenhum equipamento foi movido.', 'danger')
+    return redirect(voltar)
 
 @app.route('/locais', methods=['GET', 'POST'])
 @login_required

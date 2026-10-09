@@ -55,12 +55,21 @@
   <input type="text" id="filtro-modelo" class="form-control" style="max-width:320px;" placeholder="Filtrar por modelo, série ou código..." oninput="filtrarEquipamentosTabela(this.value)">
   <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('filtro-modelo').value='';filtrarEquipamentosTabela('')">Limpar filtro</button>
   <small class="text-muted" id="contador-filtro"></small>
+  <div class="ms-auto d-flex gap-2 align-items-center flex-wrap">
+    <small class="text-muted fw-bold" id="contador-selecao"></small>
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selecionarTodos(true)">Selecionar todos</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selecionarTodos(false)">Limpar seleção</button>
+    <button type="button" class="btn btn-sm btn-success" style="background:#176B43;border-color:#176B43;" id="btn-mover-lote" onclick="abrirModalMoverLote()">
+      <i class="bi bi-arrow-left-right me-1"></i>Mover selecionados
+    </button>
+  </div>
 </div>
 
 <div class="table-responsive table-rench">
   <table class="table mb-0">
     <thead>
       <tr>
+        <th style="width:34px;"><input type="checkbox" id="check-todos" onchange="selecionarTodos(this.checked)" title="Selecionar todos"></th>
         <th>Equipamento</th>
         <th>Série / Rastreio</th>
         <th>Local atual</th>
@@ -72,6 +81,7 @@
     <tbody>
     {% for e in equipamentos %}
       <tr>
+        <td><input type="checkbox" class="check-equip" value="{{e.id}}" onchange="atualizarContadorSelecao()"></td>
         <td>
           <span class="badge badge-{{e.tipo_equipamento}} mb-1">{{e.tipo_equipamento}}</span><br>
           <strong>{{e.fabricante or '-'}} {{e.modelo}}</strong>
@@ -106,7 +116,7 @@
       </tr>
     {% else %}
       <tr>
-        <td colspan="6" class="text-center py-5 text-muted">
+        <td colspan="7" class="text-center py-5 text-muted">
           <i class="bi bi-inbox" style="font-size:42px;"></i>
           <p class="mt-3 mb-1">Nenhum equipamento encontrado nesta unidade.</p>
         </td>
@@ -119,6 +129,73 @@
 <div class="text-center py-5 text-muted">
   <i class="bi bi-buildings" style="font-size:56px;"></i>
   <p class="mt-3 mb-1">Selecione uma empresa e uma unidade para visualizar os equipamentos.</p>
+</div>
+{% endif %}
+
+{% if unidade_selecionada %}
+<!-- Modal: mover em lote -->
+<div class="modal fade" id="modalMoverLote" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="form-mover-lote" method="POST" action="{{url_for('mover_equipamentos_lote')}}">
+        <input type="hidden" name="voltar_empresa_id" value="{{filtro_empresa_id}}">
+        <input type="hidden" name="voltar_unidade_id" value="{{filtro_unidade_id}}">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-arrow-left-right me-2"></i>Mover equipamentos</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted" id="resumo-mover-lote"></p>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Destino - Unidade *</label>
+            <select name="destino_unidade_id" class="form-select" required>
+              <option value="" selected disabled>Selecione a unidade de destino...</option>
+              {% set tipos_rotulo = {'rench': 'Rench', 'cliente': 'Cliente', 'assistencia': 'Assistência técnica'} %}
+              {% for l in locais_destino %}
+              {% if loop.first or l.empresa_id != locais_destino[loop.index0 - 1].empresa_id %}
+              <optgroup label="{{tipos_rotulo.get(l.empresa_tipo, l.empresa_tipo)}} - {{l.empresa_nome}}">
+              {% endif %}
+              <option value="{{l.unidade_id}}">{{l.unidade_nome}}{% if l.setor %} - {{l.setor}}{% endif %}</option>
+              {% if loop.last or locais_destino[loop.index0 + 1].empresa_id != l.empresa_id %}
+              </optgroup>
+              {% endif %}
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Responsável *</label>
+            <select name="responsavel" class="form-select" required>
+              <option value="" selected disabled>Selecione...</option>
+              <option value="Kaio">Kaio</option>
+              <option value="Renan">Renan</option>
+              <option value="Gilvan">Gilvan</option>
+              <option value="Christian">Christian</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Condição de uso *</label>
+            <select name="condicao_uso" class="form-select" required>
+              <option value="" selected disabled>Selecione a condição...</option>
+              {% for valor, rotulo in [('novo','Novo'), ('bom','Bom'), ('regular','Regular'), ('ruim','Ruim'), ('defeituoso','Com defeito'), ('manutencao','Em manutenção')] %}
+              <option value="{{valor}}">{{rotulo}}</option>
+              {% endfor %}
+            </select>
+            <small class="text-muted">Aplicada a todos os equipamentos movidos</small>
+          </div>
+          <div>
+            <label class="form-label fw-bold">Observações</label>
+            <textarea name="observacoes" class="form-control" rows="3" placeholder="Motivo da movimentação (opcional)"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success" style="background:#176B43;border-color:#176B43;">
+            <i class="bi bi-check-lg me-1"></i>Confirmar movimentação
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 {% endif %}
 {% endblock %}
@@ -164,6 +241,48 @@ function filtrarEquipamentosTabela(termo){
   if(contador){
     contador.textContent = t ? (visiveis + ' de ' + total + ' equipamentos') : '';
   }
+}
+
+function checksEquipamentos(){
+  return Array.from(document.querySelectorAll('.check-equip'));
+}
+
+function selecionarTodos(marcar){
+  checksEquipamentos().forEach(ch => { ch.checked = marcar; });
+  const chkTodos = document.getElementById('check-todos');
+  if(chkTodos) chkTodos.checked = marcar;
+  atualizarContadorSelecao();
+}
+
+function atualizarContadorSelecao(){
+  const checks = checksEquipamentos();
+  const n = checks.filter(ch => ch.checked).length;
+  const contador = document.getElementById('contador-selecao');
+  if(contador) contador.textContent = n ? (n + ' selecionado(s)') : '';
+  const chkTodos = document.getElementById('check-todos');
+  if(chkTodos) chkTodos.checked = checks.length > 0 && n === checks.length;
+}
+
+function abrirModalMoverLote(){
+  const marcados = checksEquipamentos().filter(ch => ch.checked);
+  if(marcados.length === 0){
+    alert('Selecione pelo menos um equipamento para mover.');
+    return;
+  }
+  const resumo = document.getElementById('resumo-mover-lote');
+  if(resumo) resumo.textContent = marcados.length + ' equipamento(s) selecionado(s) para mover.';
+  // limpa inputs anteriores e adiciona os ids marcados
+  document.querySelectorAll('#form-mover-lote input[name="equip_ids"]').forEach(i => i.remove());
+  const form = document.getElementById('form-mover-lote');
+  marcados.forEach(ch => {
+    const inp = document.createElement('input');
+    inp.type = 'hidden';
+    inp.name = 'equip_ids';
+    inp.value = ch.value;
+    form.appendChild(inp);
+  });
+  const modal = new bootstrap.Modal(document.getElementById('modalMoverLote'));
+  modal.show();
 }
 </script>
 {% endblock %}
