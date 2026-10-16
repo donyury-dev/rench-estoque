@@ -726,6 +726,43 @@ def init_db():
     """)
 
     cur.execute("""
+        CREATE TABLE IF NOT EXISTS suprimentos_garantia (
+            id SERIAL PRIMARY KEY,
+            unidade_id INTEGER REFERENCES unidades(id),
+            tipo_suprimento VARCHAR(100) NOT NULL,
+            modelo_impressora VARCHAR(255),
+            marca VARCHAR(100),
+            cor VARCHAR(50),
+            quantidade INTEGER NOT NULL DEFAULT 1,
+            numero_serie VARCHAR(255),
+            defeito TEXT,
+            responsavel VARCHAR(255),
+            status VARCHAR(30) NOT NULL DEFAULT 'aguardando_analise',
+            data_envio DATE NOT NULL,
+            data_retorno DATE,
+            protocolo_r10 VARCHAR(100),
+            estoque_id INTEGER REFERENCES estoque(id),
+            entrega_origem_id INTEGER REFERENCES suprimentos_entregas(id),
+            estoque_entrada_lancada BOOLEAN NOT NULL DEFAULT FALSE,
+            observacoes TEXT,
+            data_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS suprimentos_garantia_historico (
+            id SERIAL PRIMARY KEY,
+            garantia_id INTEGER NOT NULL REFERENCES suprimentos_garantia(id) ON DELETE CASCADE,
+            status_anterior VARCHAR(30),
+            status_novo VARCHAR(30),
+            observacoes TEXT,
+            responsavel VARCHAR(255),
+            data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS suprimentos_entregas (
             id SERIAL PRIMARY KEY,
             unidade_id INTEGER NOT NULL REFERENCES unidades(id),
@@ -1541,23 +1578,132 @@ def helpdesk_registrar_evento_suprimentos(chamado_id, descricao):
 
 
 def estornar_estoque_entrega(cur, entrega_id, responsavel=None):
+    """Estorna uma entrega de suprimentos.
+
+    - Se a entrega NAO estiver vinculada a uma viagem (parada_id is NULL): apenas
+      devolve a quantidade total de cada item ao estoque central.
+    - Se a entrega ESTIVER vinculada a uma viagem:
+      * Verifica se a viagem ainda permite estorno (status 'conferido', 'em_rota'
+        ou 'aguardando_retorno' e a parada nao estiver em uma viagem finalizada).
+      * Reverte a quantidade_entregue nos itens da viagem.
+      * Reabre a parada para status 'planejada'.
+      * Soma a parcela Rench de volta ao estoque; a parcela de fornecedor nao
+        passou pelo estoque, portanto nao e estornada.
+    Retorna None se bem-sucedido, ou {'bloqueado': True, 'mensagem': ...}.
+    """
     cur.execute(
-        "SELECT tipo_suprimento, modelo_impressora, marca, quantidade FROM suprimentos_itens WHERE entrega_id=%s",
+        """SELECT se.id, se.viagem_id, se.parada_id, v.status AS viagem_status,
+                  vp.status AS parada_status
+           FROM suprimentos_entregas se
+           LEFT JOIN viagens v ON v.id = se.viagem_id
+           LEFT JOIN viagens_paradas vp ON vp.id = se.parada_id
+           WHERE se.id=%s""",
+        (entrega_id,)
+    )
+    entrega = cur.fetchone()
+
+    cur.execute(
+        "SELECT tipo_suprimento, modelo_impressora, marca, quantidade, estorno_estoque FROM suprimentos_itens WHERE entrega_id=%s",
         (entrega_id,)
     )
     itens = cur.fetchall()
-    for item in itens:
-        tipo, modelo, marca = _chave_estoque(item['tipo_suprimento'], item['modelo_impressora'], item.get('marca'))
-        qtd = int(item['quantidade'] or 1)
-        estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo, modelo, marca)
-        movimentar_estoque(
-            cur, estoque_id, 'entrada', qtd, saldo,
-            motivo=f'Estorno por exclusao de entrega (entrega_id={entrega_id})',
-            responsavel=responsavel,
-            entrega_id=entrega_id,
-            origem='estorno entrega'
+
+    # Se ja estornado, nao faz nada
+    if all(int(item.get('estorno_estoque') or 0) for item in itens):
+        return None
+
+    parada_id = entrega['parada_id'] if entrega else None
+    viagem_id = entrega['viagem_id'] if entrega else None
+    viagem_status = entrega['viagem_status'] if entrega else None
+
+    if parada_id and viagem_id:
+        # Viagens encerradas/retornadas nao devem ter entregas estornadas
+        # automaticamente, pois os itens ja podem ter voltado ou sido consumidos.
+        if viagem_status not in ('conferido', 'em_rota', 'aguardando_retorno'):
+            return {
+                'bloqueado': True,
+                'mensagem': (
+                    'Esta entrega esta vinculada a uma viagem ja finalizada '
+                    '(status: %s). Excluir automaticamente poderia baguncar o '
+                    'estoque. Entre em contato com o administrador ou faca um '
+                    'ajuste manual de estoque se for realmente necessario.' % viagem_status
+                )
+            }
+
+        # Recupera as quantidades entregues da viagem para cada item e reverte.
+        cur.execute(
+            """SELECT id, tipo_suprimento, modelo_impressora, marca, origem,
+                      quantidade_carregada, quantidade_entregue, quantidade_usada_manual
+               FROM viagens_itens WHERE viagem_id=%s AND pode_usar_cliente=TRUE""",
+            (viagem_id,)
         )
-        cur.execute("UPDATE suprimentos_itens SET estorno_estoque=1 WHERE entrega_id=%s", (entrega_id,))
+        linhas_viagem = []
+        for r in cur.fetchall():
+            tipo, modelo, marca = _chave_estoque(r['tipo_suprimento'], r['modelo_impressora'], r['marca'])
+            linhas_viagem.append({
+                'id': r['id'],
+                'chave': (tipo, modelo, marca or ''),
+                'origem': r['origem'],
+                'quantidade_entregue': int(r['quantidade_entregue'] or 0),
+            })
+
+        for item in itens:
+            tipo, modelo, marca = _chave_estoque(item['tipo_suprimento'], item['modelo_impressora'], item.get('marca'))
+            chave = (tipo, modelo, marca or '')
+            qtd_total = int(item['quantidade'] or 1)
+            qtd_reverter_rench = 0
+            for linha in sorted(linhas_viagem, key=lambda l: 0 if l['origem'] == 'rench' else 1):
+                if linha['chave'] != chave or linha['quantidade_entregue'] <= 0:
+                    continue
+                usar = min(linha['quantidade_entregue'], qtd_total)
+                if usar <= 0:
+                    continue
+                cur.execute(
+                    "UPDATE viagens_itens SET quantidade_entregue = quantidade_entregue - %s WHERE id=%s",
+                    (usar, linha['id'])
+                )
+                if linha['origem'] == 'rench':
+                    qtd_reverter_rench += usar
+                qtd_total -= usar
+                linha['quantidade_entregue'] -= usar
+                if qtd_total <= 0:
+                    break
+
+            # Estorna apenas o que saiu do estoque Rench
+            if qtd_reverter_rench > 0:
+                estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo, modelo, marca)
+                movimentar_estoque(
+                    cur, estoque_id, 'entrada', qtd_reverter_rench, saldo,
+                    motivo=f'Estorno por exclusao de entrega (entrega_id={entrega_id})',
+                    responsavel=responsavel,
+                    entrega_id=entrega_id,
+                    origem='estorno entrega'
+                )
+
+        # Reabre a parada, se existir
+        cur.execute("UPDATE viagens_paradas SET status='planejada' WHERE id=%s", (parada_id,))
+        # Atualiza o status da viagem se ela estivesse aguardando retorno
+        cur.execute("""
+            UPDATE viagens SET status='em_rota'
+            WHERE id=%s AND status='aguardando_retorno'
+              AND EXISTS (SELECT 1 FROM viagens_paradas WHERE viagem_id=%s AND status='planejada')
+        """, (viagem_id, viagem_id))
+    else:
+        # Entrega sem viagem: estorna tudo ao estoque central
+        for item in itens:
+            tipo, modelo, marca = _chave_estoque(item['tipo_suprimento'], item['modelo_impressora'], item.get('marca'))
+            qtd = int(item['quantidade'] or 1)
+            estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo, modelo, marca)
+            movimentar_estoque(
+                cur, estoque_id, 'entrada', qtd, saldo,
+                motivo=f'Estorno por exclusao de entrega (entrega_id={entrega_id})',
+                responsavel=responsavel,
+                entrega_id=entrega_id,
+                origem='estorno entrega'
+            )
+
+    cur.execute("UPDATE suprimentos_itens SET estorno_estoque=1 WHERE entrega_id=%s", (entrega_id,))
+    return None
 
 
 def importar_planilha_para_banco(caminho=PLANILHA_PADRAO, limpar=True):
@@ -3452,11 +3598,239 @@ def novo_suprimento():
 def excluir_suprimento(entrega_id):
     db = get_db()
     cur = db.cursor()
-    estornar_estoque_entrega(cur, entrega_id, responsavel=operador_atual())
-    cur.execute("DELETE FROM suprimentos_entregas WHERE id=%s", (entrega_id,))
-    db.commit()
-    flash('Registro excluido e estoque estornado com sucesso!', 'success')
+    try:
+        resultado = estornar_estoque_entrega(cur, entrega_id, responsavel=operador_atual())
+        if isinstance(resultado, dict) and resultado.get('bloqueado'):
+            db.rollback()
+            flash(resultado['mensagem'], 'danger')
+            return redirect(url_for('lista_suprimentos'))
+        cur.execute("DELETE FROM suprimentos_entregas WHERE id=%s", (entrega_id,))
+        db.commit()
+        flash('Registro excluido e estoque estornado com sucesso!', 'success')
+    except Exception as e:
+        db.rollback()
+        registrar_erro('suprimentos/excluir', str(e), f'entrega_id={entrega_id}', operador_atual())
+        flash('Erro ao excluir o registro. O estoque nao foi alterado.', 'danger')
     return redirect(url_for('lista_suprimentos'))
+
+
+# ======================= GARANTIA R10 =======================
+
+_GARANTIA_STATUS = {
+    'aguardando_analise': 'Aguardando análise',
+    'reparado': 'Reparado',
+    'substituido': 'Substituído',
+    'garantia_recusada': 'Garantia recusada',
+    'descartado': 'Descartado',
+}
+
+_GARANTIA_STATUS_COM_RETORNO = {'reparado', 'substituido'}
+_GARANTIA_STATUS_FINAL = {'garantia_recusada', 'descartado'}
+
+
+def _registrar_historico_garantia(cur, garantia_id, status_anterior, status_novo, observacoes, responsavel):
+    cur.execute("""
+        INSERT INTO suprimentos_garantia_historico
+        (garantia_id, status_anterior, status_novo, observacoes, responsavel)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (garantia_id, status_anterior, status_novo, observacoes, responsavel))
+
+
+def _buscar_estoque_id_para_garantia(cur, tipo_suprimento, modelo_impressora, marca, cor):
+    tipo, modelo, marca = _chave_estoque(tipo_suprimento, modelo_impressora, marca)
+    if cor:
+        tipo = f"{tipo} {cor}" if not tipo.endswith(cor) and tipo != 'Papel Fotografico' else tipo
+    cur.execute(
+        "SELECT id FROM estoque WHERE tipo_suprimento=%s AND modelo_impressora=%s AND COALESCE(marca,'')=%s AND ativo=TRUE",
+        (tipo, modelo, marca or '')
+    )
+    row = cur.fetchone()
+    return row['id'] if row else None
+
+
+@app.route('/garantia')
+@login_required
+def lista_garantia():
+    db = get_db()
+    cur = db.cursor()
+    status_filtro = request.args.get('status', '').strip()
+    sql = """
+        SELECT g.*, u.nome AS unidade_nome
+        FROM suprimentos_garantia g
+        LEFT JOIN unidades u ON u.id = g.unidade_id
+        WHERE (%s = '' OR g.status = %s)
+        ORDER BY g.data_envio DESC, g.id DESC
+    """
+    cur.execute(sql, (status_filtro, status_filtro if status_filtro else None))
+    registros = cur.fetchall()
+
+    cur.execute("SELECT id, nome FROM unidades WHERE ativo=1 ORDER BY nome")
+    unidades = cur.fetchall()
+
+    cur.execute("SELECT nome FROM modelos_impressora WHERE ativo=1 ORDER BY nome")
+    modelos = [r['nome'] for r in cur.fetchall()]
+
+    cur.execute("""
+        SELECT DISTINCT tipo_suprimento FROM estoque
+        WHERE ativo=TRUE AND tipo_suprimento IS NOT NULL
+        ORDER BY tipo_suprimento
+    """)
+    tipos = [r['tipo_suprimento'] for r in cur.fetchall()]
+
+    hoje = datetime.now().strftime('%Y-%m-%d')
+    return render_template(
+        'garantia.html',
+        registros=registros,
+        unidades=unidades,
+        modelos=modelos,
+        tipos=tipos,
+        status_labels=_GARANTIA_STATUS,
+        status_filtro=status_filtro,
+        hoje=hoje
+    )
+
+
+@app.route('/garantia/novo', methods=['POST'])
+@login_required
+def novo_garantia():
+    db = get_db()
+    cur = db.cursor()
+    try:
+        unidade_id = request.form.get('unidade_id', '').strip() or None
+        tipo = _normalizar_tipo_suprimento(request.form.get('tipo_suprimento', ''))
+        modelo = (request.form.get('modelo_impressora', '') or '').strip().upper() or None
+        marca = (request.form.get('marca', '') or '').strip() or None
+        cor = (request.form.get('cor', '') or '').strip() or None
+        quantidade = int(request.form.get('quantidade') or 1)
+        numero_serie = (request.form.get('numero_serie', '') or '').strip() or None
+        defeito = (request.form.get('defeito', '') or '').strip() or None
+        data_envio = request.form.get('data_envio') or datetime.now().strftime('%Y-%m-%d')
+        protocolo_r10 = (request.form.get('protocolo_r10', '') or '').strip() or None
+        observacoes = (request.form.get('observacoes', '') or '').strip() or None
+        entrega_origem_id = request.form.get('entrega_origem_id', '').strip() or None
+
+        if quantidade <= 0:
+            flash('Quantidade deve ser maior que zero.', 'danger')
+            return redirect(url_for('lista_garantia'))
+
+        estoque_id = _buscar_estoque_id_para_garantia(cur, tipo, modelo, marca, cor)
+
+        cur.execute("""
+            INSERT INTO suprimentos_garantia
+            (unidade_id, tipo_suprimento, modelo_impressora, marca, cor, quantidade,
+             numero_serie, defeito, responsavel, data_envio, protocolo_r10,
+             estoque_id, entrega_origem_id, observacoes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (unidade_id, tipo, modelo, marca, cor, quantidade, numero_serie, defeito,
+              operador_atual(), data_envio, protocolo_r10, estoque_id, entrega_origem_id, observacoes))
+        garantia_id = cur.fetchone()['id']
+        _registrar_historico_garantia(cur, garantia_id, None, 'aguardando_analise', 'Registro criado', operador_atual())
+        db.commit()
+        flash('Item enviado à garantia registrado com sucesso.', 'success')
+    except Exception as e:
+        db.rollback()
+        registrar_erro('garantia/novo', str(e), request.form.to_dict(), operador_atual())
+        flash('Erro ao registrar garantia.', 'danger')
+    return redirect(url_for('lista_garantia'))
+
+
+@app.route('/garantia/atualizar/<int:garantia_id>', methods=['POST'])
+@login_required
+def atualizar_garantia(garantia_id):
+    db = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute("SELECT * FROM suprimentos_garantia WHERE id=%s", (garantia_id,))
+        registro = cur.fetchone()
+        if not registro:
+            flash('Registro de garantia não encontrado.', 'danger')
+            return redirect(url_for('lista_garantia'))
+
+        status_anterior = registro['status']
+        status_novo = request.form.get('status', '').strip()
+        data_retorno = request.form.get('data_retorno', '').strip() or None
+        protocolo_r10 = request.form.get('protocolo_r10', '').strip() or registro['protocolo_r10']
+        observacoes = request.form.get('observacoes', '').strip() or None
+        responsavel = operador_atual()
+
+        if status_novo not in _GARANTIA_STATUS:
+            flash('Status inválido.', 'danger')
+            return redirect(url_for('lista_garantia'))
+
+        # Só altera estoque se o retorno físico for confirmado e ainda não tiver sido lançado
+        if status_novo in _GARANTIA_STATUS_COM_RETORNO and not registro.get('estoque_entrada_lancada'):
+            if not data_retorno:
+                data_retorno = datetime.now().strftime('%Y-%m-%d')
+            estoque_id = registro.get('estoque_id')
+            tipo = registro['tipo_suprimento']
+            modelo = registro['modelo_impressora']
+            marca = registro['marca']
+            cor = registro['cor']
+            qtd = int(registro['quantidade'] or 1)
+            if not estoque_id:
+                estoque_id = _buscar_estoque_id_para_garantia(cur, tipo, modelo, marca, cor)
+            if estoque_id:
+                cur.execute("SELECT quantidade FROM estoque WHERE id=%s", (estoque_id,))
+                saldo_antes = cur.fetchone()['quantidade']
+                movimentar_estoque(
+                    cur, estoque_id, 'entrada', qtd, saldo_antes,
+                    motivo=f'Retorno de garantia ({status_novo}) #{garantia_id}',
+                    responsavel=responsavel,
+                    origem='garantia'
+                )
+            else:
+                estoque_id, _ = buscar_ou_criar_estoque(cur, tipo, modelo, marca)
+                cur.execute("SELECT quantidade FROM estoque WHERE id=%s", (estoque_id,))
+                saldo_antes = cur.fetchone()['quantidade']
+                movimentar_estoque(
+                    cur, estoque_id, 'entrada', qtd, saldo_antes,
+                    motivo=f'Retorno de garantia ({status_novo}) #{garantia_id}',
+                    responsavel=responsavel,
+                    origem='garantia'
+                )
+            cur.execute("""
+                UPDATE suprimentos_garantia
+                SET estoque_id=%s, estoque_entrada_lancada=TRUE
+                WHERE id=%s
+            """, (estoque_id, garantia_id))
+
+        cur.execute("""
+            UPDATE suprimentos_garantia
+            SET status=%s, data_retorno=%s, protocolo_r10=%s, observacoes=%s,
+                data_atualizacao=CURRENT_TIMESTAMP
+            WHERE id=%s
+        """, (status_novo, data_retorno, protocolo_r10, observacoes, garantia_id))
+
+        _registrar_historico_garantia(cur, garantia_id, status_anterior, status_novo, observacoes, responsavel)
+        db.commit()
+        flash('Garantia atualizada com sucesso.', 'success')
+    except Exception as e:
+        db.rollback()
+        registrar_erro('garantia/atualizar', str(e), f'garantia_id={garantia_id}', operador_atual())
+        flash('Erro ao atualizar garantia.', 'danger')
+    return redirect(url_for('lista_garantia'))
+
+
+@app.route('/garantia/excluir/<int:garantia_id>', methods=['POST'])
+@login_required
+def excluir_garantia(garantia_id):
+    db = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute("SELECT estoque_entrada_lancada FROM suprimentos_garantia WHERE id=%s", (garantia_id,))
+        row = cur.fetchone()
+        if row and row['estoque_entrada_lancada']:
+            flash('Não é possível excluir: entrada no estoque já foi lançada. Use uma nota de ajuste se necessário.', 'danger')
+            return redirect(url_for('lista_garantia'))
+        cur.execute("DELETE FROM suprimentos_garantia WHERE id=%s", (garantia_id,))
+        db.commit()
+        flash('Registro de garantia excluído.', 'success')
+    except Exception as e:
+        db.rollback()
+        registrar_erro('garantia/excluir', str(e), f'garantia_id={garantia_id}', operador_atual())
+        flash('Erro ao excluir registro de garantia.', 'danger')
+    return redirect(url_for('lista_garantia'))
 
 
 # ======================= VIAGENS / CHECKLIST DE SUPRIMENTOS =======================
