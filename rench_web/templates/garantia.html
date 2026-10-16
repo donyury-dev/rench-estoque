@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}Garantia R10 - RENCH{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Garantia R10</h1>
+    <p class="text-muted mb-0">Controle de suprimentos enviados à R10 para garantia.</p>
+  </div>
+  <a href="{{url_for('lista_suprimentos')}}" class="btn btn-outline-secondary">Voltar</a>
+</div>
+
+<ul class="nav nav-tabs mb-4" style="border-bottom:1px solid var(--primary-borda);">
+  <li class="nav-item">
+    <a class="nav-link" href="{{url_for('controle_estoque')}}" style="color:var(--primary);">
+      <i class="bi bi-box-seam me-1"></i> Saldos
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{{url_for('lista_suprimentos')}}" style="color:var(--primary);">
+      <i class="bi bi-arrow-up-right-circle me-1"></i> Entregas
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link active fw-bold" href="{{url_for('lista_garantia')}}" style="color:var(--primary);border-color:var(--primary-borda) var(--primary-borda) #fff;">
+      <i class="bi bi-tools me-1"></i> Garantia R10
+    </a>
+  </li>
+</ul>
+
+<div class="card card-dashboard p-4 mb-4">
+  <h5 class="fw-bold mb-3"><i class="bi bi-plus-circle me-2"></i>Registrar envio à R10</h5>
+  <form method="POST" action="{{url_for('novo_garantia')}}" class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label fw-bold">Unidade de origem</label>
+      <select name="unidade_id" class="form-select" required>
+        <option value="">Selecione...</option>
+        {% for u in unidades %}
+        <option value="{{u.id}}">{{u.nome}}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label fw-bold">Tipo de suprimento</label>
+      <select name="tipo_suprimento" class="form-select" required>
+        <option value="">Selecione...</option>
+        {% for t in tipos %}
+        <option value="{{t}}">{{t}}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label fw-bold">Modelo</label>
+      <input list="modelos" name="modelo_impressora" class="form-control" placeholder="Ex.: C711">
+      <datalist id="modelos">
+        {% for m in modelos %}
+        <option value="{{m}}">
+        {% endfor %}
+      </datalist>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label fw-bold">Marca</label>
+      <input type="text" name="marca" class="form-control" placeholder="Ex.: R10">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label fw-bold">Cor</label>
+      <input type="text" name="cor" class="form-control" placeholder="Ex.: Ciano">
+    </div>
+    <div class="col-md-1">
+      <label class="form-label fw-bold">Qtd</label>
+      <input type="number" name="quantidade" class="form-control" value="1" min="1" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label fw-bold">Nº de série / lote</label>
+      <input type="text" name="numero_serie" class="form-control">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label fw-bold">Data de envio</label>
+      <input type="date" name="data_envio" class="form-control" value="{{hoje}}" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label fw-bold">Protocolo R10</label>
+      <input type="text" name="protocolo_r10" class="form-control">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label fw-bold">ID entrega origem</label>
+      <input type="number" name="entrega_origem_id" class="form-control" placeholder="Opcional">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label fw-bold">Defeito / motivo</label>
+      <textarea name="defeito" class="form-control" rows="2"></textarea>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label fw-bold">Observações</label>
+      <textarea name="observacoes" class="form-control" rows="2"></textarea>
+    </div>
+    <div class="col-12">
+      <button type="submit" class="btn btn-rench-primary">
+        <i class="bi bi-save me-1"></i> Salvar envio à garantia
+      </button>
+    </div>
+  </form>
+</div>
+
+<div class="card card-dashboard p-4">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h5 class="fw-bold mb-0"><i class="bi bi-list-check me-2"></i>Acompanhamento</h5>
+    <form method="GET" action="{{url_for('lista_garantia')}}" class="d-flex gap-2">
+      <select name="status" class="form-select form-select-sm" style="width:220px" onchange="this.form.submit()">
+        <option value="">Todos os status</option>
+        {% for key, label in status_labels.items() %}
+        <option value="{{key}}" {{'selected' if status_filtro == key else ''}}>{{label}}</option>
+        {% endfor %}
+      </select>
+      <a href="{{url_for('lista_garantia')}}" class="btn btn-outline-secondary btn-sm">Limpar</a>
+    </form>
+  </div>
+
+  <div class="table-rench">
+    <table class="table table-rench mb-0">
+      <thead>
+        <tr>
+          <th>Data envio</th>
+          <th>Unidade</th>
+          <th>Item</th>
+          <th class="text-center">Qtd</th>
+          <th>Defeito</th>
+          <th>Status</th>
+          <th>Data retorno</th>
+          <th>Protocolo</th>
+          <th style="width:120px;">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in registros %}
+        <tr class="align-middle">
+          <td>{{r.data_envio.strftime('%d/%m/%Y') if r.data_envio else '-'}}</td>
+          <td>{{r.unidade_nome or 'Não informada'}}</td>
+          <td>
+            <div class="fw-bold">{{r.tipo_suprimento}}</div>
+            <div class="small text-muted">{{r.modelo_impressora or ''}} {{r.marca or ''}} {{r.cor or ''}}</div>
+            {% if r.numero_serie %}<div class="small text-muted">Série: {{r.numero_serie}}</div>{% endif %}
+          </td>
+          <td class="text-center fw-bold">{{r.quantidade}}</td>
+          <td>
+            {% if r.defeito %}
+            <span class="small text-danger">{{r.defeito[:80]}}{{'...' if r.defeito|length > 80 else ''}}</span>
+            {% else %}
+            <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if r.status == 'aguardando_analise' %}
+              <span class="badge bg-soft-warning text-dark">{{status_labels[r.status]}}</span>
+            {% elif r.status in ['reparado', 'substituido'] %}
+              <span class="badge bg-soft-success">{{status_labels[r.status]}}</span>
+            {% else %}
+              <span class="badge bg-soft-secondary">{{status_labels[r.status]}}</span>
+            {% endif %}
+            {% if r.estoque_entrada_lancada %}
+              <div class="small text-success mt-1"><i class="bi bi-check-circle"></i> Estoque atualizado</div>
+            {% endif %}
+          </td>
+          <td>{{r.data_retorno.strftime('%d/%m/%Y') if r.data_retorno else '-'}}</td>
+          <td>{{r.protocolo_r10 or '-'}}</td>
+          <td>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalGarantia{{r.id}}">
+              <i class="bi bi-pencil"></i>
+            </button>
+            {% if not r.estoque_entrada_lancada %}
+            <form method="POST" action="{{url_for('excluir_garantia', garantia_id=r.id)}}" class="d-inline" onsubmit="return confirm('Excluir este registro?');">
+              <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="text-center text-muted py-4">Nenhum item em garantia registrado.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% for r in registros %}
+<div class="modal fade" id="modalGarantia{{r.id}}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" action="{{url_for('atualizar_garantia', garantia_id=r.id)}}">
+        <div class="modal-header">
+          <h5 class="modal-title">Atualizar garantia #{{r.id}}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Novo status</label>
+              <select name="status" class="form-select" required>
+                {% for key, label in status_labels.items() %}
+                <option value="{{key}}" {{'selected' if r.status == key else ''}}>{{label}}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Data de retorno</label>
+              <input type="date" name="data_retorno" class="form-control" value="{{r.data_retorno.strftime('%Y-%m-%d') if r.data_retorno else hoje}}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Protocolo R10</label>
+              <input type="text" name="protocolo_r10" class="form-control" value="{{r.protocolo_r10 or ''}}">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-bold">Observações</label>
+              <textarea name="observacoes" class="form-control" rows="3">{{r.observacoes or ''}}</textarea>
+              {% if r.estoque_entrada_lancada %}
+              <div class="form-text text-success"><i class="bi bi-info-circle"></i> A entrada no estoque já foi lançada para este registro.</div>
+              {% elif r.status in ['reparado', 'substituido'] %}
+              <div class="form-text text-info"><i class="bi bi-info-circle"></i> Ao salvar com status "Reparado" ou "Substituído", o sistema lançará a entrada no estoque automaticamente.</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-rench-primary">Salvar alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}
