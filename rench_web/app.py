@@ -3702,12 +3702,9 @@ def novo_garantia():
         marca = (request.form.get('marca', '') or '').strip() or None
         cor = (request.form.get('cor', '') or '').strip() or None
         quantidade = int(request.form.get('quantidade') or 1)
-        numero_serie = (request.form.get('numero_serie', '') or '').strip() or None
         defeito = (request.form.get('defeito', '') or '').strip() or None
         data_envio = request.form.get('data_envio') or datetime.now().strftime('%Y-%m-%d')
-        protocolo_r10 = (request.form.get('protocolo_r10', '') or '').strip() or None
         observacoes = (request.form.get('observacoes', '') or '').strip() or None
-        entrega_origem_id = request.form.get('entrega_origem_id', '').strip() or None
 
         if quantidade <= 0:
             flash('Quantidade deve ser maior que zero.', 'danger')
@@ -3718,12 +3715,11 @@ def novo_garantia():
         cur.execute("""
             INSERT INTO suprimentos_garantia
             (unidade_id, tipo_suprimento, modelo_impressora, marca, cor, quantidade,
-             numero_serie, defeito, responsavel, data_envio, protocolo_r10,
-             estoque_id, entrega_origem_id, observacoes)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+             defeito, responsavel, data_envio, estoque_id, observacoes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
-        """, (unidade_id, tipo, modelo, marca, cor, quantidade, numero_serie, defeito,
-              operador_atual(), data_envio, protocolo_r10, estoque_id, entrega_origem_id, observacoes))
+        """, (unidade_id, tipo, modelo, marca, cor, quantidade, defeito,
+              operador_atual(), data_envio, estoque_id, observacoes))
         garantia_id = cur.fetchone()['id']
         _registrar_historico_garantia(cur, garantia_id, None, 'aguardando_analise', 'Registro criado', operador_atual())
         db.commit()
@@ -3750,7 +3746,6 @@ def atualizar_garantia(garantia_id):
         status_anterior = registro['status']
         status_novo = request.form.get('status', '').strip()
         data_retorno = request.form.get('data_retorno', '').strip() or None
-        protocolo_r10 = request.form.get('protocolo_r10', '').strip() or registro['protocolo_r10']
         observacoes = request.form.get('observacoes', '').strip() or None
         responsavel = operador_atual()
 
@@ -3797,10 +3792,10 @@ def atualizar_garantia(garantia_id):
 
         cur.execute("""
             UPDATE suprimentos_garantia
-            SET status=%s, data_retorno=%s, protocolo_r10=%s, observacoes=%s,
+            SET status=%s, data_retorno=%s, observacoes=%s,
                 data_atualizacao=CURRENT_TIMESTAMP
             WHERE id=%s
-        """, (status_novo, data_retorno, protocolo_r10, observacoes, garantia_id))
+        """, (status_novo, data_retorno, observacoes, garantia_id))
 
         _registrar_historico_garantia(cur, garantia_id, status_anterior, status_novo, observacoes, responsavel)
         db.commit()

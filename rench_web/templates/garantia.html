@@ -66,25 +66,13 @@
       <label class="form-label fw-bold">Cor</label>
       <input type="text" name="cor" class="form-control" placeholder="Ex.: Ciano">
     </div>
-    <div class="col-md-1">
+    <div class="col-md-2">
       <label class="form-label fw-bold">Qtd</label>
       <input type="number" name="quantidade" class="form-control" value="1" min="1" required>
     </div>
     <div class="col-md-3">
-      <label class="form-label fw-bold">Nº de série / lote</label>
-      <input type="text" name="numero_serie" class="form-control">
-    </div>
-    <div class="col-md-3">
       <label class="form-label fw-bold">Data de envio</label>
       <input type="date" name="data_envio" class="form-control" value="{{hoje}}" required>
-    </div>
-    <div class="col-md-3">
-      <label class="form-label fw-bold">Protocolo R10</label>
-      <input type="text" name="protocolo_r10" class="form-control">
-    </div>
-    <div class="col-md-3">
-      <label class="form-label fw-bold">ID entrega origem</label>
-      <input type="number" name="entrega_origem_id" class="form-control" placeholder="Opcional">
     </div>
     <div class="col-md-6">
       <label class="form-label fw-bold">Defeito / motivo</label>
@@ -127,7 +115,6 @@
           <th>Defeito</th>
           <th>Status</th>
           <th>Data retorno</th>
-          <th>Protocolo</th>
           <th style="width:120px;">Ações</th>
         </tr>
       </thead>
@@ -139,7 +126,6 @@
           <td>
             <div class="fw-bold">{{r.tipo_suprimento}}</div>
             <div class="small text-muted">{{r.modelo_impressora or ''}} {{r.marca or ''}} {{r.cor or ''}}</div>
-            {% if r.numero_serie %}<div class="small text-muted">Série: {{r.numero_serie}}</div>{% endif %}
           </td>
           <td class="text-center fw-bold">{{r.quantidade}}</td>
           <td>
@@ -162,7 +148,6 @@
             {% endif %}
           </td>
           <td>{{r.data_retorno.strftime('%d/%m/%Y') if r.data_retorno else '-'}}</td>
-          <td>{{r.protocolo_r10 or '-'}}</td>
           <td>
             <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalGarantia{{r.id}}">
               <i class="bi bi-pencil"></i>
@@ -176,7 +161,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="9" class="text-center text-muted py-4">Nenhum item em garantia registrado.</td>
+          <td colspan="8" class="text-center text-muted py-4">Nenhum item em garantia registrado.</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -206,10 +191,6 @@
             <div class="col-md-4">
               <label class="form-label fw-bold">Data de retorno</label>
               <input type="date" name="data_retorno" class="form-control" value="{{r.data_retorno.strftime('%Y-%m-%d') if r.data_retorno else hoje}}">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-bold">Protocolo R10</label>
-              <input type="text" name="protocolo_r10" class="form-control" value="{{r.protocolo_r10 or ''}}">
             </div>
             <div class="col-12">
               <label class="form-label fw-bold">Observações</label>
