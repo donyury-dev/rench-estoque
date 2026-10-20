@@ -149,10 +149,13 @@
           </td>
           <td>{{r.data_retorno.strftime('%d/%m/%Y') if r.data_retorno else '-'}}</td>
           <td>
-            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalGarantia{{r.id}}">
+            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalGarantia{{r.id}}" title="Editar">
               <i class="bi bi-pencil"></i>
             </button>
             {% if not r.estoque_entrada_lancada %}
+            <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalGarantia{{r.id}}" title="Dar entrada / registrar retorno">
+              <i class="bi bi-box-arrow-in-down"></i>
+            </button>
             <form method="POST" action="{{url_for('excluir_garantia', garantia_id=r.id)}}" class="d-inline" onsubmit="return confirm('Excluir este registro?');">
               <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
             </form>
@@ -193,12 +196,21 @@
               <input type="date" name="data_retorno" class="form-control" value="{{r.data_retorno.strftime('%Y-%m-%d') if r.data_retorno else hoje}}">
             </div>
             <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="lancar_entrada" id="lancar_entrada{{r.id}}" {{'checked' if not r.estoque_entrada_lancada else ''}}>
+                <label class="form-check-label" for="lancar_entrada{{r.id}}">
+                  <strong>Peça voltou fisicamente</strong> — lançar entrada no estoque
+                </label>
+                <div class="form-text">
+                  Com o status <strong>Reparado</strong> ou <strong>Substituído</strong> e esta opção marcada, o sistema devolve a quantidade ao estoque automaticamente (apenas uma vez). Desmarque se a peça ainda não voltou.
+                </div>
+              </div>
+            </div>
+            <div class="col-12">
               <label class="form-label fw-bold">Observações</label>
               <textarea name="observacoes" class="form-control" rows="3">{{r.observacoes or ''}}</textarea>
               {% if r.estoque_entrada_lancada %}
-              <div class="form-text text-success"><i class="bi bi-info-circle"></i> A entrada no estoque já foi lançada para este registro.</div>
-              {% elif r.status in ['reparado', 'substituido'] %}
-              <div class="form-text text-info"><i class="bi bi-info-circle"></i> Ao salvar com status "Reparado" ou "Substituído", o sistema lançará a entrada no estoque automaticamente.</div>
+              <div class="form-text text-success"><i class="bi bi-check-circle"></i> A entrada no estoque já foi lançada para este registro.</div>
               {% endif %}
             </div>
           </div>

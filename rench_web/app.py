@@ -3747,14 +3747,17 @@ def atualizar_garantia(garantia_id):
         status_novo = request.form.get('status', '').strip()
         data_retorno = request.form.get('data_retorno', '').strip() or None
         observacoes = request.form.get('observacoes', '').strip() or None
+        lancar_entrada = request.form.get('lancar_entrada') == 'on'
         responsavel = operador_atual()
 
         if status_novo not in _GARANTIA_STATUS:
             flash('Status inválido.', 'danger')
             return redirect(url_for('lista_garantia'))
 
-        # Só altera estoque se o retorno físico for confirmado e ainda não tiver sido lançado
-        if status_novo in _GARANTIA_STATUS_COM_RETORNO and not registro.get('estoque_entrada_lancada'):
+        # Lança a entrada no estoque somente quando o retorno físico é confirmado
+        # (checkbox "Peça voltou fisicamente"), o status indica retorno e a entrada
+        # ainda não foi lançada.
+        if status_novo in _GARANTIA_STATUS_COM_RETORNO and lancar_entrada and not registro.get('estoque_entrada_lancada'):
             if not data_retorno:
                 data_retorno = datetime.now().strftime('%Y-%m-%d')
             estoque_id = registro.get('estoque_id')
