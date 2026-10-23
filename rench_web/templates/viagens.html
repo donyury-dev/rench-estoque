@@ -46,7 +46,7 @@
             {{v.unidades_rota or 'Nenhuma unidade vinculada'}}
           </div>
         </td>
-        <td>{{v.data_criacao.strftime('%d/%m/%Y %H:%M') if v.data_criacao else '-'}}</td>
+        <td>{{v.data_criacao|fmt_br(true) or '-'}}</td>
         <td>{{v.responsavel_atendimento or '-'}}</td>
         <td>
           <span class="badge bg-secondary">{{v.paradas_atendidas}}/{{v.total_paradas}} atendidas</span>

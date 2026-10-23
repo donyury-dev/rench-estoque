@@ -90,7 +90,7 @@
       {% for m in movimentacoes %}
       {% set motivo_real = m.motivo_item or m.motivo_padrao or m.motivo %}
       <tr class="align-middle">
-        <td class="text-muted small">{{m.data_movimento.strftime('%d/%m/%Y %H:%M')}}</td>
+        <td class="text-muted small">{{m.data_movimento|fmt_br(true)}}</td>
         <td>
           {% if m.tipo_movimento == 'entrada' %}
             <span class="badge bg-soft-success">Entrada</span>

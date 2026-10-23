@@ -94,7 +94,7 @@
     <div class="card card-dashboard p-4 text-center h-100">
       <div class="small text-muted text-uppercase fw-bold mb-1">Período</div>
       <div class="h4 fw-bold mt-2" style="color:var(--primary);">
-        {{data_inicio|replace('-','/')}} <small>até</small> {{(data_fim)|replace('-','/')}}
+        {{data_inicio|fmt_br}} <small>até</small> {{data_fim|fmt_br}}
       </div>
     </div>
   </div>

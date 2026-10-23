@@ -89,7 +89,7 @@
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <h5 class="fw-bold mb-0">{{e.unidade_nome}}</h5>
               <span class="badge bg-light text-dark border">{{e.empresa_nome}}</span>
-              <span class="badge bg-soft-primary">{{e.data_entrega|default('-', true)}}</span>
+              <span class="badge bg-soft-primary">{{e.data_entrega|fmt_br or '-'}}</span>
             </div>
             {% if e.responsavel %}<small class="text-muted">Responsável: {{e.responsavel}}</small>{% endif %}
           </div>

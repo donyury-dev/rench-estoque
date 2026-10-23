@@ -82,7 +82,7 @@
           <div class="timeline-item">
             <div class="d-flex justify-content-between">
               <p class="fw-bold mb-1">{{m.tipo_movimento.replace('_',' ')|title}}</p>
-              <small class="text-muted">{{m.data_movimentacao}}</small>
+              <small class="text-muted">{{m.data_movimentacao|fmt_br(true)}}</small>
             </div>
             <p class="mb-1">
               <span class="text-muted">Origem:</span> <strong>{{m.origem_local or '-'}}</strong>

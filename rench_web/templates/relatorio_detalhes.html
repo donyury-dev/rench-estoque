@@ -5,7 +5,7 @@
 <div class="page-header">
   <div>
     <h1>{{titulo}}</h1>
-    <p class="text-muted mb-0">Período: <strong>{{data_inicio|replace('-','/')}} até {{data_fim|replace('-','/')}}</strong></p>
+    <p class="text-muted mb-0">Período: <strong>{{data_inicio|fmt_br}} até {{data_fim|fmt_br}}</strong></p>
   </div>
   <a href="{{url_for('relatorio_mensal', mes=mes, data_inicio=data_inicio, data_fim=data_fim, unidade_id=unidade_id)}}" class="btn btn-outline-secondary">
     <i class="bi bi-arrow-left me-1"></i> Voltar ao relatório

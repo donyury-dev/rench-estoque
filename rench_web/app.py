@@ -24,6 +24,43 @@ VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
 VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
 VAPID_CLAIMS = {"sub": "mailto:contato@rench.com.br"}
 
+
+def _fmt_br(data, com_hora=False):
+    """Formata data/hora para o padrão brasileiro dd/mm/aaaa [HH:MM].
+    Aceita date, datetime, string ISO (com ou sem hora) e timestamp UNIX."""
+    if data is None:
+        return ''
+    try:
+        if isinstance(data, (int, float)):
+            dt = datetime.fromtimestamp(data)
+        elif isinstance(data, datetime):
+            dt = data
+        elif isinstance(data, date):
+            return data.strftime('%d/%m/%Y')
+        elif isinstance(data, str):
+            data = data.strip()
+            if not data or data.lower() == 'none':
+                return ''
+            if re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}', data):
+                dt = datetime.fromisoformat(data.replace('Z', '+00:00'))
+            elif re.match(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}', data):
+                dt = datetime.strptime(data[:16], '%Y-%m-%d %H:%M')
+            elif re.match(r'^\d{4}-\d{2}-\d{2}$', data):
+                return datetime.strptime(data, '%Y-%m-%d').strftime('%d/%m/%Y')
+            elif re.match(r'^\d{2}/\d{2}/\d{4}$', data):
+                return data
+            else:
+                return data
+        else:
+            return str(data)
+        return dt.strftime('%d/%m/%Y %H:%M') if com_hora else dt.strftime('%d/%m/%Y')
+    except Exception:
+        return str(data)
+
+
+app.jinja_env.filters['fmt_br'] = _fmt_br
+
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PLANILHA_PADRAO = os.path.join(os.path.dirname(BASE_DIR), 'data_atual.xlsx')
 

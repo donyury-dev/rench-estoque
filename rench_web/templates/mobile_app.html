@@ -1336,7 +1336,7 @@
           </div>
           <div class="small">
             Paradas: {{v.paradas_atendidas}}/{{v.total_paradas}} atendidas ·
-            {{v.data_criacao.strftime('%d/%m/%Y') if v.data_criacao else '-'}}
+            {{v.data_criacao|fmt_br or '-'}}
           </div>
         </div>
         {% else %}
@@ -1522,7 +1522,7 @@
         <div class="card">
           <div class="card-title"><i class="bi bi-person-check"></i> Retorno conferido</div>
           <div class="small">Recebido por <strong>{{viagem.responsavel_retorno or '—'}}</strong></div>
-          <div class="small text-muted">{{viagem.data_retorno or ''}}</div>
+          <div class="small text-muted">{{viagem.data_retorno|fmt_br or ''}}</div>
           {% if viagem.observacoes_retorno %}
           <div class="small mt-1">{{viagem.observacoes_retorno}}</div>
           {% endif %}

@@ -45,7 +45,7 @@
         {% for h in historico_contadores %}
           <div class="border-bottom pb-2 mb-2">
             <div class="d-flex justify-content-between">
-              <small class="text-muted">{{h.data_movimentacao}}</small>
+              <small class="text-muted">{{h.data_movimentacao|fmt_br(true)}}</small>
               <small class="text-muted">{{h.destino_local or '-'}}</small>
             </div>
             <div class="small">

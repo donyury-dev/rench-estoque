@@ -64,7 +64,7 @@
       <tbody>
         {% for e in erros %}
         <tr>
-          <td nowrap>{{e.data_erro}}</td>
+          <td nowrap>{{e.data_erro|fmt_br(true)}}</td>
           <td><span class="badge bg-dark">{{e.contexto}}</span>{% if e.responsavel %}<br><small class="text-muted">{{e.responsavel}}</small>{% endif %}</td>
           <td style="color:#b02a37;">{{e.mensagem}}</td>
           <td><small class="text-muted">{{e.detalhes or '-'}}</small></td>
@@ -120,7 +120,7 @@
     <tbody>
       {% for m in movimentacoes %}
       <tr>
-        <td nowrap>{{m.data_movimento}}</td>
+        <td nowrap>{{m.data_movimento|fmt_br(true)}}</td>
         <td>
           {% if m.tipo_movimento == 'entrada' %}
             <span class="badge bg-success">Entrada</span>

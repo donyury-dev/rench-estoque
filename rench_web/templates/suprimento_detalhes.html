@@ -5,7 +5,7 @@
 <div class="page-header">
   <div>
     <h1>Detalhes da Entrega</h1>
-    <p class="text-muted mb-0">{{entrega.empresa_nome}} — {{entrega.unidade_nome}} — {{entrega.data_entrega.strftime('%d/%m/%Y')}}</p>
+    <p class="text-muted mb-0">{{entrega.empresa_nome}} — {{entrega.unidade_nome}} — {{entrega.data_entrega|fmt_br}}</p>
   </div>
   <a href="{{url_for('lista_suprimentos')}}" class="btn btn-outline-secondary">Voltar</a>
 </div>

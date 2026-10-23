@@ -69,7 +69,7 @@
           <tbody>
           {% for m in ultimas_mov %}
             <tr>
-              <td><small class="text-muted">{{m.data_movimentacao}}</small></td>
+              <td><small class="text-muted">{{m.data_movimentacao|fmt_br(true)}}</small></td>
               <td>
                 <span class="badge badge-{{m.tipo_equipamento}}">{{m.tipo_equipamento}}</span>
                 <strong>{{m.modelo}}</strong>

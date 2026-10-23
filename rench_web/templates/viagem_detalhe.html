@@ -5,7 +5,7 @@
   <div>
     <h1><i class="bi bi-signpost-split me-2"></i>Viagem {{viagem.numero}}</h1>
     <span class="text-muted">
-      Criada em {{viagem.data_criacao.strftime('%d/%m/%Y %H:%M') if viagem.data_criacao else '-'}} ·
+      Criada em {{viagem.data_criacao|fmt_br(true) or '-'}} ·
       Separação: {{viagem.responsavel_separacao or '-'}} ·
       Atendimento: {{viagem.responsavel_atendimento or '-'}}
     </span>
@@ -169,7 +169,7 @@
           {% for c in coletas %}
           <tr>
             <td class="fw-bold">{{c.fornecedor}}</td>
-            <td>{{c.data_coleta or '-'}}</td>
+            <td>{{c.data_coleta|fmt_br or '-'}}</td>
             <td>{{c.responsavel or '-'}}</td>
             <td>{{c.documento or '-'}}</td>
             <td>{{c.observacoes or '-'}}</td>
@@ -189,7 +189,7 @@
           {% for e in entregas %}
           <tr>
             <td>#{{e.id}}</td>
-            <td>{{e.data_entrega}}</td>
+            <td>{{e.data_entrega|fmt_br}}</td>
             <td>{{e.unidade_nome or '-'}}</td>
             <td>{{e.responsavel or '-'}}</td>
             <td>
@@ -287,7 +287,7 @@
       <div class="row g-3 align-items-start">
         <div class="col-md-6">
           <div><strong>Recebido por:</strong> {{viagem.responsavel_retorno or '—'}}</div>
-          <div><strong>Data do retorno:</strong> {{viagem.data_retorno or '—'}}</div>
+          <div><strong>Data do retorno:</strong> {{viagem.data_retorno|fmt_br or '—'}}</div>
           {% if viagem.observacoes_retorno %}
           <div class="mt-2"><strong>Observações:</strong> {{viagem.observacoes_retorno}}</div>
           {% endif %}
