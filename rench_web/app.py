@@ -4113,12 +4113,6 @@ def nova_viagem():
         paradas = _coletar_paradas_viagem(request.form)
         itens = _coletar_itens_viagem(request.form)
 
-        viagem_ativa = _viagem_ativa_do_operador(cur, operador_atual())
-        if viagem_ativa:
-            flash(f'Você já tem a viagem {viagem_ativa["numero"]} em andamento. '
-                  'Conclua o retorno dela antes de abrir uma nova.', 'danger')
-            return redirect(url_for('viagem_detalhe', viagem_id=viagem_ativa['id']))
-
         if not itens:
             flash('Adicione pelo menos um suprimento à viagem.', 'danger')
             return redirect(url_for('nova_viagem'))
@@ -6994,14 +6988,6 @@ def api_mobile_viagem_criar():
 
     db = get_db()
     cur = db.cursor()
-
-    viagem_ativa = _viagem_ativa_do_operador(cur, g.operador_mobile)
-    if viagem_ativa:
-        return jsonify({
-            'erro': f'Você já tem a viagem {viagem_ativa["numero"]} em andamento. '
-                    'Conclua o retorno dela antes de abrir uma nova.',
-            'viagem_ativa_id': viagem_ativa['id'],
-        }), 400
 
     cur.execute("SELECT nextval('viagem_numero_seq') AS seq")
     seq = int(cur.fetchone()['seq'])
