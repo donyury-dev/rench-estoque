@@ -3876,7 +3876,7 @@ def _anexar_parada_nos_itens(cur, itens):
     if not ids:
         return
     cur.execute("""
-        SELECT p.id, p.ordem, u.nome AS unidade_nome
+        SELECT p.id, p.ordem, p.unidade_id, u.nome AS unidade_nome
         FROM viagens_paradas p
         LEFT JOIN unidades u ON u.id = p.unidade_id
         WHERE p.id = ANY(%s)
@@ -3885,6 +3885,7 @@ def _anexar_parada_nos_itens(cur, itens):
     for i in itens:
         info = nomes.get(i.get('parada_id'))
         i['parada_unidade'] = (info['unidade_nome'] if info else None)
+        i['parada_unidade_id'] = (info['unidade_id'] if info else None)
         i['parada_ordem'] = (info['ordem'] if info else None)
 
 
@@ -4215,9 +4216,12 @@ def viagem_detalhe(viagem_id):
     if viagem['status'] == 'concluido':
         # Viagem concluida: mostra apenas os itens que voltaram ao estoque.
         itens = [i for i in itens if (i['quantidade_retornada'] or 0) > 0]
+    cur.execute("SELECT id, nome FROM unidades WHERE ativo=1 ORDER BY nome")
+    unidades_destino = cur.fetchall()
+    estoque = _carregar_estoque(cur)
     return render_template('viagem_detalhe.html', viagem=viagem, paradas=paradas,
                            itens=itens, coletas=coletas, entregas=entregas,
-                           estoque=_carregar_estoque(cur))
+                           estoque=estoque, unidades_destino=unidades_destino)
 
 
 @app.route('/viagens/<int:viagem_id>/conferir', methods=['POST'])
@@ -4330,6 +4334,67 @@ def viagem_item_adicionar(viagem_id):
                   item['marca'], item['quantidade']))
     db.commit()
     flash('Itens adicionados à viagem.', 'success')
+    return _redirect_viagem(viagem_id)
+
+
+@app.route('/viagens/<int:viagem_id>/itens/<int:item_id>/destino', methods=['POST'])
+@login_required
+def viagem_item_destino(viagem_id, item_id):
+    db = get_db()
+    cur = db.cursor()
+    viagem = _buscar_viagem(cur, viagem_id)
+    if not viagem:
+        flash('Viagem nao encontrada.', 'danger')
+        return redirect(url_for('lista_viagens'))
+    if viagem['status'] not in ('separacao', 'conferido', 'em_rota', 'aguardando_retorno'):
+        flash('Só é possível alterar o destino de itens em viagens ativas.', 'danger')
+        return _redirect_viagem(viagem_id)
+
+    try:
+        unidade_id = int(request.form.get('unidade_id', ''))
+    except (TypeError, ValueError):
+        flash('Selecione uma unidade válida.', 'danger')
+        return _redirect_viagem(viagem_id)
+
+    cur.execute("SELECT id FROM unidades WHERE id=%s AND ativo=1", (unidade_id,))
+    if not cur.fetchone():
+        flash('A unidade selecionada não existe ou está inativa.', 'danger')
+        return _redirect_viagem(viagem_id)
+
+    cur.execute("""
+        SELECT id, parada_id, quantidade_entregue, quantidade_usada_manual
+        FROM viagens_itens
+        WHERE id=%s AND viagem_id=%s
+        FOR UPDATE
+    """, (item_id, viagem_id))
+    item = cur.fetchone()
+    if not item:
+        flash('Item não encontrado nesta viagem.', 'danger')
+        return _redirect_viagem(viagem_id)
+    if (item['quantidade_entregue'] or 0) > 0 or (item['quantidade_usada_manual'] or 0) > 0:
+        flash('Não é possível alterar o destino de um item que já foi entregue ou usado.', 'danger')
+        return _redirect_viagem(viagem_id)
+
+    cur.execute("""
+        SELECT id FROM viagens_paradas
+        WHERE viagem_id=%s AND unidade_id=%s
+        ORDER BY ordem LIMIT 1
+    """, (viagem_id, unidade_id))
+    parada = cur.fetchone()
+    if not parada:
+        cur.execute("SELECT COALESCE(MAX(ordem), 0) + 1 AS proxima_ordem FROM viagens_paradas WHERE viagem_id=%s", (viagem_id,))
+        ordem = cur.fetchone()['proxima_ordem']
+        cur.execute("""
+            INSERT INTO viagens_paradas (viagem_id, ordem, unidade_id)
+            VALUES (%s, %s, %s) RETURNING id
+        """, (viagem_id, ordem, unidade_id))
+        parada_id = cur.fetchone()['id']
+    else:
+        parada_id = parada['id']
+
+    cur.execute("UPDATE viagens_itens SET parada_id=%s WHERE id=%s AND viagem_id=%s", (parada_id, item_id, viagem_id))
+    db.commit()
+    flash('Unidade de destino do item atualizada.', 'success')
     return _redirect_viagem(viagem_id)
 
 
