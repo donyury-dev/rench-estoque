@@ -61,9 +61,16 @@
           {% else %}<span class="status-badge s-descartado">Cancelada</span>{% endif %}
         </td>
         <td class="text-end">
-          <a href="{{url_for('viagem_detalhe', viagem_id=v.id)}}" class="btn btn-sm btn-rench-primary">
-            <i class="bi bi-eye me-1"></i>Detalhes
-          </a>
+          <div class="d-inline-flex gap-1">
+            {% if v.status in ('separacao', 'conferido', 'em_rota', 'aguardando_retorno') %}
+            <a href="{{url_for('viagem_detalhe', viagem_id=v.id)}}#adicionar-itens" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-plus-lg me-1"></i>Adicionar itens
+            </a>
+            {% endif %}
+            <a href="{{url_for('viagem_detalhe', viagem_id=v.id)}}" class="btn btn-sm btn-rench-primary">
+              <i class="bi bi-eye me-1"></i>Detalhes
+            </a>
+          </div>
         </td>
       </tr>
       {% else %}

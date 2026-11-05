@@ -127,8 +127,9 @@
       </div>
 
       {% if viagem.status in ('separacao', 'conferido', 'em_rota', 'aguardando_retorno') %}
+      <div id="adicionar-itens">
       <hr>
-      <h6 class="fw-bold"><i class="bi bi-plus-circle me-1"></i>Adicionar suprimentos à viagem</h6>
+      <h6 class="fw-bold"><i class="bi bi-plus-circle me-1"></i>Adicionar mais suprimentos à viagem</h6>
       <form method="POST" action="{{url_for('viagem_item_adicionar', viagem_id=viagem.id)}}" id="form-add-itens">
         <div id="add-itens-lista"></div>
         <div class="d-flex gap-2 mb-2">
@@ -136,6 +137,7 @@
           <button class="btn btn-sm btn-outline-primary"><i class="bi bi-check-circle me-1"></i>Adicionar à viagem</button>
         </div>
       </form>
+      </div>
       {% endif %}
 
       {% if viagem.status in ('conferido','em_rota','aguardando_retorno') %}
