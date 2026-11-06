@@ -1246,17 +1246,12 @@ def _chave_item_saida(item):
     return _chave_estoque(tipo, item.get('modelo_impressora'), item.get('marca'))
 
 
-def debitar_estoque_entrega(cur, entrega_id, itens, responsavel=None, alocacao=None):
-    """Recebe lista de dicts: {tipo_suprimento, modelo_impressora, quantidade, marca, cor_selecionada}.
+def _verificar_faltantes_entrega(cur, itens, alocacao=None):
+    """Confere o saldo do estoque Rench para os itens da entrega (sem movimentar).
 
-    Quando a saida esta vinculada a uma viagem, `alocacao` (paralela a `itens`)
-    informa quanto de cada item sai da carga separada no escritorio (origem
-    Rench) e quanto ve de coleta de fornecedor. Somente a parcela Rench e
-    debitada do estoque; itens coletados em fornecedor nunca passaram pelo
-    estoque da Rench.
+    Retorna lista de faltantes; vazia quando tudo pode ser debitado.
     """
-    faltantes = []
-    debitos = []
+    faltantes, debitos = [], []
     for idx, item in enumerate(itens):
         tipo, modelo, marca = _chave_item_saida(item)
         qtd = int(item.get('quantidade') or 1)
@@ -1269,6 +1264,19 @@ def debitar_estoque_entrega(cur, entrega_id, itens, responsavel=None, alocacao=N
             faltantes.append({'tipo': tipo, 'modelo': modelo, 'marca': marca, 'saldo': saldo, 'solicitado': qtd})
         else:
             debitos.append((tipo, modelo, marca, qtd))
+    return faltantes, debitos
+
+
+def debitar_estoque_entrega(cur, entrega_id, itens, responsavel=None, alocacao=None):
+    """Recebe lista de dicts: {tipo_suprimento, modelo_impressora, quantidade, marca, cor_selecionada}.
+
+    Quando a saida esta vinculada a uma viagem, `alocacao` (paralela a `itens`)
+    informa quanto de cada item sai da carga separada no escritorio (origem
+    Rench) e quanto ve de coleta de fornecedor. Somente a parcela Rench e
+    debitada do estoque; itens coletados em fornecedor nunca passaram pelo
+    estoque da Rench.
+    """
+    faltantes, debitos = _verificar_faltantes_entrega(cur, itens, alocacao)
     if faltantes:
         return faltantes
 
@@ -1421,11 +1429,15 @@ def vincular_entrega_a_viagem(cur, entrega_id, alocacao=None):
     }
 
 
-def validar_saida_contra_viagem(cur, parada_id, unidade_id, itens):
+def validar_saida_contra_viagem(cur, parada_id, unidade_id, itens, exigir_viagem=False):
     """Controla que a saida de suprimentos so use a carga da viagem.
 
     So e permitido dar saida do que foi levado no carro (carga conferida da
     viagem) ou recolhido em fornecedor/unidade durante a rota.
+
+    Quando `exigir_viagem` (saida vinculada a chamado) e a unidade possui
+    viagem ativa, a saida precisa ser vinculada a uma parada: nao e permitido
+    registrar saida "de escritorio" de itens que deveriam vir do carro.
 
     Retorna (parada_resolvida, viagem_id, alocacao, erros):
     - parada_resolvida: parada a qual a entrega sera vinculada (ou None).
@@ -1462,6 +1474,21 @@ def validar_saida_contra_viagem(cur, parada_id, unidade_id, itens):
             parada = candidatas[0]
 
     if not parada:
+        if exigir_viagem:
+            cur.execute("""
+                SELECT 1
+                FROM viagens_paradas vp
+                JOIN viagens v ON v.id = vp.viagem_id
+                WHERE vp.unidade_id = %s
+                  AND v.status IN ('separacao','conferido','em_rota','aguardando_retorno')
+                  AND vp.status = 'planejada'
+                LIMIT 1
+            """, (unidade_id,))
+            if cur.fetchone():
+                return None, None, None, [
+                    'Há viagem ativa para esta unidade. Selecione a viagem da '
+                    'entrega: saída vinculada a chamado deve sair da carga do '
+                    'carro, não do estoque do escritório.']
         # Sem viagem vinculada: saida pelo escritorio (motoboy/correio/retirada)
         alocacao = []
         for item in itens:
@@ -7948,10 +7975,11 @@ def api_mobile_equipamento_novo():
     return jsonify({'ok': True, 'id': novo['id'], 'codigo': novo['codigo']})
 
 
-@app.route('/api/mobile/entregas', methods=['POST'])
-@api_mobile_auth
-def api_mobile_entrega_criar():
-    dados = request.get_json(silent=True) or {}
+def _parse_entrega_mobile(dados):
+    """Extrai e valida o payload de entrega mobile.
+
+    Retorna (erro, campos) — `erro` e None quando o payload e valido.
+    """
     try:
         unidade_id = int(dados.get('unidade_id') or 0)
     except (TypeError, ValueError):
@@ -7968,9 +7996,9 @@ def api_mobile_entrega_criar():
         chamado_id = None
 
     if not unidade_id:
-        return jsonify({'erro': 'Selecione a unidade da entrega.'}), 400
+        return 'Selecione a unidade da entrega.', None
     if not observacoes:
-        return jsonify({'erro': 'Informe a observação da entrega.'}), 400
+        return 'Informe a observação da entrega.', None
 
     itens = []
     for i in (dados.get('itens') or []):
@@ -7994,12 +8022,78 @@ def api_mobile_entrega_criar():
             'outro': (i.get('motivo') or '').strip(),
         })
     if not itens:
-        return jsonify({'erro': 'Adicione pelo menos um suprimento antes de salvar a entrega.'}), 400
+        return 'Adicione pelo menos um suprimento antes de salvar a entrega.', None
+
+    return None, {
+        'unidade_id': unidade_id,
+        'data_entrega': data_entrega,
+        'responsavel': responsavel,
+        'observacoes': observacoes,
+        'parada_id': parada_id,
+        'chamado_id': chamado_id,
+        'chamado_protocolo': chamado_protocolo,
+        'itens': itens,
+    }
+
+
+def _mensagens_faltantes(faltantes):
+    msgs = []
+    for f in faltantes:
+        desc = f"{f['tipo']} {f['modelo']}"
+        if f.get('marca'):
+            desc += f" ({f['marca']})"
+        msgs.append(f"{desc}: solicitado {f['solicitado']}, em estoque {f['saldo']}")
+    return 'Estoque insuficiente: ' + '; '.join(msgs)
+
+
+@app.route('/api/mobile/entregas/validar', methods=['POST'])
+@api_mobile_auth
+def api_mobile_entrega_validar():
+    """Pre-valida a saida de suprimentos sem registrar nada.
+
+    Usada pelo APK antes de fechar o chamado: se a validacao falhar, o
+    fechamento e bloqueado em vez de fechar o chamado sem a saida.
+    """
+    dados = request.get_json(silent=True) or {}
+    erro, campos = _parse_entrega_mobile(dados)
+    if erro:
+        return jsonify({'erro': erro}), 400
+
+    db = get_db()
+    cur = db.cursor()
+    parada_resolvida, _viagem_id, alocacao, erros_viagem = validar_saida_contra_viagem(
+        cur, campos['parada_id'], campos['unidade_id'], campos['itens'],
+        exigir_viagem=bool(campos['chamado_id']))
+    if erros_viagem:
+        return jsonify({'erro': 'Saída bloqueada: ' + ' '.join(erros_viagem)}), 400
+
+    faltantes, _debitos = _verificar_faltantes_entrega(cur, campos['itens'], alocacao)
+    if faltantes:
+        return jsonify({'erro': _mensagens_faltantes(faltantes)}), 400
+
+    return jsonify({'ok': True, 'parada_id': parada_resolvida})
+
+
+@app.route('/api/mobile/entregas', methods=['POST'])
+@api_mobile_auth
+def api_mobile_entrega_criar():
+    dados = request.get_json(silent=True) or {}
+    erro, campos = _parse_entrega_mobile(dados)
+    if erro:
+        return jsonify({'erro': erro}), 400
+    unidade_id = campos['unidade_id']
+    data_entrega = campos['data_entrega']
+    responsavel = campos['responsavel']
+    observacoes = campos['observacoes']
+    parada_id = campos['parada_id']
+    chamado_id = campos['chamado_id']
+    chamado_protocolo = campos['chamado_protocolo']
+    itens = campos['itens']
 
     db = get_db()
     cur = db.cursor()
     parada_resolvida, viagem_id_saida, alocacao, erros_viagem = validar_saida_contra_viagem(
-        cur, parada_id, unidade_id, itens)
+        cur, parada_id, unidade_id, itens, exigir_viagem=bool(chamado_id))
     if erros_viagem:
         return jsonify({'erro': 'Saída bloqueada: ' + ' '.join(erros_viagem)}), 400
     if parada_resolvida:
@@ -8016,13 +8110,7 @@ def api_mobile_entrega_criar():
     faltantes = debitar_estoque_entrega(cur, entrega_id, itens, responsavel=responsavel, alocacao=alocacao)
     if faltantes:
         db.rollback()
-        msgs = []
-        for f in faltantes:
-            desc = f"{f['tipo']} {f['modelo']}"
-            if f.get('marca'):
-                desc += f" ({f['marca']})"
-            msgs.append(f"{desc}: solicitado {f['solicitado']}, em estoque {f['saldo']}")
-        return jsonify({'erro': 'Estoque insuficiente: ' + '; '.join(msgs)}), 400
+        return jsonify({'erro': _mensagens_faltantes(faltantes)}), 400
 
     for item in itens:
         mp = item['motivo_padrao']
