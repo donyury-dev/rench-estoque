@@ -4027,7 +4027,8 @@ def api_paradas_ativas():
         JOIN viagens v ON v.id = vp.viagem_id
         LEFT JOIN unidades u ON u.id = vp.unidade_id
         LEFT JOIN empresas emp ON emp.id = u.empresa_id
-        WHERE v.status IN ('conferido', 'em_rota') AND vp.status = 'planejada'
+        WHERE v.status IN ('separacao', 'conferido', 'em_rota', 'aguardando_retorno')
+              AND vp.status = 'planejada'
     """
     params = []
     if unidade_id:
@@ -7959,6 +7960,12 @@ def api_mobile_entrega_criar():
     responsavel = (dados.get('responsavel') or g.operador_mobile).strip()
     observacoes = (dados.get('observacoes') or '').strip()
     parada_id = dados.get('parada_id') or None
+    chamado_id = dados.get('chamado_id') or None
+    chamado_protocolo = (dados.get('chamado_protocolo') or '').strip() or None
+    try:
+        chamado_id = int(chamado_id) if chamado_id else None
+    except (TypeError, ValueError):
+        chamado_id = None
 
     if not unidade_id:
         return jsonify({'erro': 'Selecione a unidade da entrega.'}), 400
@@ -7999,9 +8006,11 @@ def api_mobile_entrega_criar():
         parada_id = parada_resolvida
 
     cur.execute("""
-        INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel, observacoes, parada_id)
-        VALUES (%s, %s, %s, %s, %s) RETURNING id
-    """, (unidade_id, data_entrega, responsavel, observacoes, parada_id))
+        INSERT INTO suprimentos_entregas (unidade_id, data_entrega, responsavel,
+            observacoes, parada_id, chamado_id, chamado_protocolo)
+        VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+    """, (unidade_id, data_entrega, responsavel, observacoes, parada_id,
+          chamado_id, chamado_protocolo))
     entrega_id = cur.fetchone()['id']
 
     faltantes = debitar_estoque_entrega(cur, entrega_id, itens, responsavel=responsavel, alocacao=alocacao)
@@ -8050,6 +8059,15 @@ def api_mobile_entrega_criar():
             helpdesk_registrar_evento_suprimentos(
                 ch['chamado_id'],
                 f"[Suprimentos] Saída vinculada à viagem (entrega #{entrega_id}): {resumo}")
+    elif chamado_id:
+        resumo = '; '.join(
+            f"{i['quantidade']}x {i['tipo_suprimento']} {i['cor_selecionada'] or ''} "
+            f"{i['modelo_impressora'] or ''}".strip()
+            for i in itens)
+        helpdesk_registrar_evento_suprimentos(
+            chamado_id,
+            f"[Suprimentos] Saída no atendimento do chamado "
+            f"{chamado_protocolo or chamado_id} (entrega #{entrega_id}): {resumo}")
 
     return jsonify({'ok': True, 'entrega_id': entrega_id, 'unidade': unidade_nome})
 
