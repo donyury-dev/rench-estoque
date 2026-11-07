@@ -84,7 +84,16 @@
             </tr>
           </thead>
           <tbody>
+            {% set ns = namespace(modelo='_inicio_') %}
             {% for i in itens %}
+            {% if i.modelo_impressora != ns.modelo %}
+            {% set ns.modelo = i.modelo_impressora %}
+            <tr class="table-secondary">
+              <td colspan="{{8 if viagem.status in ('separacao', 'conferido', 'em_rota', 'aguardando_retorno') else 7}}" class="fw-bold">
+                <i class="bi bi-printer me-2"></i>{{i.modelo_impressora or 'Sem modelo definido'}}
+              </td>
+            </tr>
+            {% endif %}
             {% set esperado = (i.quantidade_carregada or 0) - (i.quantidade_entregue or 0) - (i.quantidade_usada_manual or 0) %}
             <tr class="{{'table-danger' if i.divergencia}}">
               <td>

@@ -4210,7 +4210,7 @@ def _carregar_detalhes_viagem(cur, viagem_id):
 
     cur.execute("""
         SELECT * FROM viagens_itens WHERE viagem_id=%s
-        ORDER BY origem DESC, tipo_suprimento, modelo_impressora, marca
+        ORDER BY modelo_impressora NULLS LAST, tipo_suprimento, marca, origem
     """, (viagem_id,))
     itens = cur.fetchall()
     _anexar_parada_nos_itens(cur, itens)
