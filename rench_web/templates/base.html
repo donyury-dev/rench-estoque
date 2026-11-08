@@ -123,6 +123,9 @@
     </a>
     <a class="nav-link {{'active' if request.endpoint in ('lista_suprimentos','novo_suprimento','suprimento_mobile','mobile_index','mobile_equipamentos','controle_estoque','estoque_entrada','estoque_ajuste','estoque_historico','estoque_auditoria','lista_modelos_impressora','novo_modelo_impressora','editar_modelo_impressora','lista_garantia','novo_garantia','atualizar_garantia','excluir_garantia') else ''}}" href="{{url_for('controle_estoque')}}">
       <i class="bi bi-box-seam"></i> Estoque
+      {% if alertas_estoque and alertas_estoque.total > 0 %}
+        <span class="badge ms-auto {{'bg-danger' if alertas_estoque.zerado > 0 else 'bg-warning text-dark'}}" title="{{alertas_estoque.zerado}} em falta, {{alertas_estoque.baixo}} com estoque baixo">{{alertas_estoque.total}}</span>
+      {% endif %}
     </a>
     <a class="nav-link {{'active' if request.endpoint in ('lista_viagens','nova_viagem','viagem_detalhe','viagem_retorno','mobile_viagens','mobile_viagem_nova','mobile_viagem_detalhe','mobile_viagem_retorno') else ''}}" href="{{url_for('lista_viagens')}}">
       <i class="bi bi-signpost-split"></i> Viagens
@@ -160,6 +163,38 @@
 </div>
 
 <div class="main-content">
+  {% if alertas_estoque and alertas_estoque.total > 0 %}
+  <div class="card mb-4" style="border:1px solid {{'#dc3545' if alertas_estoque.zerado > 0 else '#B76E00'}};border-radius:14px;">
+    <div class="d-flex align-items-start gap-3 p-3">
+      <div class="icon-circle {{'bg-soft-danger' if alertas_estoque.zerado > 0 else 'bg-soft-warning'}}" style="margin-bottom:0;">
+        <i class="bi {{'bi-x-circle' if alertas_estoque.zerado > 0 else 'bi-exclamation-triangle'}}"></i>
+      </div>
+      <div class="flex-grow-1">
+        <div class="fw-bold" style="color:var(--primary);font-size:16px;">
+          Atenção ao estoque:
+          {% if alertas_estoque.zerado > 0 %}{{alertas_estoque.zerado}} item(ns) em falta{% endif %}
+          {% if alertas_estoque.zerado > 0 and alertas_estoque.baixo > 0 %} e {% endif %}
+          {% if alertas_estoque.baixo > 0 %}{{alertas_estoque.baixo}} com estoque baixo{% endif %}
+        </div>
+        <div class="d-flex flex-wrap gap-2 mt-2">
+          {% for item in alertas_estoque.itens %}
+          <span class="badge {{'bg-soft-danger' if item.status == 'zerado' else 'bg-soft-warning'}}" style="font-weight:600;">
+            {{item.nome}}{% if item.modelo and item.modelo != '-' %} ({{item.modelo}}){% endif %}: {{item.quantidade}} un. / mín. {{item.minimo}}
+          </span>
+          {% endfor %}
+          {% if alertas_estoque.total > alertas_estoque.itens|length %}
+          <span class="text-muted small align-self-center">+ {{alertas_estoque.total - alertas_estoque.itens|length}} outro(s)...</span>
+          {% endif %}
+        </div>
+        <div class="mt-2">
+          <a href="{{url_for('controle_estoque', status='zerado')}}" class="btn btn-sm btn-outline-danger me-1">Ver em falta</a>
+          <a href="{{url_for('controle_estoque', status='baixo')}}" class="btn btn-sm btn-outline-secondary">Ver estoque baixo</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {% with msgs = get_flashed_messages(with_categories=true) %}
     {% if msgs %}
       {% for cat, msg in msgs %}

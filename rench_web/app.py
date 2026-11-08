@@ -1941,6 +1941,36 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def _alertas_estoque():
+    """Contagem de itens com estoque baixo ou em falta, exibida em todas as telas."""
+    if not session.get('logado'):
+        return None
+    try:
+        db = get_db()
+        cur = db.cursor()
+        cur.execute("""
+            SELECT tipo_suprimento, modelo_impressora, marca, quantidade, estoque_minimo
+            FROM estoque
+            WHERE ativo = TRUE AND (quantidade = 0 OR quantidade <= estoque_minimo)
+            ORDER BY quantidade ASC, tipo_suprimento
+        """)
+        itens = cur.fetchall()
+    except Exception:
+        return None
+    baixo = sum(1 for i in itens if i['quantidade'] > 0)
+    zerado = sum(1 for i in itens if i['quantidade'] == 0)
+    destaques = [
+        {
+            'nome': (i['tipo_suprimento'] or '').strip() + (' — ' + i['marca'] if i['marca'] else ''),
+            'modelo': i['modelo_impressora'] or '',
+            'quantidade': i['quantidade'],
+            'minimo': i['estoque_minimo'] or 0,
+            'status': 'zerado' if i['quantidade'] == 0 else 'baixo',
+        }
+        for i in itens[:8]
+    ]
+    return {'baixo': baixo, 'zerado': zerado, 'total': len(itens), 'itens': destaques}
+
 @app.context_processor
 def inject_globals():
     return dict(
@@ -1948,6 +1978,7 @@ def inject_globals():
         condicao_label=condicao_label,
         condicao_badge=condicao_badge,
         condicao_normalizada=condicao_normalizada,
+        alertas_estoque=_alertas_estoque(),
     )
 
 
