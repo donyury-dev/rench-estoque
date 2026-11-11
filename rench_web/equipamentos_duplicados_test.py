@@ -131,10 +131,10 @@ class UnificacaoTest(unittest.TestCase):
         self.assertTrue(any('INSERT INTO equipamentos_unificacoes' in sql for sql in comandos))
         self.assertTrue(any('CREATE TRIGGER trg_equipamento_serie_unica' in sql for sql in comandos))
         self.assertTrue(banco.committed)
-    def test_nao_unifica_cadastros_com_local_ou_modelo_divergente(self):
+    def test_nao_unifica_cadastros_com_modelo_status_ou_tipo_divergente(self):
         from unittest.mock import MagicMock
 
-        for diferenca in ({'local_atual_nome': 'Outra unidade'}, {'modelo': 'M2170'}):
+        for diferenca in ({'modelo': 'M2170'}, {'status': 'inativo'}, {'tipo_equipamento': 'notebook'}):
             banco = MagicMock()
             cursor = banco.cursor.return_value
             registro = {
@@ -150,6 +150,30 @@ class UnificacaoTest(unittest.TestCase):
             self.assertFalse(any('INSERT INTO equipamentos_unificacoes' in sql for sql in comandos))
             self.assertFalse(any('UPDATE movimentacoes' in sql for sql in comandos))
             self.assertTrue(any('CREATE TRIGGER trg_equipamento_serie_unica' in sql for sql in comandos))
+
+    def test_unifica_cadastros_com_marca_no_modelo_ou_local_divergente(self):
+        from unittest.mock import MagicMock
+
+        for diferenca in ({'modelo': 'EPSON M1120', 'local_atual_nome': 'Outra unidade'},):
+            banco = MagicMock()
+            cursor = banco.cursor.return_value
+            registro = {
+                'id': 1, 'numero_serie': 'SERIE1', 'tipo_equipamento': 'impressora',
+                'modelo': 'M1120', 'local_atual_nome': 'Depósito', 'status': 'ativo',
+                'ultima_movimentacao': datetime(2026, 11, 1),
+            }
+            segundo = {**registro, 'id': 2, 'ultima_movimentacao': datetime(2026, 10, 1), **diferenca}
+            cursor.fetchall.side_effect = [
+                [{'serie': 'SERIE1'}],
+                [registro, segundo],
+            ]
+            self.assertEqual(
+                unificar_series_duplicadas(banco),
+                [{'serie': 'SERIE1', 'mantido_id': 1, 'arquivados_ids': [2]}],
+            )
+            comandos = [chamada.args[0] for chamada in cursor.execute.call_args_list]
+            self.assertTrue(any('INSERT INTO equipamentos_unificacoes' in sql for sql in comandos))
+            self.assertTrue(any('UPDATE movimentacoes SET equipamento_id=%s' in sql for sql in comandos))
 
 
 if __name__ == '__main__':

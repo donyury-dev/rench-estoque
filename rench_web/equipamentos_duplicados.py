@@ -14,6 +14,31 @@ _CAMPOS_FIXOS = {
     'ultima_movimentacao',
 }
 
+_MARCAS_MODELO = (
+    'OKI', 'CANON', 'EPSON', 'HP', 'LEXMARK', 'BROTHER', 'SAMSUNG', 'DELL',
+    'LENOVO', 'PANASONIC', 'KYOCERA', 'RICOH', 'XEROX', 'TOSHIBA', 'SHARP',
+    'ZEBRA', 'ELGIN', 'POSITIVO',
+)
+
+
+def normalizar_modelo(valor):
+    """Remove a marca do início do modelo para comparar cadastros.
+
+    'OKI ES4172' e 'ES4172' descrevem o mesmo equipamento, apenas escritos
+    de forma diferente em cadastros distintos.
+    """
+    if valor is None:
+        return ''
+    texto = re.sub(r'\s+', ' ', str(valor).strip().upper())
+    mudou = True
+    while mudou:
+        mudou = False
+        for marca in _MARCAS_MODELO:
+            if texto.startswith(marca + ' '):
+                texto = texto[len(marca):].strip()
+                mudou = True
+    return texto
+
 
 def normalizar_numero_serie(valor):
     if valor is None:
@@ -122,11 +147,20 @@ def unificar_series_duplicadas(db):
         registros = cur.fetchall()
         if len(registros) < 2:
             continue
-        campos_identidade = ('tipo_equipamento', 'modelo', 'local_atual_nome', 'unidade_id', 'cliente_atual', 'status')
+        # Equipamentos de modelos ou tipos diferentes que dividem a série são
+        # aparelhos distintos: ficam de fora e seguem para revisão manual.
         if any(not str(registros[0].get(campo) or '').strip() for campo in ('tipo_equipamento', 'modelo', 'local_atual_nome')):
             continue
-        if any(len({str(item.get(campo) or '').strip().upper() for item in registros}) > 1 for campo in campos_identidade):
+        if len({str(item.get('tipo_equipamento') or '').strip().upper() for item in registros}) > 1:
             continue
+        if len({str(item.get('status') or '').strip().upper() for item in registros}) > 1:
+            continue
+        modelos_normalizados = {normalizar_modelo(item.get('modelo')) for item in registros}
+        if len(modelos_normalizados) > 1 or not next(iter(modelos_normalizados)):
+            continue
+        # Local, unidade e cliente podem divergir: é o padrão de um
+        # equipamento transferido e cadastrado novamente no novo destino.
+        # O registro com a movimentação mais recente representa o local atual.
         principal = escolher_registro_principal(registros)
         origens = [item for item in registros if item['id'] != principal['id']]
         for origem in origens:
