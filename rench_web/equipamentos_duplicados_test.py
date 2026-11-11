@@ -103,10 +103,10 @@ class UnificacaoTest(unittest.TestCase):
                     return [{'serie': 'AK5C034556'}]
                 return [
                     {'id': 1, 'codigo': 'RCH-IMP-000001', 'numero_serie': 'AK5C034556',
-                     'ultima_movimentacao': datetime(2026, 10, 9), 'modelo': 'C711',
-                     'local_atual_nome': 'Antigo', 'observacoes': 'Observação antiga', 'ativo': 1},
+                     'ultima_movimentacao': datetime(2026, 10, 9), 'modelo': 'C711', 'tipo_equipamento': 'impressora',
+                     'local_atual_nome': 'R10 - SP', 'observacoes': 'Observação antiga', 'ativo': 1},
                     {'id': 2, 'codigo': 'RCH-IMP-000002', 'numero_serie': 'AK5C034556',
-                     'ultima_movimentacao': datetime(2026, 11, 10), 'modelo': 'C711',
+                     'ultima_movimentacao': datetime(2026, 11, 10), 'modelo': 'C711', 'tipo_equipamento': 'impressora',
                      'local_atual_nome': 'R10 - SP', 'observacoes': 'Em reparo', 'ativo': 1},
                 ]
 
@@ -128,8 +128,28 @@ class UnificacaoTest(unittest.TestCase):
         self.assertTrue(any('UPDATE movimentacoes SET equipamento_id=%s' in sql for sql in comandos))
         self.assertTrue(any('UPDATE historico_defeitos SET equipamento_id=%s' in sql for sql in comandos))
         self.assertTrue(any('SET ativo=0' in sql for sql in comandos))
-        self.assertTrue(any('CREATE UNIQUE INDEX IF NOT EXISTS' in sql for sql in comandos))
+        self.assertTrue(any('INSERT INTO equipamentos_unificacoes' in sql for sql in comandos))
+        self.assertTrue(any('CREATE TRIGGER trg_equipamento_serie_unica' in sql for sql in comandos))
         self.assertTrue(banco.committed)
+    def test_nao_unifica_cadastros_com_local_ou_modelo_divergente(self):
+        from unittest.mock import MagicMock
+
+        for diferenca in ({'local_atual_nome': 'Outra unidade'}, {'modelo': 'M2170'}):
+            banco = MagicMock()
+            cursor = banco.cursor.return_value
+            registro = {
+                'id': 1, 'numero_serie': 'SERIE1', 'tipo_equipamento': 'impressora',
+                'modelo': 'M1120', 'local_atual_nome': 'Depósito', 'status': 'ativo',
+            }
+            cursor.fetchall.side_effect = [
+                [{'serie': 'SERIE1'}],
+                [registro, {**registro, 'id': 2, **diferenca}],
+            ]
+            self.assertEqual(unificar_series_duplicadas(banco), [])
+            comandos = [chamada.args[0] for chamada in cursor.execute.call_args_list]
+            self.assertFalse(any('INSERT INTO equipamentos_unificacoes' in sql for sql in comandos))
+            self.assertFalse(any('UPDATE movimentacoes' in sql for sql in comandos))
+            self.assertTrue(any('CREATE TRIGGER trg_equipamento_serie_unica' in sql for sql in comandos))
 
 
 if __name__ == '__main__':

@@ -2522,7 +2522,7 @@ def editar_equipamento(equip_id):
                 cliente_atual = unidade['empresa_nome']
 
         serie = normalizar_numero_serie(request.form.get('numero_serie'))
-        duplicado = buscar_serie_duplicada(cur, serie, excluir_id=equip_id)
+        duplicado = buscar_serie_duplicada(cur, serie, excluir_id=equip_id) if serie != normalizar_numero_serie(equip['numero_serie']) else None
         if duplicado:
             flash(mensagem_serie_duplicada(duplicado), 'danger')
             return redirect(request.path)
@@ -6508,7 +6508,7 @@ def mobile_equipamento_editar(equip_id):
                 cliente_atual = unidade['empresa_nome']
 
         serie = normalizar_numero_serie(request.form.get('numero_serie'))
-        duplicado = buscar_serie_duplicada(cur, serie, excluir_id=equip_id)
+        duplicado = buscar_serie_duplicada(cur, serie, excluir_id=equip_id) if serie != normalizar_numero_serie(equip['numero_serie']) else None
         if duplicado:
             flash(mensagem_serie_duplicada(duplicado), 'danger')
             return redirect(request.path)
@@ -7948,8 +7948,9 @@ def api_mobile_equipamento_editar(equip_id):
     dados = request.get_json(silent=True) or {}
     db = get_db()
     cur = db.cursor()
-    cur.execute("SELECT id FROM equipamentos WHERE id=%s AND ativo=1", (equip_id,))
-    if not cur.fetchone():
+    cur.execute("SELECT id, numero_serie FROM equipamentos WHERE id=%s AND ativo=1", (equip_id,))
+    equip = cur.fetchone()
+    if not equip:
         return jsonify({'erro': 'Equipamento nao encontrado.'}), 404
 
     unidade_id = dados.get('unidade_id') or None
@@ -7968,7 +7969,7 @@ def api_mobile_equipamento_editar(equip_id):
         cliente_atual = unidade['empresa_nome']
 
     serie = normalizar_numero_serie(dados.get('numero_serie'))
-    duplicado = buscar_serie_duplicada(cur, serie, excluir_id=equip_id)
+    duplicado = buscar_serie_duplicada(cur, serie, excluir_id=equip_id) if serie != normalizar_numero_serie(equip['numero_serie']) else None
     if duplicado:
         return jsonify({'erro': mensagem_serie_duplicada(duplicado)}), 409
 
