@@ -14,6 +14,13 @@ from urllib.parse import urlparse
 import urllib.request
 import urllib.error
 from pywebpush import webpush, WebPushException
+from equipamentos_duplicados import (
+    INDICE_SERIE_ATIVA,
+    buscar_serie_duplicada,
+    mensagem_serie_duplicada,
+    normalizar_numero_serie,
+    unificar_series_duplicadas,
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY')
@@ -986,6 +993,9 @@ def init_db():
     cur.close()
 
     _executar_migrations()
+    unificados = unificar_series_duplicadas(db)
+    if unificados:
+        print(f'{len(unificados)} séries duplicadas unificadas com histórico preservado.')
     _normalizar_tipos_estoque()
     _normalizar_modelos_estoque()
     _normalizar_papel_fotografico_estoque()
@@ -1792,7 +1802,7 @@ def importar_planilha_para_banco(caminho=PLANILHA_PADRAO, limpar=True):
         for row in ws.iter_rows(min_row=3, values_only=True):
             data, modelo, serie, contador, movimento, local_coleta, local_atual, motivo, item_id = row[:9]
             modelo = _normalizar_texto(modelo)
-            serie = _normalizar_texto(serie)
+            serie = normalizar_numero_serie(serie)
             if not modelo and not serie:
                 continue
             if not modelo:
@@ -1801,8 +1811,7 @@ def importar_planilha_para_banco(caminho=PLANILHA_PADRAO, limpar=True):
             local_coleta = _normalizar_texto(local_coleta)
             contador = int(contador) if isinstance(contador, (int, float)) else 0
 
-            cur.execute("SELECT id FROM equipamentos WHERE numero_serie=%s", (serie,))
-            existente = cur.fetchone() if serie else None
+            existente = buscar_serie_duplicada(cur, serie) if serie else None
             if existente:
                 equipamento_id = existente['id']
                 cur.execute("""
@@ -1844,7 +1853,7 @@ def importar_planilha_para_banco(caminho=PLANILHA_PADRAO, limpar=True):
         for row in ws.iter_rows(min_row=3, values_only=True):
             data, tipo, modelo, serie, movimento, local_coleta, local_atual, motivo, item_id, config = row[:10]
             modelo = _normalizar_texto(modelo)
-            serie = _normalizar_texto(serie)
+            serie = normalizar_numero_serie(serie)
             if not modelo and not serie:
                 continue
             if not modelo:
@@ -1853,8 +1862,7 @@ def importar_planilha_para_banco(caminho=PLANILHA_PADRAO, limpar=True):
             local_atual = _normalizar_texto(local_atual) or "RENCH - Estoque"
             local_coleta = _normalizar_texto(local_coleta)
 
-            cur.execute("SELECT id FROM equipamentos WHERE numero_serie=%s", (serie,))
-            existente = cur.fetchone() if serie else None
+            existente = buscar_serie_duplicada(cur, serie) if serie else None
             if existente:
                 equipamento_id = existente['id']
                 cur.execute("""
@@ -1893,12 +1901,11 @@ def importar_planilha_para_banco(caminho=PLANILHA_PADRAO, limpar=True):
     if "Planilha1" in wb.sheetnames:
         ws = wb["Planilha1"]
         for row in ws.iter_rows(values_only=True):
-            serie = _normalizar_texto(row[0] if len(row) > 0 else None)
+            serie = normalizar_numero_serie(row[0] if len(row) > 0 else None)
             defeito = _normalizar_texto(row[1] if len(row) > 1 else None)
             if not serie or not defeito:
                 continue
-            cur.execute("SELECT id FROM equipamentos WHERE numero_serie=%s", (serie,))
-            equip = cur.fetchone()
+            equip = buscar_serie_duplicada(cur, serie)
             if equip:
                 cur.execute("""
                     INSERT INTO historico_defeitos (equipamento_id, descricao)
@@ -1940,6 +1947,24 @@ def login_required(f):
             return redirect(url_for('selecionar_operador', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
+
+
+def tratar_serie_duplicada(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except psycopg2.errors.UniqueViolation as erro:
+            if erro.diag.constraint_name != INDICE_SERIE_ATIVA:
+                raise
+            get_db().rollback()
+            mensagem = 'Este número de série já está cadastrado em outro equipamento ativo.'
+            if request.path.startswith('/api/'):
+                return jsonify({'erro': mensagem}), 409
+            flash(mensagem, 'danger')
+            return redirect(request.path)
+    return decorated_function
+
 
 def _alertas_estoque():
     """Contagem de itens com estoque baixo ou em falta, exibida em todas as telas."""
@@ -2376,6 +2401,7 @@ def detalhe_equipamento(equip_id):
 
 @app.route('/equipamento/novo', methods=['GET', 'POST'])
 @login_required
+@tratar_serie_duplicada
 def novo_equipamento():
     db = get_db()
     cur = db.cursor()
@@ -2395,12 +2421,18 @@ def novo_equipamento():
         else:
             cliente_atual = None
 
+        serie = normalizar_numero_serie(request.form.get('numero_serie'))
+        duplicado = buscar_serie_duplicada(cur, serie)
+        if duplicado:
+            flash(mensagem_serie_duplicada(duplicado), 'danger')
+            return redirect(request.path)
+
         campos = {
             'codigo': gerar_codigo_rastreio(cur, tipo),
             'tipo_equipamento': tipo,
             'fabricante': request.form.get('fabricante'),
             'modelo': request.form.get('modelo'),
-            'numero_serie': request.form.get('numero_serie'),
+            'numero_serie': serie,
             'patrimonio': request.form.get('patrimonio'),
             'setor_equipamento': request.form.get('setor_equipamento'),
             'status': request.form.get('status', 'ativo'),
@@ -2461,6 +2493,7 @@ def novo_equipamento():
 
 @app.route('/equipamento/<int:equip_id>/editar', methods=['GET', 'POST'])
 @login_required
+@tratar_serie_duplicada
 def editar_equipamento(equip_id):
     db = get_db()
     cur = db.cursor()
@@ -2488,10 +2521,16 @@ def editar_equipamento(equip_id):
                 local_atual_nome = unidade['unidade_nome']
                 cliente_atual = unidade['empresa_nome']
 
+        serie = normalizar_numero_serie(request.form.get('numero_serie'))
+        duplicado = buscar_serie_duplicada(cur, serie, excluir_id=equip_id)
+        if duplicado:
+            flash(mensagem_serie_duplicada(duplicado), 'danger')
+            return redirect(request.path)
+
         campos = {
             'fabricante': request.form.get('fabricante'),
             'modelo': request.form.get('modelo'),
-            'numero_serie': request.form.get('numero_serie'),
+            'numero_serie': serie,
             'patrimonio': request.form.get('patrimonio'),
             'setor_equipamento': request.form.get('setor_equipamento'),
             'status': request.form.get('status', 'ativo'),
@@ -6365,6 +6404,7 @@ def mobile_equipamento_detalhe(equip_id):
 
 @app.route('/mobile/equipamento/novo', methods=['GET', 'POST'])
 @login_required
+@tratar_serie_duplicada
 def mobile_equipamento_novo():
     db = get_db()
     cur = db.cursor()
@@ -6383,12 +6423,18 @@ def mobile_equipamento_novo():
                 local_atual_nome = unidade['nome'] if 'nome' in unidade else unidade[0]
                 cliente_atual = unidade['nome_1'] if 'nome_1' in unidade else unidade[1]
 
+        serie = normalizar_numero_serie(request.form.get('numero_serie'))
+        duplicado = buscar_serie_duplicada(cur, serie)
+        if duplicado:
+            flash(mensagem_serie_duplicada(duplicado), 'danger')
+            return redirect(request.path)
+
         campos = {
             'codigo': gerar_codigo_rastreio(cur, tipo),
             'tipo_equipamento': tipo,
             'fabricante': request.form.get('fabricante'),
             'modelo': request.form.get('modelo'),
-            'numero_serie': request.form.get('numero_serie'),
+            'numero_serie': serie,
             'patrimonio': request.form.get('patrimonio'),
             'setor_equipamento': request.form.get('setor_equipamento'),
             'status': request.form.get('status', 'ativo'),
@@ -6437,6 +6483,7 @@ def mobile_equipamento_novo():
 
 @app.route('/mobile/equipamento/<int:equip_id>/editar', methods=['GET', 'POST'])
 @login_required
+@tratar_serie_duplicada
 def mobile_equipamento_editar(equip_id):
     db = get_db()
     cur = db.cursor()
@@ -6460,10 +6507,16 @@ def mobile_equipamento_editar(equip_id):
                 local_atual_nome = unidade['unidade_nome']
                 cliente_atual = unidade['empresa_nome']
 
+        serie = normalizar_numero_serie(request.form.get('numero_serie'))
+        duplicado = buscar_serie_duplicada(cur, serie, excluir_id=equip_id)
+        if duplicado:
+            flash(mensagem_serie_duplicada(duplicado), 'danger')
+            return redirect(request.path)
+
         campos = {
             'fabricante': request.form.get('fabricante'),
             'modelo': request.form.get('modelo'),
-            'numero_serie': request.form.get('numero_serie'),
+            'numero_serie': serie,
             'patrimonio': request.form.get('patrimonio'),
             'setor_equipamento': request.form.get('setor_equipamento'),
             'status': request.form.get('status', 'ativo'),
@@ -7890,6 +7943,7 @@ def _executar_substituicao(dados, operador_padrao):
 
 @app.route('/api/mobile/equipamentos/<int:equip_id>', methods=['PUT', 'PATCH'])
 @api_mobile_auth
+@tratar_serie_duplicada
 def api_mobile_equipamento_editar(equip_id):
     dados = request.get_json(silent=True) or {}
     db = get_db()
@@ -7913,10 +7967,15 @@ def api_mobile_equipamento_editar(equip_id):
         local_atual_nome = unidade['unidade_nome']
         cliente_atual = unidade['empresa_nome']
 
+    serie = normalizar_numero_serie(dados.get('numero_serie'))
+    duplicado = buscar_serie_duplicada(cur, serie, excluir_id=equip_id)
+    if duplicado:
+        return jsonify({'erro': mensagem_serie_duplicada(duplicado)}), 409
+
     campos = {
         'fabricante': (dados.get('fabricante') or '').strip() or None,
         'modelo': (dados.get('modelo') or '').strip() or None,
-        'numero_serie': (dados.get('numero_serie') or '').strip() or None,
+        'numero_serie': serie,
         'patrimonio': (dados.get('patrimonio') or '').strip() or None,
         'setor_equipamento': (dados.get('setor_equipamento') or '').strip() or None,
         'status': (dados.get('status') or 'ativo').strip(),
@@ -7946,6 +8005,7 @@ def api_mobile_equipamento_editar(equip_id):
 
 @app.route('/api/mobile/equipamentos', methods=['POST'])
 @api_mobile_auth
+@tratar_serie_duplicada
 def api_mobile_equipamento_novo():
     dados = request.get_json(silent=True) or {}
     tipo = (dados.get('tipo_equipamento') or '').strip()
@@ -7967,12 +8027,17 @@ def api_mobile_equipamento_novo():
             local_atual_nome = unidade['unidade_nome']
             cliente_atual = unidade['empresa_nome']
 
+    serie = normalizar_numero_serie(dados.get('numero_serie'))
+    duplicado = buscar_serie_duplicada(cur, serie)
+    if duplicado:
+        return jsonify({'erro': mensagem_serie_duplicada(duplicado)}), 409
+
     campos = {
         'codigo': gerar_codigo_rastreio(cur, tipo),
         'tipo_equipamento': tipo,
         'fabricante': (dados.get('fabricante') or '').strip() or None,
         'modelo': (dados.get('modelo') or '').strip() or None,
-        'numero_serie': (dados.get('numero_serie') or '').strip() or None,
+        'numero_serie': serie,
         'patrimonio': (dados.get('patrimonio') or '').strip() or None,
         'setor_equipamento': (dados.get('setor_equipamento') or '').strip() or None,
         'status': 'ativo',

@@ -57,7 +57,8 @@
       </div>
       <div class="col-md-4">
         <label class="form-label fw-bold">Serial / Nº Série</label>
-        <input name="numero_serie" class="form-control" value="{{equip.numero_serie or ''}}">
+        <input name="numero_serie" class="form-control" value="{{equip.numero_serie or ''}}" maxlength="255" autocapitalize="characters">
+        <small class="text-muted">A série não pode se repetir. Se não souber, deixe em branco; não use S/N.</small>
       </div>
 
       <div class="col-md-4">

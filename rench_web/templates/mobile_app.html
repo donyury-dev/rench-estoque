@@ -800,7 +800,8 @@
               </div>
               <div class="form-group">
                 <label>Número de Série</label>
-                <input type="text" name="numero_serie" placeholder="S/N">
+                <input type="text" name="numero_serie" placeholder="Número de série" maxlength="255" autocapitalize="characters">
+                <small>Não repita uma série já cadastrada. Se não souber, deixe em branco.</small>
               </div>
               <div class="form-group">
                 <label>Patrimônio</label>
@@ -1058,7 +1059,8 @@
               </div>
               <div class="form-group">
                 <label>Número de Série</label>
-                <input type="text" name="numero_serie" value="{{equip.numero_serie or ''}}">
+                <input type="text" name="numero_serie" value="{{equip.numero_serie or ''}}" maxlength="255" autocapitalize="characters">
+                <small>Não repita uma série já cadastrada. Se não souber, deixe em branco.</small>
               </div>
               <div class="form-group">
                 <label>Patrimônio</label>
