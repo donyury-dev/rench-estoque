@@ -4031,6 +4031,7 @@ def _coletar_itens_viagem(form):
 def _coletar_paradas_viagem(form):
     """Le linhas de paradas (unidade, chamado) do formulario."""
     unidade_ids = form.getlist('parada_unidade_id[]')
+    unidade_buscas = form.getlist('parada_unidade_busca[]')
     chamado_ids = form.getlist('parada_chamado_id[]')
     protocolos = form.getlist('parada_chamado_protocolo[]')
     chamados_por_parada = form.getlist('parada_chamados_json[]')
@@ -4042,11 +4043,13 @@ def _coletar_paradas_viagem(form):
     for idx, unidade_id in enumerate(unidade_ids):
         unidade_id = (unidade_id or '').strip()
         if not unidade_id:
+            if (campo(unidade_buscas, idx) or '').strip():
+                raise ValueError(f'Selecione uma unidade da lista na parada {idx + 1}. O nome digitado não foi reconhecido.')
             continue
         try:
             unidade_id = int(unidade_id)
         except (TypeError, ValueError):
-            continue
+            raise ValueError(f'A unidade da parada {idx + 1} é inválida. Selecione-a novamente na lista.')
         chamado_raw = (campo(chamado_ids, idx) or '').strip()
         protocolo = (campo(protocolos, idx) or '').strip() or None
         chamado_id = None
@@ -4209,11 +4212,18 @@ def nova_viagem():
     if request.method == 'POST':
         responsavel_atendimento = request.form.get('responsavel_atendimento', '').strip()
         observacoes = request.form.get('observacoes', '').strip() or None
-        paradas = _coletar_paradas_viagem(request.form)
+        try:
+            paradas = _coletar_paradas_viagem(request.form)
+        except ValueError as exc:
+            flash(str(exc), 'danger')
+            return redirect(url_for('nova_viagem'))
         itens = _coletar_itens_viagem(request.form)
 
         if not itens:
             flash('Adicione pelo menos um suprimento à viagem.', 'danger')
+            return redirect(url_for('nova_viagem'))
+        if any(item.get('parada_idx') is not None and not 0 <= item['parada_idx'] < len(paradas) for item in itens):
+            flash('Há suprimentos com destino em uma unidade não reconhecida. Revise as paradas antes de salvar.', 'danger')
             return redirect(url_for('nova_viagem'))
 
         cur.execute("SELECT nextval('viagem_numero_seq') AS seq")
@@ -7124,11 +7134,14 @@ def api_mobile_viagem_criar():
     for p in paradas_brutas:
         if not isinstance(p, dict):
             continue
+        unidade_bruta = p.get('unidade_id')
         try:
-            unidade_id = int(p.get('unidade_id') or 0)
+            unidade_id = int(unidade_bruta or 0)
         except (TypeError, ValueError):
             unidade_id = 0
         if not unidade_id:
+            if unidade_bruta not in (None, '', 0, '0') or p.get('chamado_id') or p.get('chamados'):
+                return jsonify({'erro': 'Uma parada está sem unidade válida. Selecione a unidade novamente antes de criar a viagem.'}), 400
             continue
         chamado_id = None
         protocolo = None
@@ -7162,6 +7175,8 @@ def api_mobile_viagem_criar():
     itens = _api_mobile_itens(dados)
     if not itens:
         return jsonify({'erro': 'Adicione pelo menos um suprimento à viagem.'}), 400
+    if any(item.get('parada_index') is not None and not 0 <= item['parada_index'] < len(paradas) for item in itens):
+        return jsonify({'erro': 'Há suprimentos com destino em uma unidade não reconhecida. Revise as paradas antes de criar a viagem.'}), 400
 
     db = get_db()
     cur = db.cursor()

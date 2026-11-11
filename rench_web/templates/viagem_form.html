@@ -113,7 +113,7 @@ function addParada(){
   div.innerHTML = `
     <div class="d-flex gap-2 align-items-center mb-2">
       <span class="badge bg-secondary">${paradaIdx}ª</span>
-      <input class="form-control form-control-sm parada-unidade-busca" list="lista-unidades-viagem"
+      <input class="form-control form-control-sm parada-unidade-busca" name="parada_unidade_busca[]" list="lista-unidades-viagem"
              placeholder="Digite para buscar a unidade..." oninput="syncParadaUnidade(this)" required>
       <input type="hidden" class="parada-unidade" name="parada_unidade_id[]">
       <button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirChamados(this)"><i class="bi bi-ticket"></i> Chamado</button>
@@ -310,6 +310,15 @@ document.getElementById('buscaChamado').addEventListener('keydown', e => {
 });
 
 document.getElementById('form-viagem').addEventListener('submit', (e) => {
+  const paradaInvalida = [...document.querySelectorAll('.parada-row')].find(row =>
+    row.querySelector('.parada-unidade-busca').value.trim() && !row.querySelector('.parada-unidade').value
+  );
+  if(paradaInvalida){
+    e.preventDefault();
+    alert('Selecione a unidade na lista de sugestões. O nome digitado não foi reconhecido e a parada não seria salva.');
+    paradaInvalida.querySelector('.parada-unidade-busca').focus();
+    return;
+  }
   document.querySelectorAll('.item-row').forEach(row => {
     if(!row.querySelector('[name="tipo_suprimento[]"]').value){
       row.remove();

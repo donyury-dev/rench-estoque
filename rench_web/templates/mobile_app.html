@@ -1751,7 +1751,7 @@
       div.className = 'item-box';
       div.style.cssText = 'border:1px solid #ddd;border-radius:8px;padding:8px;margin-bottom:8px';
       div.innerHTML = `
-        <input class="vj-parada-unidade-busca" list="vj-lista-unidades"
+        <input class="vj-parada-unidade-busca" name="parada_unidade_busca[]" list="vj-lista-unidades"
                placeholder="Digite para buscar a unidade..." style="width:100%"
                oninput="vjSyncParadaUnidade(this)" required>
         <input type="hidden" class="vj-parada-unidade" name="parada_unidade_id[]">
@@ -1884,7 +1884,16 @@
       });
     }
 
-    document.querySelector('#aba-viagem_nova form')?.addEventListener('submit', function(){
+    document.querySelector('#aba-viagem_nova form')?.addEventListener('submit', function(e){
+      const paradaInvalida = [...document.querySelectorAll('#mob-lista-paradas .item-box')].find(row =>
+        row.querySelector('.vj-parada-unidade-busca').value.trim() && !row.querySelector('.vj-parada-unidade').value
+      );
+      if(paradaInvalida){
+        e.preventDefault();
+        alert('Selecione a unidade na lista de sugestões. O nome digitado não foi reconhecido e a parada não seria salva.');
+        paradaInvalida.querySelector('.vj-parada-unidade-busca').focus();
+        return;
+      }
       document.querySelectorAll('#mob-lista-itens .item-box').forEach(row => {
         if(!row.querySelector('[name="tipo_suprimento[]"]').value) return;
         const inp = document.createElement('input');
