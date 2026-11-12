@@ -1,0 +1,6 @@
+[
+  {"id": 1, "garantia_id": 1, "status_anterior": null, "status_novo": "aguardando_analise", "observacoes": "Registro criado", "responsavel": "Kaio", "data_hora": "2026-10-20 11:13:27.642333"},
+  {"id": 2, "garantia_id": 2, "status_anterior": null, "status_novo": "aguardando_analise", "observacoes": "Registro criado", "responsavel": "Kaio", "data_hora": "2026-10-20 11:16:09.623903"},
+  {"id": 3, "garantia_id": 3, "status_anterior": null, "status_novo": "aguardando_analise", "observacoes": "Registro criado", "responsavel": "Kaio", "data_hora": "2026-10-20 11:17:26.237761"},
+  {"id": 4, "garantia_id": 4, "status_anterior": null, "status_novo": "aguardando_analise", "observacoes": "Registro criado", "responsavel": "Kaio", "data_hora": "2026-10-20 11:18:22.160550"}
+]

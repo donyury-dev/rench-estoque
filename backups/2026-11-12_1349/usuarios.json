@@ -1,0 +1,3 @@
+[
+  {"id": 1, "nome": "Administrador", "usuario": "admin", "senha_hash": "77dfcd6bfafbb23250e5c45af56d8ffeda48a2cc06fd79b259bbceefcf905864", "nivel": "admin", "ativo": 1}
+]
