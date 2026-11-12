@@ -1,0 +1,14 @@
+[
+  {"id": 7, "nome": "408", "marca": "HP", "tipo_impressao": "mono", "ordem": 7, "ativo": 1},
+  {"id": 8, "nome": "4103", "marca": "HP", "tipo_impressao": "mono", "ordem": 8, "ativo": 1},
+  {"id": 9, "nome": "479", "marca": "HP", "tipo_impressao": "color", "ordem": 9, "ativo": 1},
+  {"id": 10, "nome": "4303", "marca": "HP", "tipo_impressao": "color", "ordem": 10, "ativo": 1},
+  {"id": 11, "nome": "428", "marca": "HP", "tipo_impressao": "mono", "ordem": 11, "ativo": 1},
+  {"id": 12, "nome": "PARA TRANSFORMAR", "marca": "OUTROS", "tipo_impressao": "color", "ordem": 12, "ativo": 1},
+  {"id": 1, "nome": "C711", "marca": "OKI", "tipo_impressao": "color", "ordem": 1, "ativo": 1},
+  {"id": 3, "nome": "ES8473", "marca": "OKI", "tipo_impressao": "color", "ordem": 3, "ativo": 1},
+  {"id": 4, "nome": "MC573", "marca": "OKI", "tipo_impressao": "color", "ordem": 4, "ativo": 1},
+  {"id": 5, "nome": "C831", "marca": "OKI", "tipo_impressao": "color", "ordem": 5, "ativo": 1},
+  {"id": 6, "nome": "C911", "marca": "OKI", "tipo_impressao": "color", "ordem": 6, "ativo": 1},
+  {"id": 2, "nome": "ES5112/4172", "marca": "OKI", "tipo_impressao": "mono", "ordem": 2, "ativo": 1}
+]

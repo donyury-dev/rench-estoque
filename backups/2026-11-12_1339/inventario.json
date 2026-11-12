@@ -1,0 +1,256 @@
+{
+  "format_version": 1,
+  "generated_at": "2026-11-12T13:39:53Z",
+  "project_ref": "yfxfmwrasjukbsjjqbzs",
+  "dump": "rench-estoque.dump",
+  "tables": [
+    {
+      "name": "acesso_remoto",
+      "file": "acesso_remoto.json",
+      "rows": 122
+    },
+    {
+      "name": "empresas",
+      "file": "empresas.json",
+      "rows": 15
+    },
+    {
+      "name": "equipamentos",
+      "file": "equipamentos.json",
+      "rows": 586
+    },
+    {
+      "name": "equipamentos_unificacoes",
+      "file": "equipamentos_unificacoes.json",
+      "rows": 34
+    },
+    {
+      "name": "estoque",
+      "file": "estoque.json",
+      "rows": 70
+    },
+    {
+      "name": "estoque_erros",
+      "file": "estoque_erros.json",
+      "rows": 46
+    },
+    {
+      "name": "estoque_movimentacoes",
+      "file": "estoque_movimentacoes.json",
+      "rows": 1179
+    },
+    {
+      "name": "historico_defeitos",
+      "file": "historico_defeitos.json",
+      "rows": 4
+    },
+    {
+      "name": "modelo_insumos",
+      "file": "modelo_insumos.json",
+      "rows": 36
+    },
+    {
+      "name": "modelos_impressora",
+      "file": "modelos_impressora.json",
+      "rows": 12
+    },
+    {
+      "name": "movimentacoes",
+      "file": "movimentacoes.json",
+      "rows": 1591
+    },
+    {
+      "name": "push_subscriptions",
+      "file": "push_subscriptions.json",
+      "rows": 19
+    },
+    {
+      "name": "suprimentos_entregas",
+      "file": "suprimentos_entregas.json",
+      "rows": 307
+    },
+    {
+      "name": "suprimentos_garantia",
+      "file": "suprimentos_garantia.json",
+      "rows": 4
+    },
+    {
+      "name": "suprimentos_garantia_historico",
+      "file": "suprimentos_garantia_historico.json",
+      "rows": 4
+    },
+    {
+      "name": "suprimentos_itens",
+      "file": "suprimentos_itens.json",
+      "rows": 606
+    },
+    {
+      "name": "unidades",
+      "file": "unidades.json",
+      "rows": 231
+    },
+    {
+      "name": "usuarios",
+      "file": "usuarios.json",
+      "rows": 1
+    },
+    {
+      "name": "viagens",
+      "file": "viagens.json",
+      "rows": 46
+    },
+    {
+      "name": "viagens_coletas",
+      "file": "viagens_coletas.json",
+      "rows": 1
+    },
+    {
+      "name": "viagens_itens",
+      "file": "viagens_itens.json",
+      "rows": 227
+    },
+    {
+      "name": "viagens_paradas",
+      "file": "viagens_paradas.json",
+      "rows": 88
+    },
+    {
+      "name": "viagens_paradas_chamados",
+      "file": "viagens_paradas_chamados.json",
+      "rows": 55
+    }
+  ],
+  "attachments": {},
+  "files": [
+    {
+      "path": "RESUMO.md",
+      "bytes": 1362,
+      "sha256": "f5a65f6573124b6e0ac8f1d85705d2cd39f8eddeca1a36623172217c759775b8"
+    },
+    {
+      "path": "acesso_remoto.json",
+      "bytes": 16866,
+      "sha256": "c24f46ac5de7f313cdace62efda8e00bffa27df51b92338e6c85d12d4e45e146"
+    },
+    {
+      "path": "anexos-manifesto.json",
+      "bytes": 183,
+      "sha256": "476a584c38be6d318c382d1f786779eba8cfc0cbfe58d5ec6e21c084a0f6678e"
+    },
+    {
+      "path": "empresas.json",
+      "bytes": 975,
+      "sha256": "cdd547b11de6ae14f3d2a9726c73764f9ee0123808a977ee73c81613843a1aa5"
+    },
+    {
+      "path": "equipamentos.json",
+      "bytes": 562312,
+      "sha256": "e30fe5b3504e8ce1494164209e9ab3dec915f5147aae8f8364b5275d32bed478"
+    },
+    {
+      "path": "equipamentos_unificacoes.json",
+      "bytes": 71674,
+      "sha256": "113a0f6b20d4481e4fa594c1caacacb31163e32258cb4269185e9afaba7736be"
+    },
+    {
+      "path": "estoque.json",
+      "bytes": 15627,
+      "sha256": "b4e4e69d1b2159e44c8de8b39518d972b10def4eb88b114cffb10c8e5ca23ae5"
+    },
+    {
+      "path": "estoque_erros.json",
+      "bytes": 10190,
+      "sha256": "d86e34899d390a58c3d5fc3fe7396f5b5247354ead50255d45aa5f145f5c181a"
+    },
+    {
+      "path": "estoque_movimentacoes.json",
+      "bytes": 341374,
+      "sha256": "248bf7b60613ec2bb4b0108fcca6d9922a70e6b693c50405895182bed55450a6"
+    },
+    {
+      "path": "historico_defeitos.json",
+      "bytes": 468,
+      "sha256": "8731440e641666639a5b2aa70b67ca9558ecab9c9cef79ab4a2fa731f501c525"
+    },
+    {
+      "path": "modelo_insumos.json",
+      "bytes": 3814,
+      "sha256": "3300014b83d07838076a9b3e6dffbc251cd876b4a05a77771f9ce3f58ed36220"
+    },
+    {
+      "path": "modelos_impressora.json",
+      "bytes": 1174,
+      "sha256": "093ea0ec65164194f29d3dc21c5c690d62e443c7e1413a1ec48771df68a686f3"
+    },
+    {
+      "path": "movimentacoes.json",
+      "bytes": 650581,
+      "sha256": "7c05ddfb09439e0dd60b669e26ba9002eda1a81f6f97255192ad5144d9872600"
+    },
+    {
+      "path": "push_subscriptions.json",
+      "bytes": 7294,
+      "sha256": "86514fd55dafe952a8a698288ecfc37607d189ede626ab425c5ba7b45132532c"
+    },
+    {
+      "path": "rench-estoque.dump",
+      "bytes": 587816,
+      "sha256": "23b43437188e17351780fa9d6532adca31933ae804a7530c9d52479a425d454c"
+    },
+    {
+      "path": "suprimentos_entregas.json",
+      "bytes": 81328,
+      "sha256": "cc1e6c8b7d9d8f08248dbf21362ce7ecd22e0ce46afc184b4370e825c46f55d7"
+    },
+    {
+      "path": "suprimentos_garantia.json",
+      "bytes": 2094,
+      "sha256": "5ba8d3a23d230434cbe3311a90921de777f6a425dfff02b3825f70df4e719907"
+    },
+    {
+      "path": "suprimentos_garantia_historico.json",
+      "bytes": 775,
+      "sha256": "efb78613027c544b6af6042f76a57ffb9e38ffa173e327deb22edb615eb0f7cd"
+    },
+    {
+      "path": "suprimentos_itens.json",
+      "bytes": 157650,
+      "sha256": "b569ab0821e3f3579e6a9373c267a62da3cd05809b05c71973dd7892947a8260"
+    },
+    {
+      "path": "unidades.json",
+      "bytes": 24480,
+      "sha256": "a13d2bcb9ff686a0bd6258c54fcdd9e2bc3b8258bd715f47c300295e4174c852"
+    },
+    {
+      "path": "usuarios.json",
+      "bytes": 173,
+      "sha256": "c72662bf41a8fa8804f1bf21329dcf496acff45852d438021bf0ebaf21f6f528"
+    },
+    {
+      "path": "viagens.json",
+      "bytes": 558528,
+      "sha256": "4a528be5c80947db978a077bcd9e8d73f79fce2943e39c52665ca16a1f95584d"
+    },
+    {
+      "path": "viagens_coletas.json",
+      "bytes": 184,
+      "sha256": "c55121e280cf70b7e195c982d64f5336540dd3679744b8a1884f79616634c850"
+    },
+    {
+      "path": "viagens_itens.json",
+      "bytes": 97363,
+      "sha256": "f598cc04cdebc38a0a0873002267ac33b6863061c209832a55182e724270320b"
+    },
+    {
+      "path": "viagens_paradas.json",
+      "bytes": 17751,
+      "sha256": "180db0eedc4cbfd03726582fba4212f527b09f3efa4a00def3f867e9da574048"
+    },
+    {
+      "path": "viagens_paradas_chamados.json",
+      "bytes": 4663,
+      "sha256": "7d4216c12b1be47d59eaaee08194c3ba1cea9416254b2b9dc9bae1bcba352872"
+    }
+  ]
+}
