@@ -80,7 +80,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -B backups
+          git fetch origin backups || true
+          if git show-ref --verify --quiet refs/remotes/origin/backups; then
+            git checkout -B backups origin/backups
+          else
+            git checkout --orphan backups
+            git rm -rf --cached . >/dev/null 2>&1 || true
+          fi
           # Mantém apenas os 12 backups mais recentes (~3 meses de histórico)
           find backups -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -r | tail -n +13 | while IFS= read -r dir; do
             git rm -r --quiet "backups/$dir" && echo "Removido backup antigo: $dir"
