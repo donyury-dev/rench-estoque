@@ -17,9 +17,9 @@
 
 ### 3. Configurar variáveis de ambiente (ESSENCIAL)
 No painel do serviço, vá em **Environment**:
-  - `SECRET_KEY` = crie uma senha longa e aleatória (ex: `rench2026#seguranca@estoque!`)
+  - `SECRET_KEY` = uma senha longa e aleatória, mantida somente nas variáveis de ambiente
   - `RENDER` = `1`
-  - `DATABASE_URL` = `postgresql://postgres.yfxfmwrasjukbsjjqbzs:kaio82046697@aws-1-us-west-2.pooler.supabase.com:6543/postgres`
+  - `DATABASE_URL` = a URL de conexão do PostgreSQL/Supabase, mantida somente nas variáveis de ambiente
 
 > Sem o `DATABASE_URL`, o sistema não conecta no banco e não funciona!
 
@@ -40,7 +40,7 @@ No painel do serviço, vá em **Environment**:
 ### 6. Pronto!
 - Aguarde 5-10 minutos para o DNS propagar
 - Acesse: https://equipamentos.rench.com.br
-- Login: `admin` | Senha: `ipascnma`
+- Entre com o usuário administrador e a senha definida com segurança para a empresa.
 
 ## Atualizações futuras
 Para atualizar o sistema, basta fazer `git push` para o GitHub. O Render faz deploy automático.

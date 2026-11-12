@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Controle de Estoque - RENCH{% endblock %}
+{% set visao = visao|default('saldos') %}
 
 {% block content %}
 <div class="page-header">
@@ -22,8 +23,13 @@
 
 <ul class="nav nav-tabs mb-4" style="border-bottom:1px solid var(--primary-borda);">
   <li class="nav-item">
-    <a class="nav-link active fw-bold" href="{{url_for('controle_estoque')}}" style="color:var(--primary);border-color:var(--primary-borda) var(--primary-borda) #fff;">
+    <a class="nav-link {{'active fw-bold' if visao == 'saldos' else ''}}" href="{{url_for('controle_estoque')}}" style="color:var(--primary);border-color:var(--primary-borda) var(--primary-borda) #fff;">
       <i class="bi bi-box-seam me-1"></i> Saldos
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {{'active fw-bold' if visao == 'locais' else ''}}" href="{{url_for('controle_estoque', visao='locais')}}" style="color:var(--primary);border-color:var(--primary-borda) var(--primary-borda) #fff;">
+      <i class="bi bi-geo-alt me-1"></i> Por local / técnico
     </a>
   </li>
   <li class="nav-item">
@@ -37,6 +43,77 @@
     </a>
   </li>
 </ul>
+
+{% if visao == 'locais' %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3"><div class="card card-dashboard p-3 h-100"><div class="text-muted small">Depósito (saldo)</div><div class="fs-3 fw-bold">{{resumo_local.deposito}}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="card card-dashboard p-3 h-100"><div class="text-muted small">Com técnico (carga ativa)</div><div class="fs-3 fw-bold text-info">{{resumo_local.com_tecnico}}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="card card-dashboard p-3 h-100"><div class="text-muted small">Entregue (histórico filtrado)</div><div class="fs-3 fw-bold text-success">{{resumo_local.entregue}}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="card card-dashboard p-3 h-100"><div class="text-muted small">Devolvido (histórico filtrado)</div><div class="fs-3 fw-bold">{{resumo_local.devolvido}}</div></div></div>
+</div>
+
+<div class="filter-bar">
+  <form method="GET" class="row g-2 align-items-end w-100">
+    <input type="hidden" name="visao" value="locais">
+    <div class="col-lg-4">
+      <label class="form-label small fw-bold">Item, viagem ou unidade</label>
+      <input type="text" class="form-control" name="q" value="{{busca}}" placeholder="Ex.: Toner, VJ-000001, Kaio...">
+    </div>
+    <div class="col-lg-3">
+      <label class="form-label small fw-bold">Técnico</label>
+      <select name="tecnico" class="form-select">
+        <option value="">Todos os técnicos</option>
+        {% for nome in tecnicos %}<option value="{{nome}}" {{'selected' if filtro_tecnico == nome else ''}}>{{nome}}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-lg-3">
+      <label class="form-label small fw-bold">Status da viagem</label>
+      <select name="status_viagem" class="form-select">
+        <option value="">Todos os status</option>
+        {% for valor, label in status_viagens.items() %}<option value="{{valor}}" {{'selected' if filtro_status_viagem == valor else ''}}>{{label}}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-lg-2 d-flex gap-2">
+      <button type="submit" class="btn btn-outline-primary flex-fill"><i class="bi bi-funnel"></i> Filtrar</button>
+      <a href="{{url_for('controle_estoque', visao='locais')}}" class="btn btn-outline-secondary" title="Limpar filtros"><i class="bi bi-x-lg"></i></a>
+    </div>
+  </form>
+</div>
+
+<div class="alert alert-info small">
+  <strong>Leitura dos dados existentes:</strong> “Com técnico” considera apenas viagens ativas; entregue e devolvido incluem o histórico das viagens exibidas. O saldo do depósito segue a contabilidade atual e não deve ser somado à carga ativa como se fossem totais independentes.
+</div>
+<div class="table-responsive table-rench">
+  <table class="table table-sm align-middle mb-0">
+    <thead><tr><th>Suprimento</th><th class="text-center">Depósito</th><th>Técnico / viagem</th><th>Origem / rota</th><th class="text-center">Carregado</th><th class="text-center">Entregue</th><th class="text-center">Usado</th><th class="text-center">Devolvido</th><th class="text-center">Com técnico</th></tr></thead>
+    <tbody>
+      {% for p in posicoes %}
+      <tr>
+        <td><strong>{{p.nome_exibicao or p.tipo_suprimento}}</strong><br><small class="text-muted">{{p.modelo_impressora or '-'}}{% if p.marca %} · {{p.marca}}{% endif %}</small></td>
+        <td class="text-center fw-bold">{{p.deposito}}</td>
+        <td>
+          {% if p.viagem_id %}
+            <div>{{p.responsavel_atendimento or 'Não informado'}}</div>
+            <a href="{{url_for('viagem_detalhe', viagem_id=p.viagem_id)}}" class="fw-bold text-decoration-none">{{p.viagem_numero}}</a>
+            <span class="badge bg-light text-dark border">{{status_viagens.get(p.status_viagem, p.status_viagem)}}</span>
+          {% else %}<span class="text-muted">Depósito / sem viagem</span>{% endif %}
+        </td>
+        <td>{% if p.fornecedor %}<div>Fornecedor: {{p.fornecedor}}</div>{% endif %}<small class="text-muted">{{p.unidades_rota or '-'}}</small></td>
+        <td class="text-center">{{p.quantidade_carregada if p.viagem_id else '-'}}</td>
+        <td class="text-center text-success">{{p.quantidade_entregue if p.viagem_id else '-'}}</td>
+        <td class="text-center">{{p.quantidade_usada_manual if p.viagem_id else '-'}}</td>
+        <td class="text-center">{{p.quantidade_devolvida if p.viagem_id else '-'}}</td>
+        <td class="text-center fw-bold {{'text-info' if p.com_tecnico > 0 else 'text-muted'}}">{{p.com_tecnico if p.viagem_id else '0'}}</td>
+      </tr>
+      {% else %}<tr><td colspan="9" class="text-center text-muted py-4">Nenhuma posição encontrada para os filtros.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="d-flex justify-content-between mt-2 small text-muted">
+  <span>{{total_posicoes}} linha(s) de estoque/viagem</span>
+  {% if total_posicoes > limite_posicoes %}<span>Exibindo as primeiras {{limite_posicoes}}; refine os filtros.</span>{% endif %}
+</div>
+{% else %}
 
 <div class="row g-3 mb-4">
   <div class="col-md-4">
@@ -216,5 +293,6 @@
   <p class="mt-3 mb-0">Nenhum item em estoque cadastrado.</p>
   <a href="{{url_for('estoque_entrada')}}" class="btn btn-rench-primary mt-3">Registrar primeira entrada</a>
 </div>
+{% endif %}
 {% endif %}
 {% endblock %}

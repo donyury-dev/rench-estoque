@@ -6,8 +6,10 @@ import difflib
 import unicodedata
 import json
 import re
+import csv
+import io
 from datetime import datetime, date, timedelta
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, g, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, g, session, Response
 from werkzeug.exceptions import HTTPException
 from functools import wraps
 from urllib.parse import urlparse
@@ -1459,13 +1461,20 @@ def validar_saida_contra_viagem(cur, parada_id, unidade_id, itens, exigir_viagem
     parada = None
     if parada_id:
         cur.execute("""
-            SELECT vp.id, vp.viagem_id, v.status, v.numero
+            SELECT vp.id, vp.viagem_id, vp.unidade_id, v.status, v.numero
             FROM viagens_paradas vp JOIN viagens v ON v.id = vp.viagem_id
             WHERE vp.id = %s
         """, (parada_id,))
         parada = cur.fetchone()
         if not parada:
             return None, None, None, ['Parada selecionada não existe.']
+        try:
+            mesma_unidade = int(parada['unidade_id']) == int(unidade_id)
+        except (TypeError, ValueError, KeyError):
+            mesma_unidade = False
+        if not mesma_unidade:
+            return None, None, None, [
+                'Parada selecionada não pertence à unidade da entrega.']
         if parada['status'] not in ('conferido', 'em_rota'):
             return None, None, None, [
                 'A viagem %s ainda não teve a carga conferida. A saída só é '
@@ -5230,6 +5239,21 @@ def controle_estoque():
 
     busca = request.args.get('q', '').strip()
     status = request.args.get('status', '').strip()
+    visao = request.args.get('visao', 'saldos').strip()
+
+    if visao == 'locais':
+        tecnico = request.args.get('tecnico', '').strip()
+        status_viagem = request.args.get('status_viagem', '').strip()
+        consulta = _consultar_estoque_por_local(
+            cur, busca=busca, tecnico=tecnico,
+            status_viagem=status_viagem, limite=500)
+        return render_template(
+            'estoque.html', visao='locais', posicoes=consulta['posicoes'],
+            resumo_local=consulta['resumo'], tecnicos=consulta['tecnicos'],
+            total_posicoes=consulta['total'], limite_posicoes=consulta['limite'],
+            busca=busca, filtro_tecnico=tecnico,
+            filtro_status_viagem=status_viagem,
+            status_viagens=_STATUS_VIAGEM_LABEL)
 
     sql = "SELECT * FROM estoque WHERE ativo = TRUE"
     params = []
@@ -5589,6 +5613,193 @@ def estoque_reativar(estoque_id):
     return redirect(url_for('estoque_arquivados'))
 
 
+_EVENTOS_AUDITORIA_SQL = r"""
+    SELECT 'estoque'::text AS categoria, em.id::text AS evento_id,
+           em.data_movimento AS data_evento,
+           COALESCE(em.responsavel, '')::text AS usuario,
+           em.tipo_movimento::text AS acao,
+           CONCAT_WS(' · ', COALESCE(NULLIF(e.nome_exibicao, ''), e.tipo_suprimento),
+                     NULLIF(e.modelo_impressora, ''), NULLIF(e.marca, ''))::text AS item,
+           (CASE WHEN em.quantidade < 0 THEN 'Depósito'
+                 ELSE COALESCE(NULLIF(em.origem, ''), 'Entrada externa') END)::text AS origem,
+           COALESCE(
+               NULLIF(CONCAT_WS(' / ', emp.nome, u.nome), ''),
+               CASE WHEN v.id IS NOT NULL
+                    THEN CONCAT('Viagem ', v.numero, ' — ', v.responsavel_atendimento)
+                    WHEN em.quantidade < 0 THEN 'Saída de estoque'
+                    ELSE 'Depósito' END
+           )::text AS destino,
+           em.quantidade AS quantidade, em.saldo_antes, em.saldo_depois,
+           em.motivo::text AS detalhes, v.id AS viagem_id,
+           v.numero::text AS viagem_numero, NULL::integer AS equipamento_id,
+           em.entrega_id AS entrega_id
+    FROM estoque_movimentacoes em
+    JOIN estoque e ON e.id = em.estoque_id
+    LEFT JOIN suprimentos_entregas se ON se.id = em.entrega_id
+    LEFT JOIN unidades u ON u.id = se.unidade_id
+    LEFT JOIN empresas emp ON emp.id = u.empresa_id
+    LEFT JOIN viagens v ON v.id = COALESCE(em.viagem_id, se.viagem_id)
+
+    UNION ALL
+
+    SELECT 'equipamento'::text, m.id::text,
+           CASE WHEN m.data_movimentacao ~ '^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}(:\d{2})?)?$'
+                THEN m.data_movimentacao::timestamp ELSE NULL END,
+           COALESCE(NULLIF(m.responsavel, ''), 'Não informado')::text,
+           m.tipo_movimento::text,
+           CONCAT_WS(' · ', e.codigo, e.fabricante, e.modelo, e.numero_serie)::text,
+           COALESCE(NULLIF(CONCAT_WS(' / ', m.origem_local, m.origem_unidade), ''), 'Não informada')::text,
+           COALESCE(NULLIF(CONCAT_WS(' / ', m.destino_local, m.destino_unidade), ''), 'Não informado')::text,
+           NULL::integer, NULL::integer, NULL::integer, m.observacoes::text,
+           NULL::integer, NULL::text, e.id, NULL::integer
+    FROM movimentacoes m
+    JOIN equipamentos e ON e.id = m.equipamento_id
+
+    UNION ALL
+
+    SELECT 'viagem'::text, 'criacao-' || v.id, v.data_criacao,
+           COALESCE(v.responsavel_separacao, '')::text, 'Viagem criada'::text,
+           ('Viagem ' || v.numero)::text, 'Depósito'::text,
+           ('Com técnico: ' || COALESCE(v.responsavel_atendimento, 'não informado'))::text,
+           NULL::integer, NULL::integer, NULL::integer, v.observacoes::text,
+           v.id, v.numero::text, NULL::integer, NULL::integer
+    FROM viagens v
+
+    UNION ALL
+
+    SELECT 'viagem'::text, 'conferencia-' || v.id, v.data_conferencia,
+           COALESCE(v.responsavel_conferencia, '')::text, 'Carga conferida'::text,
+           ('Viagem ' || v.numero)::text,
+           ('Separação: ' || COALESCE(v.responsavel_separacao, 'não informada'))::text,
+           ('Com técnico: ' || COALESCE(v.responsavel_atendimento, 'não informado'))::text,
+           NULL::integer, NULL::integer, NULL::integer,
+           'Carga conferida para saída.'::text,
+           v.id, v.numero::text, NULL::integer, NULL::integer
+    FROM viagens v
+    WHERE v.data_conferencia IS NOT NULL
+
+    UNION ALL
+
+    SELECT 'viagem'::text, 'retorno-' || v.id, v.data_retorno,
+           COALESCE(v.responsavel_retorno, '')::text, 'Retorno conferido'::text,
+           ('Viagem ' || v.numero)::text,
+           ('Com técnico: ' || COALESCE(v.responsavel_atendimento, 'não informado'))::text,
+           'Depósito'::text,
+           (SELECT SUM(vi.quantidade_retornada) FROM viagens_itens vi WHERE vi.viagem_id = v.id),
+           NULL::integer, NULL::integer, v.observacoes_retorno::text,
+           v.id, v.numero::text, NULL::integer, NULL::integer
+    FROM viagens v
+    WHERE v.data_retorno IS NOT NULL
+
+    UNION ALL
+
+    SELECT 'viagem'::text, 'coleta-' || vc.id,
+           COALESCE(vc.data_criacao, vc.data_coleta::timestamp),
+           COALESCE(vc.responsavel, '')::text, 'Coleta em fornecedor'::text,
+           COALESCE((
+               SELECT STRING_AGG(CONCAT(vi.quantidade_carregada, 'x ',
+                       vi.tipo_suprimento, ' ', COALESCE(vi.modelo_impressora, '')),
+                       ' · ' ORDER BY vi.id)
+               FROM viagens_itens vi WHERE vi.coleta_id = vc.id
+           ), 'Coleta #' || vc.id)::text,
+           vc.fornecedor::text,
+           ('Viagem ' || v.numero || ' — ' || COALESCE(v.responsavel_atendimento, 'não informado'))::text,
+           (SELECT SUM(vi.quantidade_carregada) FROM viagens_itens vi WHERE vi.coleta_id = vc.id),
+           NULL::integer, NULL::integer,
+           NULLIF(CONCAT_WS(' · ', vc.documento, vc.observacoes), '')::text,
+           v.id, v.numero::text, NULL::integer, NULL::integer
+    FROM viagens_coletas vc
+    JOIN viagens v ON v.id = vc.viagem_id
+
+    UNION ALL
+
+    SELECT 'viagem'::text, 'entrega-' || se.id,
+           COALESCE(se.data_registro,
+               CASE WHEN se.data_entrega ~ '^\d{4}-\d{2}-\d{2}'
+                    THEN se.data_entrega::timestamp ELSE NULL END),
+           COALESCE(se.responsavel, '')::text, 'Entrega vinculada à viagem'::text,
+           COALESCE((
+               SELECT STRING_AGG(CONCAT(si.quantidade, 'x ', si.tipo_suprimento, ' ',
+                       COALESCE(si.cor_selecionada, ''), ' ', COALESCE(si.modelo_impressora, '')),
+                       ' · ' ORDER BY si.id)
+               FROM suprimentos_itens si WHERE si.entrega_id = se.id
+           ), 'Entrega #' || se.id)::text,
+           ('Viagem ' || v.numero || ' — ' || COALESCE(v.responsavel_atendimento, 'não informado'))::text,
+           NULLIF(CONCAT_WS(' / ', emp.nome, u.nome), '')::text,
+           (SELECT SUM(si.quantidade) FROM suprimentos_itens si WHERE si.entrega_id = se.id),
+           NULL::integer, NULL::integer, se.observacoes::text,
+           v.id, v.numero::text, NULL::integer, se.id
+    FROM suprimentos_entregas se
+    JOIN viagens v ON v.id = se.viagem_id
+    LEFT JOIN unidades u ON u.id = se.unidade_id
+    LEFT JOIN empresas emp ON emp.id = u.empresa_id
+"""
+
+
+def _consultar_auditoria(cur, data_inicio='', data_fim='', busca='', categoria='',
+                         tipo_movimento='', pagina=1, por_pagina=50, exportar=False):
+    """Consulta unificada e paginada dos três históricos, sempre somente leitura."""
+    filtros = []
+    params = []
+    if categoria in ('estoque', 'equipamento', 'viagem'):
+        filtros.append("categoria = %s")
+        params.append(categoria)
+    if tipo_movimento:
+        filtros.append("(categoria = 'estoque' AND acao = %s)")
+        params.append(tipo_movimento)
+    if data_inicio:
+        filtros.append("data_evento >= %s::date")
+        params.append(data_inicio)
+    if data_fim:
+        filtros.append("data_evento < %s::date + INTERVAL '1 day'")
+        params.append(data_fim)
+    if busca:
+        filtros.append("""
+            CONCAT_WS(' ', categoria, usuario, acao, item, origem, destino,
+                      detalhes, viagem_numero) ILIKE %s
+        """)
+        params.append(f"%{busca}%")
+    where = (" WHERE " + " AND ".join(filtros)) if filtros else ""
+    with_eventos = "WITH eventos AS (" + _EVENTOS_AUDITORIA_SQL + ") "
+
+    cur.execute(with_eventos + "SELECT COUNT(*) AS total FROM eventos" + where, params)
+    contagem = cur.fetchone()
+    total = int((contagem or {}).get('total') or 0)
+
+    try:
+        por_pagina = max(1, min(int(por_pagina or 50), 200))
+    except (TypeError, ValueError):
+        por_pagina = 50
+    total_paginas = max(1, (total + por_pagina - 1) // por_pagina)
+    try:
+        pagina = max(1, int(pagina or 1))
+    except (TypeError, ValueError):
+        pagina = 1
+    if exportar:
+        pagina = 1
+        limite = 5000
+        offset = 0
+    else:
+        pagina = min(pagina, total_paginas)
+        limite = por_pagina
+        offset = (pagina - 1) * por_pagina
+
+    sql = with_eventos + "SELECT * FROM eventos" + where + """
+        ORDER BY data_evento DESC NULLS LAST, categoria, evento_id DESC
+        LIMIT %s OFFSET %s
+    """
+    cur.execute(sql, params + [limite, offset])
+    eventos = [dict(row) for row in cur.fetchall()]
+    return {
+        'eventos': eventos, 'total': total, 'pagina': pagina,
+        'por_pagina': por_pagina, 'total_paginas': total_paginas,
+        'inicio': offset + 1 if eventos else 0,
+        'fim': offset + len(eventos) if eventos else 0,
+        'exportacao_truncada': bool(exportar and total > limite),
+        'limite_exportacao': limite if exportar else 5000,
+    }
+
+
 @app.route('/estoque/auditoria')
 @login_required
 def estoque_auditoria():
@@ -5597,82 +5808,86 @@ def estoque_auditoria():
 
     tipo_movimento = request.args.get('tipo', '').strip()
     busca = request.args.get('busca', '').strip()
-
-    sql = """
-        SELECT em.id, em.tipo_movimento, em.quantidade, em.saldo_antes, em.saldo_depois,
-               em.motivo, em.responsavel, em.data_movimento, em.origem, em.viagem_id,
-               e.tipo_suprimento, e.modelo_impressora, e.marca,
-               u.nome as unidade_nome, emp.nome as empresa_nome,
-               v.numero as viagem_numero
-        FROM estoque_movimentacoes em
-        JOIN estoque e ON e.id = em.estoque_id
-        LEFT JOIN suprimentos_entregas se ON se.id = em.entrega_id
-        LEFT JOIN unidades u ON u.id = se.unidade_id
-        LEFT JOIN empresas emp ON emp.id = u.empresa_id
-        LEFT JOIN viagens v ON v.id = em.viagem_id
-        WHERE 1=1
-    """
-    params = []
-
+    categoria = request.args.get('categoria', '').strip()
+    data_inicio = request.args.get('data_inicio', '').strip()
+    data_fim = request.args.get('data_fim', '').strip()
+    formato = request.args.get('formato', '').strip().lower()
+    if categoria not in ('estoque', 'equipamento', 'viagem'):
+        categoria = ''
     if tipo_movimento:
-        sql += " AND em.tipo_movimento=%s"
-        params.append(tipo_movimento)
+        categoria = 'estoque'
 
-    if busca:
-        termo = f"%{busca}%"
-        sql += """ AND (
-            e.tipo_suprimento ILIKE %s
-            OR e.modelo_impressora ILIKE %s
-            OR em.responsavel ILIKE %s
-            OR em.motivo ILIKE %s
-        )"""
-        params.extend([termo, termo, termo, termo])
+    def data_valida(valor):
+        if not valor:
+            return True
+        try:
+            datetime.strptime(valor, '%Y-%m-%d')
+            return True
+        except ValueError:
+            return False
 
-    sql += " ORDER BY em.data_movimento DESC, em.id DESC LIMIT 200"
+    if not data_valida(data_inicio) or not data_valida(data_fim):
+        flash('Período inválido. Use datas válidas no calendário.', 'danger')
+        data_inicio = data_fim = ''
+    elif data_inicio and data_fim and data_inicio > data_fim:
+        data_inicio, data_fim = data_fim, data_inicio
+        flash('As datas do período foram reordenadas.', 'info')
 
-    cur.execute(sql, params)
-    rows = cur.fetchall()
+    try:
+        pagina = max(1, int(request.args.get('pagina', 1)))
+    except (TypeError, ValueError):
+        pagina = 1
+    try:
+        por_pagina = int(request.args.get('por_pagina', 50))
+    except (TypeError, ValueError):
+        por_pagina = 50
+    if por_pagina not in (25, 50, 100, 200):
+        por_pagina = 50
+
+    consulta = _consultar_auditoria(
+        cur, data_inicio=data_inicio, data_fim=data_fim, busca=busca,
+        categoria=categoria, tipo_movimento=tipo_movimento, pagina=pagina,
+        por_pagina=por_pagina, exportar=(formato == 'csv'))
+
+    if formato == 'csv':
+        saida = io.StringIO()
+        writer = csv.writer(saida, delimiter=';')
+        writer.writerow([
+            'Data/hora', 'Origem do registro', 'Usuário', 'Ação',
+            'Item/equipamento', 'Quantidade', 'Saldo antes', 'Saldo depois',
+            'Origem', 'Destino', 'Viagem', 'Detalhes',
+        ])
+        for evento in consulta['eventos']:
+            writer.writerow([
+                _fmt_br(evento['data_evento'], True), evento['categoria'],
+                evento['usuario'], evento['acao'], evento['item'],
+                evento['quantidade'] if evento['quantidade'] is not None else '',
+                evento['saldo_antes'] if evento['saldo_antes'] is not None else '',
+                evento['saldo_depois'] if evento['saldo_depois'] is not None else '',
+                evento['origem'], evento['destino'], evento['viagem_numero'] or '',
+                evento['detalhes'] or '',
+            ])
+        nome = 'auditoria_' + datetime.now().strftime('%Y%m%d_%H%M%S') + '.csv'
+        return Response(
+            '\ufeff' + saida.getvalue(),
+            content_type='text/csv; charset=utf-8',
+            headers={
+                'Content-Disposition': f'attachment; filename="{nome}"',
+                'X-Registros-Exportados': str(len(consulta['eventos'])),
+            })
 
     cur.execute(
         "SELECT id, contexto, mensagem, detalhes, responsavel, data_erro FROM estoque_erros WHERE COALESCE(oculto,0)=0 ORDER BY data_erro DESC, id DESC LIMIT 50"
     )
-    erros_rows = cur.fetchall()
+    erros = [dict(row) for row in cur.fetchall()]
     cur.execute("SELECT COUNT(*) AS total FROM estoque_erros WHERE COALESCE(oculto,0)=1")
     total_ocultos = cur.fetchone()['total']
-    erros = []
-    for e in erros_rows:
-        erros.append({
-            'id': e['id'],
-            'contexto': e['contexto'],
-            'mensagem': e['mensagem'],
-            'detalhes': e['detalhes'],
-            'responsavel': e['responsavel'],
-            'data_erro': e['data_erro'].strftime('%d/%m/%Y %H:%M') if e['data_erro'] else None
-        })
 
-    movimentacoes = []
-    for r in rows:
-        movimentacoes.append({
-            'id': r['id'],
-            'tipo_movimento': r['tipo_movimento'],
-            'quantidade': r['quantidade'],
-            'saldo_antes': r['saldo_antes'],
-            'saldo_depois': r['saldo_depois'],
-            'motivo': r['motivo'],
-            'responsavel': r['responsavel'],
-            'tipo_suprimento': r['tipo_suprimento'],
-            'modelo_impressora': r['modelo_impressora'],
-            'marca': r['marca'],
-            'unidade_nome': r['unidade_nome'],
-            'empresa_nome': r['empresa_nome'],
-            'origem': r['origem'],
-            'viagem_numero': r['viagem_numero'],
-            'data_movimento': r['data_movimento'].strftime('%d/%m/%Y %H:%M') if r['data_movimento'] else None
-        })
-
-    return render_template('estoque_auditoria.html', movimentacoes=movimentacoes,
-                           tipo_movimento=tipo_movimento, busca=busca, erros=erros,
-                           erros_ocultos=total_ocultos)
+    return render_template(
+        'estoque_auditoria.html', eventos=consulta['eventos'], paginacao=consulta,
+        tipo_movimento=tipo_movimento, busca=busca, categoria=categoria,
+        filtro_data_inicio=data_inicio, filtro_data_fim=data_fim,
+        erros=erros, erros_ocultos=total_ocultos)
 
 
 @app.route('/estoque/auditoria/erros/limpar', methods=['POST'])
@@ -7019,33 +7234,145 @@ def _viagem_ativa_do_operador(cur, operador):
 _STATUS_VIAGENS_ATIVAS = ('separacao', 'conferido', 'em_rota', 'aguardando_retorno')
 
 
+def _consultar_itens_estoque_viagem(cur, somente_ativas=False):
+    """Consulta compartilhada das cargas, sem alterar saldos."""
+    sql = """
+        SELECT e.id AS estoque_id, e.tipo_suprimento, e.modelo_impressora,
+               e.marca, e.nome_exibicao, e.estoque_minimo, e.quantidade AS deposito,
+               v.id AS viagem_id, v.numero AS viagem_numero,
+               v.status AS status_viagem, v.responsavel_atendimento,
+               v.data_criacao, vi.id AS viagem_item_id,
+               vi.origem, vi.fornecedor,
+               COALESCE(vi.quantidade_carregada, 0) AS quantidade_carregada,
+               COALESCE(vi.quantidade_entregue, 0) AS quantidade_entregue,
+               COALESCE(vi.quantidade_usada_manual, 0) AS quantidade_usada_manual,
+               COALESCE(vi.quantidade_retornada, 0) AS quantidade_devolvida,
+               (SELECT STRING_AGG(COALESCE(u.nome, 'Unidade não identificada'), ' · ' ORDER BY vp.ordem)
+                  FROM viagens_paradas vp
+                  LEFT JOIN unidades u ON u.id = vp.unidade_id
+                 WHERE vp.viagem_id = v.id) AS unidades_rota
+        FROM viagens_itens vi
+        JOIN viagens v ON v.id = vi.viagem_id
+        JOIN estoque e ON (
+            e.tipo_suprimento = TRIM(CONCAT(vi.tipo_suprimento, ' ', COALESCE(vi.cor, '')))
+            AND (
+                (NULLIF(vi.modelo_impressora, '') IS NULL AND e.modelo_impressora IN ('', '-'))
+                OR e.modelo_impressora = UPPER(vi.modelo_impressora)
+                OR e.modelo_impressora = 'ES' || UPPER(vi.modelo_impressora)
+                OR 'ES' || e.modelo_impressora = UPPER(vi.modelo_impressora)
+            )
+            AND COALESCE(e.marca, '') = COALESCE(vi.marca, '')
+        )
+    """
+    params = []
+    if somente_ativas:
+        sql += " WHERE v.status = ANY(%s)"
+        params.append(list(_STATUS_VIAGENS_ATIVAS))
+    sql += """
+        ORDER BY e.modelo_impressora, e.tipo_suprimento, e.marca,
+                 v.data_criacao DESC, v.id DESC, vi.id
+    """
+    cur.execute(sql, params)
+    posicoes = []
+    for row in cur.fetchall():
+        posicao = dict(row)
+        restante = max(
+            int(posicao['quantidade_carregada'] or 0)
+            - int(posicao['quantidade_entregue'] or 0)
+            - int(posicao['quantidade_usada_manual'] or 0)
+            - int(posicao['quantidade_devolvida'] or 0), 0)
+        posicao['com_tecnico'] = (
+            restante if posicao['status_viagem'] in _STATUS_VIAGENS_ATIVAS else 0)
+        posicoes.append(posicao)
+    return posicoes
+
+
+def _consultar_estoque_por_local(cur, busca='', tecnico='', status_viagem='', limite=500):
+    """Consulta somente leitura do depósito e das cargas por técnico/viagem."""
+    cur.execute("""
+        SELECT id, tipo_suprimento, modelo_impressora, marca, nome_exibicao,
+               quantidade, estoque_minimo
+        FROM estoque WHERE ativo=TRUE
+        ORDER BY modelo_impressora, tipo_suprimento, marca
+    """)
+    itens_estoque = [dict(row) for row in cur.fetchall()]
+    cargas = _consultar_itens_estoque_viagem(cur)
+    cargas_por_estoque = {}
+    for carga in cargas:
+        cargas_por_estoque.setdefault(carga['estoque_id'], []).append(carga)
+
+    tecnicos = sorted({
+        (carga.get('responsavel_atendimento') or '').strip()
+        for carga in cargas if (carga.get('responsavel_atendimento') or '').strip()
+    }, key=str.casefold)
+    termos = preparar_termos_busca(busca)
+    tecnico_normalizado = normalizar_busca(tecnico).strip()
+
+    def contem_busca(*valores):
+        texto = texto_combinado(*valores)
+        return all(termo in texto for termo in termos)
+
+    posicoes = []
+    for item in itens_estoque:
+        dados_item = (
+            item.get('nome_exibicao'), item.get('tipo_suprimento'),
+            item.get('modelo_impressora'), item.get('marca'))
+        candidatas = cargas_por_estoque.get(item['id'], [])
+        if not candidatas:
+            if not tecnico and not status_viagem and contem_busca(*dados_item):
+                posicoes.append({
+                    **item, 'estoque_id': item['id'], 'deposito': item['quantidade'],
+                    'viagem_id': None, 'viagem_numero': None, 'status_viagem': None,
+                    'responsavel_atendimento': None, 'data_criacao': None,
+                    'viagem_item_id': None, 'origem': None, 'fornecedor': None,
+                    'quantidade_carregada': 0, 'quantidade_entregue': 0,
+                    'quantidade_usada_manual': 0, 'quantidade_devolvida': 0,
+                    'com_tecnico': 0, 'unidades_rota': None,
+                })
+            continue
+
+        for carga in candidatas:
+            if status_viagem and carga['status_viagem'] != status_viagem:
+                continue
+            tecnico_carga = normalizar_busca(carga.get('responsavel_atendimento')).strip()
+            if tecnico_normalizado and tecnico_carga != tecnico_normalizado:
+                continue
+            if not contem_busca(
+                    *dados_item, carga.get('viagem_numero'),
+                    carga.get('responsavel_atendimento'), carga.get('unidades_rota'),
+                    carga.get('fornecedor')):
+                continue
+            posicoes.append(carga)
+
+    ids_deposito = set()
+    resumo = {'deposito': 0, 'com_tecnico': 0, 'entregue': 0, 'devolvido': 0}
+    for posicao in posicoes:
+        if posicao['estoque_id'] not in ids_deposito:
+            resumo['deposito'] += int(posicao['deposito'] or 0)
+            ids_deposito.add(posicao['estoque_id'])
+        resumo['com_tecnico'] += int(posicao['com_tecnico'] or 0)
+        resumo['entregue'] += int(posicao['quantidade_entregue'] or 0)
+        resumo['devolvido'] += int(posicao['quantidade_devolvida'] or 0)
+
+    try:
+        limite = max(1, min(int(limite or 500), 1000))
+    except (TypeError, ValueError):
+        limite = 500
+    total = len(posicoes)
+    return {
+        'posicoes': posicoes[:limite], 'total': total, 'limite': limite,
+        'resumo': resumo, 'tecnicos': tecnicos,
+    }
+
+
 def _reservados_estoque(cur):
     """Retorna um dict {estoque_id: quantidade} com o saldo reservado/em viagem ativa."""
     try:
-        cur.execute("""
-            SELECT e.id,
-                   COALESCE(SUM(GREATEST(
-                       vi.quantidade_carregada - vi.quantidade_entregue
-                       - vi.quantidade_usada_manual - COALESCE(vi.quantidade_retornada, 0), 0)), 0) AS reservado
-            FROM estoque e
-            JOIN (
-                SELECT vi.*
-                FROM viagens_itens vi
-                JOIN viagens v ON v.id = vi.viagem_id
-                WHERE v.status = ANY(%s)
-            ) vi ON (
-                e.tipo_suprimento = TRIM(CONCAT(vi.tipo_suprimento, ' ', COALESCE(vi.cor, '')))
-                AND (
-                    (NULLIF(vi.modelo_impressora, '') IS NULL AND e.modelo_impressora IN ('', '-'))
-                    OR e.modelo_impressora = UPPER(vi.modelo_impressora)
-                    OR e.modelo_impressora = 'ES' || UPPER(vi.modelo_impressora)
-                    OR 'ES' || e.modelo_impressora = UPPER(vi.modelo_impressora)
-                )
-                AND COALESCE(e.marca, '') = COALESCE(vi.marca, '')
-            )
-            GROUP BY e.id
-        """, (list(_STATUS_VIAGENS_ATIVAS),))
-        return {r['id']: int(r['reservado'] or 0) for r in cur.fetchall()}
+        reservados = {}
+        for row in _consultar_itens_estoque_viagem(cur, somente_ativas=True):
+            estoque_id = row['estoque_id']
+            reservados[estoque_id] = reservados.get(estoque_id, 0) + row['com_tecnico']
+        return reservados
     except Exception as exc:
         app.logger.error('Erro ao calcular saldo reservado: %s', exc)
         return {}

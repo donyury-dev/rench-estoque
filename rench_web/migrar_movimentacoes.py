@@ -4,10 +4,11 @@ migrar_movimentacoes.py
 =======================
 Migra apenas a tabela movimentacoes em lotes pequenos (o servidor fechou conexao no lote grande).
 """
+import os
 import sqlite3
 from sqlalchemy import create_engine, text
 
-DATABASE_URL = "postgresql://postgres.yfxfmwrasjukbsjjqbzs:kaio82046697@aws-1-us-west-2.pooler.supabase.com:6543/postgres"
+DATABASE_URL = os.environ["DATABASE_URL"]
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 sqlite_conn = sqlite3.connect('rench_web.db')

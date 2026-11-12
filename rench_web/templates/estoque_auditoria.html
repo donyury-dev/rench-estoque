@@ -1,176 +1,144 @@
 {% extends "base.html" %}
-{% block title %}Auditoria de Estoque - RENCH{% endblock %}
+{% block title %}Auditoria - RENCH{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
-    <h1>Auditoria de Estoque</h1>
-    <p class="text-muted mb-0">Histórico de todas as alterações no estoque com responsável e motivo</p>
-  </div>
-  <div class="d-flex gap-2">
-    <a href="{{url_for('controle_estoque')}}" class="btn btn-outline-primary">
-      <i class="bi bi-box-seam me-1"></i> Voltar ao Estoque
-    </a>
+    <div class="page-title"><i class="bi bi-shield-check"></i> Auditoria / Consulta</div>
+    <div class="page-subtitle">Movimentações de estoque, equipamentos e eventos de viagem</div>
   </div>
 </div>
 
-<ul class="nav nav-tabs mb-4" style="border-bottom:1px solid var(--primary-borda);">
-  <li class="nav-item">
-    <a class="nav-link" href="{{url_for('controle_estoque')}}" style="color:var(--primary);">
-      <i class="bi bi-box-seam me-1"></i> Saldos
-    </a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" href="{{url_for('lista_suprimentos')}}" style="color:var(--primary);">
-      <i class="bi bi-arrow-up-right-circle me-1"></i> Entregas / Histórico de Saídas
-    </a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link active fw-bold" href="{{url_for('estoque_auditoria')}}" style="color:var(--primary);border-color:var(--primary-borda) var(--primary-borda) #fff;">
-      <i class="bi bi-shield-check me-1"></i> Auditoria
-    </a>
-  </li>
-  <li class="nav-item">
-    <a href="javascript:void(0)" onclick="alternarErros()" style="color:#b02a37;font-weight:600;text-decoration:none;display:block;padding:0.5rem 1rem;cursor:pointer;">
-      <i class="bi bi-bug me-1"></i> Erros{% if erros %} <span class="badge bg-danger">{{erros|length}}</span>{% endif %}
-    </a>
-  </li>
-</ul>
-
-{% if erros or erros_ocultos %}
-<div id="erros" class="card p-3 mb-4" style="border:2px solid #f1b0b7;background:#fdf3f4;">
-  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-    <h5 class="mb-0" style="color:#b02a37;"><i class="bi bi-bug me-1"></i> Log de Erros do Sistema</h5>
-    <div class="d-flex gap-2">
-      <form method="POST" action="{{url_for('estoque_erros_limpar')}}" onsubmit="return confirm('Limpar o log de erros? Os registros ficam ocultos e podem ser restaurados.');">
-        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-eraser me-1"></i> Limpar</button>
-      </form>
-      <form method="POST" action="{{url_for('estoque_erros_restaurar')}}">
-        <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar{% if erros_ocultos %} ({{erros_ocultos}}){% endif %}</button>
-      </form>
+<div class="filter-bar">
+  <form method="get" class="row g-2 align-items-end w-100">
+    <div class="col-sm-6 col-xl-2">
+      <label class="form-label small fw-bold">Data inicial</label>
+      <input type="date" class="form-control" name="data_inicio" value="{{filtro_data_inicio}}" max="9999-12-31">
     </div>
-  </div>
-  <p class="text-muted small">Falhas capturadas automaticamente (atendimentos, estoque e site). Se algo não funcionar, aparecera aqui.</p>
-  <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead class="table-light">
-        <tr>
-          <th>Data / Hora</th>
-          <th>Onde ocorreu</th>
-          <th>Erro</th>
-          <th>Detalhes</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for e in erros %}
-        <tr>
-          <td nowrap>{{e.data_erro|fmt_br(true)}}</td>
-          <td><span class="badge bg-dark">{{e.contexto}}</span>{% if e.responsavel %}<br><small class="text-muted">{{e.responsavel}}</small>{% endif %}</td>
-          <td style="color:#b02a37;">{{e.mensagem}}</td>
-          <td><small class="text-muted">{{e.detalhes or '-'}}</small></td>
-        </tr>
-        {% else %}
-        <tr><td colspan="4" class="text-center text-muted py-3">Nenhum erro visível. {% if erros_ocultos %}O log foi limpo — use "Restaurar" para ver novamente os {{erros_ocultos}} registros.{% endif %}</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-{% endif %}
-
-<div class="card p-3 mb-4">
-  <form method="GET" class="row g-3 align-items-end">
-    <div class="col-md-3">
-      <label class="form-label">Buscar</label>
-      <input type="text" class="form-control" name="busca" value="{{busca}}" placeholder="Tipo, modelo, responsável...">
+    <div class="col-sm-6 col-xl-2">
+      <label class="form-label small fw-bold">Data final</label>
+      <input type="date" class="form-control" name="data_fim" value="{{filtro_data_fim}}" max="9999-12-31">
     </div>
-    <div class="col-md-2">
-      <label class="form-label">Movimento</label>
-      <select class="form-select" name="tipo">
-        <option value="" {% if not tipo_movimento %}selected{% endif %}>Todos</option>
-        <option value="entrada" {% if tipo_movimento=='entrada' %}selected{% endif %}>Entrada</option>
-        <option value="saida" {% if tipo_movimento=='saida' %}selected{% endif %}>Saída</option>
-        <option value="ajuste" {% if tipo_movimento=='ajuste' %}selected{% endif %}>Ajuste</option>
+    <div class="col-md-6 col-xl-2">
+      <label class="form-label small fw-bold">Origem do registro</label>
+      <select name="categoria" class="form-select">
+        <option value="">Todas</option>
+        <option value="estoque" {{'selected' if categoria == 'estoque' else ''}}>Estoque</option>
+        <option value="equipamento" {{'selected' if categoria == 'equipamento' else ''}}>Equipamentos</option>
+        <option value="viagem" {{'selected' if categoria == 'viagem' else ''}}>Viagens</option>
       </select>
     </div>
-    <div class="col-md-2">
-      <button type="submit" class="btn btn-rench-primary w-100">
-        <i class="bi bi-search me-1"></i> Filtrar
-      </button>
+    <div class="col-md-6 col-xl-2">
+      <label class="form-label small fw-bold">Tipo (estoque)</label>
+      <select name="tipo" class="form-select">
+        <option value="">Todos</option>
+        <option value="entrada" {{'selected' if tipo_movimento == 'entrada' else ''}}>Entrada</option>
+        <option value="saida" {{'selected' if tipo_movimento == 'saida' else ''}}>Saída</option>
+        <option value="ajuste" {{'selected' if tipo_movimento == 'ajuste' else ''}}>Ajuste</option>
+        <option value="reserva_viagem" {{'selected' if tipo_movimento == 'reserva_viagem' else ''}}>Reserva viagem</option>
+        <option value="retorno_viagem" {{'selected' if tipo_movimento == 'retorno_viagem' else ''}}>Retorno viagem</option>
+      </select>
+    </div>
+    <div class="col-md-8 col-xl-3">
+      <label class="form-label small fw-bold">Texto livre</label>
+      <input type="text" class="form-control" name="busca" value="{{busca}}" placeholder="Usuário, item, código, viagem, origem...">
+    </div>
+    <div class="col-md-4 col-xl-1">
+      <label class="form-label small fw-bold">Por página</label>
+      <select name="por_pagina" class="form-select">
+        {% for limite in (25, 50, 100, 200) %}<option value="{{limite}}" {{'selected' if paginacao.por_pagina == limite else ''}}>{{limite}}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-12 d-flex flex-wrap gap-2 justify-content-end">
+      <button type="submit" class="btn btn-rench-primary"><i class="bi bi-funnel me-1"></i> Filtrar</button>
+      <a href="{{url_for('estoque_auditoria')}}" class="btn btn-outline-secondary"><i class="bi bi-x-circle me-1"></i> Limpar</a>
+      <a href="{{url_for('estoque_auditoria', formato='csv', data_inicio=filtro_data_inicio, data_fim=filtro_data_fim, categoria=categoria, tipo=tipo_movimento, busca=busca)}}" class="btn btn-outline-success"><i class="bi bi-filetype-csv me-1"></i> Exportar CSV</a>
     </div>
   </form>
 </div>
 
-<div class="table-responsive">
-  <table class="table table-hover align-middle">
-    <thead class="table-light">
-      <tr>
-        <th>Data / Hora</th>
-        <th>Movimento</th>
-        <th>Suprimento</th>
-        <th>Qtd</th>
-        <th>Saldo Antes</th>
-        <th>Saldo Depois</th>
-        <th>Motivo</th>
-        <th>Origem</th>
-        <th>Responsável</th>
-        <th>Unidade / Empresa</th>
-      </tr>
-    </thead>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 small text-muted">
+  <span><strong>{{paginacao.total}}</strong> evento(s) no período/filtro</span>
+  {% if paginacao.total %}<span>Exibindo {{paginacao.inicio}}–{{paginacao.fim}} · página {{paginacao.pagina}} de {{paginacao.total_paginas}}</span>{% endif %}
+</div>
+
+<div class="table-responsive table-rench">
+  <table class="table table-sm align-middle mb-0">
+    <thead><tr><th style="min-width:130px;">Data / hora</th><th>Origem</th><th>Usuário</th><th>Ação</th><th style="min-width:220px;">Item / equipamento</th><th class="text-center">Qtd.</th><th style="min-width:160px;">Origem</th><th style="min-width:160px;">Destino</th><th style="min-width:180px;">Detalhes / vínculos</th></tr></thead>
     <tbody>
-      {% for m in movimentacoes %}
+      {% for evento in eventos %}
       <tr>
-        <td nowrap>{{m.data_movimento|fmt_br(true)}}</td>
+        <td class="small">{{evento.data_evento|fmt_br(true)}}</td>
         <td>
-          {% if m.tipo_movimento == 'entrada' %}
-            <span class="badge bg-success">Entrada</span>
-          {% elif m.tipo_movimento == 'saida' %}
-            <span class="badge bg-danger">Saída</span>
-          {% else %}
-            <span class="badge bg-warning text-dark">Ajuste</span>
-          {% endif %}
+          {% if evento.categoria == 'estoque' %}<span class="badge bg-primary">Estoque</span>
+          {% elif evento.categoria == 'equipamento' %}<span class="badge bg-dark">Equipamento</span>
+          {% else %}<span class="badge bg-info text-dark">Viagem</span>{% endif %}
         </td>
+        <td>{{evento.usuario or 'Não informado'}}</td>
         <td>
-          <strong>{{m.tipo_suprimento}}</strong>
-          {% if m.modelo_impressora %}<br><small class="text-muted">{{m.modelo_impressora}}</small>{% endif %}
-          {% if m.marca %}<br><small class="text-muted">{{m.marca}}</small>{% endif %}
+          <span class="badge bg-soft-{{'success' if evento.acao in ('entrada','retorno_viagem') else 'danger' if evento.acao in ('saida','reserva_viagem') else 'warning'}}">{{evento.acao}}</span>
+          {% if evento.saldo_antes is not none %}<br><small class="text-muted">Saldo {{evento.saldo_antes}} → {{evento.saldo_depois}}</small>{% endif %}
         </td>
-        <td class="fw-bold {{ 'text-success' if m.quantidade > 0 else 'text-danger' }}">
-          {{ '+' if m.quantidade > 0 else '' }}{{m.quantidade}}
-        </td>
-        <td>{{m.saldo_antes}}</td>
-        <td>{{m.saldo_depois}}</td>
-        <td>{{m.motivo or '-'}}</td>
-        <td>
-          {% if m.origem %}
-            <span class="badge badge-impressora">{{m.origem}}</span>
-          {% else %}-{% endif %}
-          {% if m.viagem_numero %}<br><small class="text-muted">Viagem {{m.viagem_numero}}</small>{% endif %}
-        </td>
-        <td>{{m.responsavel or '-'}}</td>
-        <td>
-          {% if m.unidade_nome %}
-            {{m.unidade_nome}}<br><small class="text-muted">{{m.empresa_nome}}</small>
-          {% else %}
-            -
-          {% endif %}
+        <td class="fw-semibold">{{evento.item}}</td>
+        <td class="text-center fw-bold">{{evento.quantidade if evento.quantidade is not none else '—'}}</td>
+        <td class="small">{{evento.origem or '—'}}</td>
+        <td class="small">{{evento.destino or '—'}}</td>
+        <td class="small">
+          {% if evento.detalhes %}<div title="{{evento.detalhes}}">{{evento.detalhes|truncate(110)}}</div>{% endif %}
+          <div class="d-flex flex-wrap gap-2 mt-1">
+            {% if evento.viagem_id %}<a href="{{url_for('viagem_detalhe', viagem_id=evento.viagem_id)}}">{{evento.viagem_numero}}</a>{% endif %}
+            {% if evento.equipamento_id %}<a href="{{url_for('editar_equipamento', equip_id=evento.equipamento_id)}}">Equipamento #{{evento.equipamento_id}}</a>{% endif %}
+            {% if evento.entrega_id %}<a href="{{url_for('detalhes_entrega', entrega_id=evento.entrega_id)}}">Entrega #{{evento.entrega_id}}</a>{% endif %}
+          </div>
         </td>
       </tr>
       {% else %}
-      <tr>
-        <td colspan="10" class="text-center text-muted py-4">Nenhuma alteração encontrada.</td>
-      </tr>
+      <tr><td colspan="9" class="text-center text-muted py-5"><i class="bi bi-search me-2"></i>Nenhum evento encontrado para os filtros informados.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
 
-<script>
-function alternarErros() {
-  var q = document.getElementById('erros');
-  if (q) {
-    q.style.display = (q.style.display === 'none') ? '' : 'none';
-  }
-}
-</script>
+{% if paginacao.total_paginas > 1 %}
+<nav class="mt-3" aria-label="Paginação da auditoria">
+  <ul class="pagination pagination-sm flex-wrap">
+    <li class="page-item {{'disabled' if paginacao.pagina == 1 else ''}}"><a class="page-link" href="{{url_for('estoque_auditoria', pagina=1, por_pagina=paginacao.por_pagina, data_inicio=filtro_data_inicio, data_fim=filtro_data_fim, categoria=categoria, tipo=tipo_movimento, busca=busca)}}">Primeira</a></li>
+    <li class="page-item {{'disabled' if paginacao.pagina == 1 else ''}}"><a class="page-link" href="{{url_for('estoque_auditoria', pagina=paginacao.pagina-1, por_pagina=paginacao.por_pagina, data_inicio=filtro_data_inicio, data_fim=filtro_data_fim, categoria=categoria, tipo=tipo_movimento, busca=busca)}}">Anterior</a></li>
+    <li class="page-item active"><span class="page-link">{{paginacao.pagina}} / {{paginacao.total_paginas}}</span></li>
+    <li class="page-item {{'disabled' if paginacao.pagina == paginacao.total_paginas else ''}}"><a class="page-link" href="{{url_for('estoque_auditoria', pagina=paginacao.pagina+1, por_pagina=paginacao.por_pagina, data_inicio=filtro_data_inicio, data_fim=filtro_data_fim, categoria=categoria, tipo=tipo_movimento, busca=busca)}}">Próxima</a></li>
+    <li class="page-item {{'disabled' if paginacao.pagina == paginacao.total_paginas else ''}}"><a class="page-link" href="{{url_for('estoque_auditoria', pagina=paginacao.total_paginas, por_pagina=paginacao.por_pagina, data_inicio=filtro_data_inicio, data_fim=filtro_data_fim, categoria=categoria, tipo=tipo_movimento, busca=busca)}}">Última</a></li>
+  </ul>
+</nav>
+{% endif %}
+
+<div class="alert alert-light border small mt-3 mb-4">
+  Consulta dos registros já existentes. Conferências e retornos de viagem aparecem apenas quando suas datas foram gravadas; alterações antigas sem usuário ou timestamp permanecem limitadas aos dados originais. O CSV exporta até {{paginacao.limite_exportacao}} linhas do filtro atual.
+</div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div class="page-title fs-5"><i class="bi bi-exclamation-triangle"></i> Erros registrados no estoque <span class="badge bg-danger ms-1">{{erros|length}}</span></div>
+  <div class="d-flex gap-2">
+    {% if erros %}<form method="post" action="{{url_for('estoque_erros_limpar')}}" onsubmit="return confirm('Limpar o log de erros? Os registros ficam ocultos e podem ser restaurados.')"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-eye-slash me-1"></i> Limpar</button></form>{% endif %}
+    {% if erros_ocultos %}<form method="post" action="{{url_for('estoque_erros_restaurar')}}"><button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar ({{erros_ocultos}})</button></form>{% endif %}
+  </div>
+</div>
+<div class="alert alert-warning small">
+  Movimentações negadas por regras de negócio são exibidas normalmente ao usuário e não geram log de erro. Este bloco mantém os alertas técnicos já registrados. Registros ocultos no banco: <strong>{{erros_ocultos}}</strong>.
+</div>
+{% for erro in erros %}
+<div class="card border-danger mb-2">
+  <div class="card-body py-2">
+    <div class="d-flex justify-content-between align-items-start gap-2">
+      <div>
+        <span class="badge bg-danger mb-1">{{erro.contexto}}</span>
+        <div class="small fw-semibold">{{erro.mensagem}}</div>
+        <div class="small text-muted">{{erro.data_erro|fmt_br(true)}} · {{erro.responsavel}}</div>
+        {% if erro.detalhes %}<details class="mt-1"><summary class="small text-muted">Detalhes técnicos</summary><pre class="small mb-0" style="white-space:pre-wrap;">{{erro.detalhes}}</pre></details>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="text-center text-muted py-4 mb-4 border rounded"><i class="bi bi-check-circle me-2"></i>Nenhum erro técnico visível.</div>
+{% endfor %}
 {% endblock %}

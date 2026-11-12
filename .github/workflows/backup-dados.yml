@@ -1,0 +1,90 @@
+name: Backup Semanal de Dados (Supabase)
+
+on:
+  schedule:
+    # Domingos às 03:30 UTC (00:30 no horário de Brasília)
+    - cron: '30 3 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: backup_restore
+          POSTGRES_PASSWORD: restore_only
+          POSTGRES_DB: restore_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U backup_restore -d restore_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar ferramentas do Postgres 17
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          python3 -m pip install --quiet psycopg2-binary
+
+      - name: Testar validações do backup sem acessar a produção
+        run: python3 .github/tests/test_backup_dados.py
+
+      - name: Definir carimbo do backup
+        run: |
+          STAMP=$(date -u +%Y-%m-%d_%H%M)
+          echo "BACKUP_STAMP=${STAMP}" >> "$GITHUB_ENV"
+          mkdir -p "backups/${STAMP}"
+
+      - name: Dump completo do schema public (restaurável com pg_restore)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          pg_dump "${SUPABASE_DB_URL}" --schema=public --format=custom \
+            --file "backups/${BACKUP_STAMP}/rench-estoque.dump"
+
+      - name: Exportar todas as tabelas e anexos e gerar inventário
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_PROJECT_REF: yfxfmwrasjukbsjjqbzs
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BACKUP_DIR: backups/${{ env.BACKUP_STAMP }}
+          DUMP_NAME: rench-estoque.dump
+          MAX_ATTACHMENT_BYTES: '95000000'
+        run: python3 .github/scripts/backup_dados.py exportar
+
+      - name: Validar JSON, anexos, inventário e checksums
+        env:
+          BACKUP_DIR: backups/${{ env.BACKUP_STAMP }}
+        run: python3 .github/scripts/backup_dados.py validar
+
+      - name: Testar restauração em Postgres temporário
+        env:
+          BACKUP_DIR: backups/${{ env.BACKUP_STAMP }}
+          RESTORE_DB_URL: postgresql://backup_restore:restore_only@localhost:5432/restore_test
+        run: python3 .github/scripts/backup_dados.py restaurar
+
+      - name: Publicar na branch de backups (mantém últimos 12)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B backups
+          # Mantém apenas os 12 backups mais recentes (~3 meses de histórico)
+          find backups -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -r | tail -n +13 | while IFS= read -r dir; do
+            git rm -r --quiet "backups/$dir" && echo "Removido backup antigo: $dir"
+          done
+          git add backups/
+          git commit -m "Backup automático ${BACKUP_STAMP}" || echo "Nada novo para commitar"
+          git push origin backups
