@@ -69,6 +69,16 @@ class BackupDadosTest(unittest.TestCase):
             self.assertEqual(request.get_header('Authorization'), 'Bearer segredo')
             self.assertNotIn('segredo', json.dumps(entry))
 
+    def test_prepara_schema_de_extensoes_do_supabase(self):
+        conn = MagicMock()
+        cursor = conn.cursor.return_value.__enter__.return_value
+        with patch.object(backup.psycopg2, 'connect', return_value=conn):
+            backup.prepare_restore_db('postgresql://localhost/restore_test')
+        comandos = cursor.execute.call_args.args[0]
+        self.assertIn('CREATE SCHEMA IF NOT EXISTS extensions', comandos)
+        self.assertIn('"uuid-ossp" WITH SCHEMA extensions', comandos)
+        self.assertIn('pgcrypto WITH SCHEMA extensions', comandos)
+
     def test_restauracao_somente_no_banco_temporario_local(self):
         for url in ('postgresql://localhost/outro', 'postgresql://example.com/restore_test'):
             with self.subTest(url=url), patch.dict(backup.os.environ, {'RESTORE_DB_URL': url}):

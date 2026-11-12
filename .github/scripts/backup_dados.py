@@ -394,9 +394,11 @@ def prepare_restore_db(restore_url):
                         LANGUAGE sql STABLE AS $$ SELECT NULL::text $$;
                     CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
                         LANGUAGE sql STABLE AS $$ SELECT '{}'::jsonb $$;
-                    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-                    CREATE EXTENSION IF NOT EXISTS pgcrypto;
-                    CREATE EXTENSION IF NOT EXISTS unaccent;
+                    CREATE SCHEMA IF NOT EXISTS extensions;
+                    CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
+                    CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+                    CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA extensions;
+                    ALTER DATABASE restore_test SET search_path TO public, extensions;
                     """
                 )
     finally:
