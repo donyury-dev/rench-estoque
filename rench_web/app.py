@@ -1883,24 +1883,71 @@ def estornar_estoque_entrega(cur, entrega_id, responsavel=None):
            FROM suprimentos_entregas se
            LEFT JOIN viagens v ON v.id = se.viagem_id
            LEFT JOIN viagens_paradas vp ON vp.id = se.parada_id
-           WHERE se.id=%s""",
+           WHERE se.id=%s FOR UPDATE OF se""",
         (entrega_id,)
     )
     entrega = cur.fetchone()
+    if not entrega:
+        return {'bloqueado': True, 'mensagem': 'Entrega não encontrada ou já excluída.'}
 
     cur.execute(
-        "SELECT tipo_suprimento, modelo_impressora, marca, quantidade, estorno_estoque FROM suprimentos_itens WHERE entrega_id=%s",
+        "SELECT tipo_suprimento, modelo_impressora, marca, cor_selecionada, quantidade, estorno_estoque FROM suprimentos_itens WHERE entrega_id=%s",
         (entrega_id,)
     )
     itens = cur.fetchall()
+    if not itens:
+        return {'bloqueado': True, 'mensagem': 'Entrega sem itens: é necessário conferir o histórico antes de excluir.'}
 
     # Se ja estornado, nao faz nada
     if all(int(item.get('estorno_estoque') or 0) for item in itens):
         return None
+    if any(int(item.get('estorno_estoque') or 0) for item in itens):
+        return {'bloqueado': True, 'mensagem': 'Estorno parcial encontrado. Confira o histórico antes de excluir.'}
 
-    parada_id = entrega['parada_id'] if entrega else None
-    viagem_id = entrega['viagem_id'] if entrega else None
-    viagem_status = entrega['viagem_status'] if entrega else None
+    viagem_status = entrega['viagem_status']
+    if entrega['viagem_id']:
+        cur.execute('SELECT status FROM viagens WHERE id=%s FOR UPDATE', (entrega['viagem_id'],))
+        viagem_atual = cur.fetchone()
+        viagem_status = viagem_atual['status'] if viagem_atual else None
+
+    totais = {}
+    for item in itens:
+        tipo, modelo, marca = _chave_item_saida(item)
+        chave = (tipo, modelo, marca or '')
+        totais[chave] = totais.get(chave, 0) + int(item['quantidade'] or 0)
+    cur.execute("""
+        SELECT e.id, e.tipo_suprimento, e.modelo_impressora, e.marca, e.ativo, em.quantidade
+        FROM estoque_movimentacoes em JOIN estoque e ON e.id=em.estoque_id
+        WHERE em.entrega_id=%s AND em.tipo_movimento='saida' AND em.origem='entrega'
+        ORDER BY e.id FOR UPDATE OF e
+    """, (entrega_id,))
+    debitos = {}
+    ids_estoque = {}
+    for linha in cur.fetchall():
+        tipo, modelo, marca = _chave_estoque(linha['tipo_suprimento'], linha['modelo_impressora'], linha['marca'])
+        chave = (tipo, modelo, marca or '')
+        if (not linha['ativo'] or int(linha['quantidade']) >= 0 or linha['tipo_suprimento'] != tipo
+                or linha['modelo_impressora'] != modelo
+                or (linha['marca'] or '') != (marca or '')
+                or (chave in ids_estoque and ids_estoque[chave] != linha['id'])):
+            return {'bloqueado': True, 'mensagem': 'O cadastro original do estoque precisa ser conferido antes do estorno.'}
+        ids_estoque[chave] = linha['id']
+        debitos[chave] = debitos.get(chave, 0) - int(linha['quantidade'])
+    for (tipo, modelo, marca), estoque_id in sorted(ids_estoque.items()):
+        cur.execute("""
+            SELECT id FROM estoque WHERE tipo_suprimento=%s AND modelo_impressora=%s
+              AND COALESCE(marca,'')=%s AND ativo=TRUE ORDER BY id FOR UPDATE
+        """, (tipo, modelo, marca))
+        correspondentes = cur.fetchall()
+        if len(correspondentes) != 1 or correspondentes[0]['id'] != estoque_id:
+            return {'bloqueado': True, 'mensagem': 'Cadastro de estoque duplicado ou alterado. Confira antes do estorno.'}
+    if any(quantidade <= 0 for quantidade in totais.values()):
+        return {'bloqueado': True, 'mensagem': 'Quantidade inválida na entrega. Confira o histórico antes de excluir.'}
+
+    parada_id = entrega['parada_id']
+    viagem_id = entrega['viagem_id']
+    if bool(parada_id) != bool(viagem_id):
+        return {'bloqueado': True, 'mensagem': 'Vínculo da viagem incompleto. Confira o histórico antes de excluir.'}
 
     if parada_id and viagem_id:
         # Viagens encerradas/retornadas nao devem ter entregas estornadas
@@ -1920,7 +1967,7 @@ def estornar_estoque_entrega(cur, entrega_id, responsavel=None):
         cur.execute(
             """SELECT id, tipo_suprimento, modelo_impressora, marca, origem,
                       quantidade_carregada, quantidade_entregue, quantidade_usada_manual
-               FROM viagens_itens WHERE viagem_id=%s AND pode_usar_cliente=TRUE""",
+               FROM viagens_itens WHERE viagem_id=%s AND pode_usar_cliente=TRUE ORDER BY id FOR UPDATE""",
             (viagem_id,)
         )
         linhas_viagem = []
@@ -1933,8 +1980,19 @@ def estornar_estoque_entrega(cur, entrega_id, responsavel=None):
                 'quantidade_entregue': int(r['quantidade_entregue'] or 0),
             })
 
+        if any(chave not in totais for chave in debitos):
+            return {'bloqueado': True, 'mensagem': 'As baixas não correspondem aos itens da entrega. Confira o histórico antes de excluir.'}
+        for chave, quantidade in totais.items():
+            linhas = [linha for linha in linhas_viagem if linha['chave'] == chave]
+            origens = {'rench' if linha['origem'] == 'rench' else 'fornecedor' for linha in linhas}
+            if len(origens) != 1 or sum(linha['quantidade_entregue'] for linha in linhas) < quantidade:
+                return {'bloqueado': True, 'mensagem': 'Não foi possível identificar com segurança a origem ou a quantidade entregue na viagem. Confira o histórico antes de excluir.'}
+            debito_esperado = quantidade if 'rench' in origens else 0
+            if debitos.get(chave, 0) != debito_esperado:
+                return {'bloqueado': True, 'mensagem': 'A baixa do estoque não corresponde à entrega. Confira o histórico antes de excluir.'}
+
         for item in itens:
-            tipo, modelo, marca = _chave_estoque(item['tipo_suprimento'], item['modelo_impressora'], item.get('marca'))
+            tipo, modelo, marca = _chave_item_saida(item)
             chave = (tipo, modelo, marca or '')
             qtd_total = int(item['quantidade'] or 1)
             qtd_reverter_rench = 0
@@ -1975,9 +2033,11 @@ def estornar_estoque_entrega(cur, entrega_id, responsavel=None):
               AND EXISTS (SELECT 1 FROM viagens_paradas WHERE viagem_id=%s AND status='planejada')
         """, (viagem_id, viagem_id))
     else:
+        if debitos != totais:
+            return {'bloqueado': True, 'mensagem': 'A baixa do estoque não corresponde aos itens da entrega. Confira o histórico antes de excluir.'}
         # Entrega sem viagem: estorna tudo ao estoque central
         for item in itens:
-            tipo, modelo, marca = _chave_estoque(item['tipo_suprimento'], item['modelo_impressora'], item.get('marca'))
+            tipo, modelo, marca = _chave_item_saida(item)
             qtd = int(item['quantidade'] or 1)
             estoque_id, saldo = buscar_ou_criar_estoque(cur, tipo, modelo, marca)
             movimentar_estoque(
@@ -6680,6 +6740,34 @@ def api_estoque_saldo():
     db = get_db()
     cur = db.cursor()
     tipo, modelo, marca = _chave_estoque(tipo, modelo, marca)
+    parada_id = request.args.get('parada_id', type=int)
+    if parada_id:
+        unidade_id = request.args.get('unidade_id', type=int)
+        cur.execute("""
+            SELECT vp.viagem_id, vp.unidade_id, v.status, v.numero
+            FROM viagens_paradas vp JOIN viagens v ON v.id=vp.viagem_id
+            WHERE vp.id=%s
+        """, (parada_id,))
+        parada = cur.fetchone()
+        if not parada or parada['unidade_id'] != unidade_id:
+            return jsonify({'erro': 'Parada não pertence à unidade selecionada.'}), 400
+        if parada['status'] not in ('conferido', 'em_rota'):
+            return jsonify({'erro': 'A carga desta viagem ainda não está disponível para entrega.'}), 400
+        cur.execute("""
+            SELECT tipo_suprimento, modelo_impressora, marca, quantidade_carregada,
+                   quantidade_entregue, quantidade_usada_manual
+            FROM viagens_itens WHERE viagem_id=%s AND pode_usar_cliente=TRUE
+        """, (parada['viagem_id'],))
+        chave = (tipo, modelo, marca or '')
+        saldo = 0
+        for item in cur.fetchall():
+            item_tipo, item_modelo, item_marca = _chave_estoque(
+                item['tipo_suprimento'], item['modelo_impressora'], item['marca'])
+            if (item_tipo, item_modelo, item_marca or '') == chave:
+                saldo += ((item['quantidade_carregada'] or 0)
+                          - (item['quantidade_entregue'] or 0)
+                          - (item['quantidade_usada_manual'] or 0))
+        return jsonify({'saldo': saldo, 'origem': 'viagem', 'viagem': parada['numero']})
     _, saldo = buscar_ou_criar_estoque(cur, tipo, modelo, marca)
     return jsonify({'saldo': saldo, 'tipo': tipo, 'modelo': modelo, 'marca': marca})
 

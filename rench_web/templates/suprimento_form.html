@@ -25,7 +25,7 @@
           <datalist id="lista_unidades">
             {% for l in locais %}
               {% if l.unidade_id %}
-                <option value="{{l.unidade_nome}}" data-id="{{l.unidade_id}}"></option>
+                <option value="{{l.empresa_nome}} / {{l.unidade_nome}} ({{l.unidade_id}})" data-id="{{l.unidade_id}}"></option>
               {% endif %}
             {% endfor %}
           </datalist>
@@ -34,9 +34,9 @@
         <div class="mb-3" id="box-parada" style="display:none">
           <label class="form-label fw-bold"><i class="bi bi-signpost-split me-1"></i>Viagem / Parada</label>
           <select class="form-select" name="parada_id" id="parada_id">
-            <option value="">Sem viagem / não vincular</option>
+            <option value="">Sem seleção — vinculação automática possível</option>
           </select>
-          <small class="text-muted">Saída em atendimento deve ser vinculada à parada da viagem; só é permitido o que está na carga conferida ou foi coletado na rota.</small>
+          <small class="text-muted">A disponibilidade da viagem é conferida ao salvar. Se houver uma única parada elegível para esta unidade, ela poderá ser vinculada automaticamente mesmo sem seleção.</small>
         </div>
         <div class="mb-3">
           <label class="form-label fw-bold">Responsável</label>
@@ -191,6 +191,8 @@ async function atualizarSaldoLinha(row){
   const modelo = normalizarModelo(row.querySelector('.modelo-input').value);
   const marca = row.querySelector('.marca-select').value;
   const el = row.querySelector('.saldo-linha');
+  const consulta = String((Number(row.dataset.consultaSaldo) || 0) + 1);
+  row.dataset.consultaSaldo = consulta;
 
   if(!tipo || (!modelo && tipo !== 'Papel Fotografico')){
     el.innerHTML = '';
@@ -201,18 +203,28 @@ async function atualizarSaldoLinha(row){
     return;
   }
 
-  el.innerHTML = '<span class="text-muted">Consultando saldo...</span>';
+  el.textContent = 'Consultando saldo...';
   try{
-    let url = `/api/estoque/saldo?tipo=${encodeURIComponent(tipo)}&modelo=${encodeURIComponent(modelo || '-')}&cor=${encodeURIComponent(cor)}&marca=${encodeURIComponent(marca)}&_=${Date.now()}`;
+    const parada = document.getElementById('parada_id').value;
+    const unidade = document.getElementById('unidade_id').value;
+    let url = `/api/estoque/saldo?tipo=${encodeURIComponent(tipo)}&modelo=${encodeURIComponent(modelo || '-')}&cor=${encodeURIComponent(cor)}&marca=${encodeURIComponent(marca)}&parada_id=${encodeURIComponent(parada)}&unidade_id=${encodeURIComponent(unidade)}&_=${Date.now()}`;
     const r = await fetch(url);
     const j = await r.json();
-    if(j.saldo > 0){
-      el.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> Em estoque: <strong>${j.saldo}</strong></span>`;
-    } else {
-      el.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> Estoque zerado (${j.saldo})</span>`;
+    if(row.dataset.consultaSaldo !== consulta) return;
+    if(!r.ok){
+      el.className = 'saldo-linha small mt-1 text-danger';
+      el.textContent = j.erro || 'Não foi possível consultar o saldo.';
+      return;
     }
+    el.className = `saldo-linha small mt-1 ${j.saldo > 0 ? 'text-success' : 'text-danger'}`;
+    el.textContent = j.origem === 'viagem'
+      ? `Disponível na viagem ${j.viagem}: ${j.saldo}. O saldo será confirmado ao salvar.`
+      : `Estoque central: ${j.saldo}. Não representa a carga da viagem.`;
   } catch(err){
-    el.innerHTML = '';
+    if(row.dataset.consultaSaldo === consulta){
+      el.className = 'saldo-linha small mt-1 text-danger';
+      el.textContent = 'Não foi possível consultar o saldo; ele será validado ao salvar.';
+    }
   }
 }
 
@@ -306,22 +318,44 @@ function atualizarLinha(sel){
   }
 }
 
-// ao enviar, combina tipo + cor se houver e converte papel para folhas
 document.getElementById('form-suprimento').addEventListener('submit', function(e){
+  const busca = document.getElementById('busca_unidade');
+  const hidden = document.getElementById('unidade_id');
+  const unidade = Array.from(document.querySelectorAll('#lista_unidades option')).find(opt => opt.value.toLowerCase().trim() === busca.value.toLowerCase().trim());
+  if(!unidade){
+    e.preventDefault();
+    hidden.value = '';
+    busca.classList.add('is-invalid');
+    document.getElementById('erro_unidade').style.display = 'block';
+    busca.focus();
+    return;
+  }
+  hidden.value = unidade.dataset.id;
   const tipoObservacao = document.getElementById('tipo-observacao');
   const observacoes = document.getElementById('observacoes-entrega');
-  if(!tipoObservacao.value){
+  if(!tipoObservacao.value || (tipoObservacao.value === 'Outro' && !observacoes.value.trim())){
     e.preventDefault();
-    tipoObservacao.focus();
+    (tipoObservacao.value ? observacoes : tipoObservacao).focus();
+    return;
+  }
+  const parada = document.getElementById('parada_id');
+  const descricaoParada = parada.value ? parada.selectedOptions[0].textContent : 'Não selecionada; uma parada elegível pode ser vinculada automaticamente';
+  const resumo = Array.from(container.querySelectorAll('.item-row')).map(row => {
+    const tipo = row.querySelector('.tipo-select').value;
+    const cor = row.querySelector('.cor-select').value;
+    const modelo = normalizarModelo(row.querySelector('.modelo-input').value);
+    const marca = row.querySelector('.marca-select').value;
+    const quantidade = Number(row.querySelector('.qtd-input').value);
+    const fator = tipo === 'Papel Fotografico' ? Number(row.querySelector('.unidade-papel').value) : 1;
+    return `• ${quantidade * fator}${tipo === 'Papel Fotografico' ? ' folhas' : ' un.'} — ${[tipo, cor, modelo !== '-' ? modelo : '', marca].filter(Boolean).join(' ')}`;
+  });
+  const confirmacao = `Confira a entrega antes de registrar:\n\nUnidade: ${busca.value}\nViagem: ${descricaoParada}\n\n${resumo.join('\n')}\n\nO estoque e a carga serão validados pelo sistema. Confirmar?`;
+  if(!confirm(confirmacao)){
+    e.preventDefault();
     return;
   }
   if(tipoObservacao.value !== 'Outro' && !observacoes.value.trim()){
     observacoes.value = tipoObservacao.value;
-  }
-  if(tipoObservacao.value === 'Outro' && !observacoes.value.trim()){
-    e.preventDefault();
-    observacoes.focus();
-    return;
   }
   container.querySelectorAll('.item-row').forEach(row => {
     normalizarCampoModelo(row.querySelector('.modelo-input'));
@@ -349,6 +383,9 @@ document.getElementById('form-suprimento').addEventListener('submit', function(e
       qtdInput.value = qtd * unidade;
     }
   });
+  const btn = this.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Salvando...';
 });
 document.getElementById('tipo-observacao').addEventListener('change', function(){
   const observacoes = document.getElementById('observacoes-entrega');
@@ -390,12 +427,22 @@ document.getElementById('tipo-observacao').addEventListener('change', function()
   // Paradas de viagens ativas: carrega ao validar a unidade
   const selParada = document.getElementById('parada_id');
   const boxParada = document.getElementById('box-parada');
+  busca.addEventListener('input', function(){
+    selParada.innerHTML = '<option value="">Sem seleção — vinculação automática possível</option>';
+    boxParada.style.display = 'none';
+    container.querySelectorAll('.item-row').forEach(atualizarSaldoLinha);
+  });
+  selParada.addEventListener('change', function(){
+    container.querySelectorAll('.item-row').forEach(atualizarSaldoLinha);
+  });
   async function carregarParadas(){
     if(!selParada || !hidden.value){ return; }
+    const unidadeId = hidden.value;
     try {
-      const resp = await fetch('{{url_for("api_paradas_ativas")}}?unidade_id=' + hidden.value);
+      const resp = await fetch('{{url_for("api_paradas_ativas")}}?unidade_id=' + encodeURIComponent(unidadeId));
       const dados = await resp.json();
-      selParada.innerHTML = '<option value="">Sem viagem / não vincular</option>';
+      if(hidden.value !== unidadeId) return;
+      selParada.innerHTML = '<option value="">Sem seleção — vinculação automática possível</option>';
       (dados.paradas || []).forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.id;
@@ -410,22 +457,6 @@ document.getElementById('tipo-observacao').addEventListener('change', function()
     } catch(e){ /* silencioso */ }
   }
   busca.addEventListener('change', carregarParadas);
-
-  const form = document.getElementById('form-suprimento');
-  if(form){
-    form.addEventListener('submit', function(e){
-      if(!validarUnidade()){
-        e.preventDefault();
-        busca.focus();
-        return;
-      }
-      const btn = form.querySelector('button[type="submit"]');
-      if(btn){
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Salvando...';
-      }
-    });
-  }
 })();
 </script>
 {% endblock %}

@@ -33,7 +33,7 @@
   </li>
   <li class="nav-item">
     <a class="nav-link" href="{{url_for('estoque_auditoria')}}" style="color:var(--primary);">
-      <i class="bi bi-shield-check me-1"></i> Auditoria
+      <i class="bi bi-arrow-left-right me-1"></i> Central de movimentações
     </a>
   </li>
 </ul>
@@ -93,8 +93,8 @@
             </div>
             {% if e.responsavel %}<small class="text-muted">Responsável: {{e.responsavel}}</small>{% endif %}
           </div>
-          <form method="POST" action="{{url_for('excluir_suprimento', entrega_id=e.id)}}" onsubmit="return confirm('Tem certeza que deseja excluir este registro?');">
-            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+          <form method="POST" action="{{url_for('excluir_suprimento', entrega_id=e.id)}}" onsubmit="return confirm('Excluir esta entrega tentará estornar os itens e pode reabrir a parada da viagem. O sistema bloqueará o estorno quando não for seguro. Deseja continuar?');">
+            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir entrega e tentar estornar"><i class="bi bi-arrow-counterclockwise me-1"></i>Excluir / estornar</button>
           </form>
         </div>
 

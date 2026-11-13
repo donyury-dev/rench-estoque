@@ -1,11 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Auditoria - RENCH{% endblock %}
+{% block title %}Central de movimentações - RENCH{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
-    <div class="page-title"><i class="bi bi-shield-check"></i> Auditoria / Consulta</div>
-    <div class="page-subtitle">Movimentações de estoque, equipamentos e eventos de viagem</div>
+    <div class="page-title"><i class="bi bi-arrow-left-right"></i> Central de movimentações</div>
+    <div class="page-subtitle">Consulte em um só lugar os registros de estoque, equipamentos e viagens.</div>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="{{url_for('novo_suprimento')}}" class="btn btn-rench-primary"><i class="bi bi-plus-lg me-1"></i>Nova entrega</a>
+    <a href="{{url_for('tela_movimentar')}}" class="btn btn-outline-secondary">Movimentar equipamento</a>
+    <a href="{{url_for('lista_suprimentos')}}" class="btn btn-outline-secondary">Histórico de entregas</a>
   </div>
 </div>
 
@@ -40,8 +45,8 @@
       </select>
     </div>
     <div class="col-md-8 col-xl-3">
-      <label class="form-label small fw-bold">Texto livre</label>
-      <input type="text" class="form-control" name="busca" value="{{busca}}" placeholder="Usuário, item, código, viagem, origem...">
+      <label class="form-label small fw-bold">Buscar</label>
+      <input type="text" class="form-control" name="busca" value="{{busca}}" placeholder="Unidade, responsável, item, série ou viagem">
     </div>
     <div class="col-md-4 col-xl-1">
       <label class="form-label small fw-bold">Por página</label>
@@ -64,7 +69,7 @@
 
 <div class="table-responsive table-rench">
   <table class="table table-sm align-middle mb-0">
-    <thead><tr><th style="min-width:130px;">Data / hora</th><th>Origem</th><th>Usuário</th><th>Ação</th><th style="min-width:220px;">Item / equipamento</th><th class="text-center">Qtd.</th><th style="min-width:160px;">Origem</th><th style="min-width:160px;">Destino</th><th style="min-width:180px;">Detalhes / vínculos</th></tr></thead>
+    <thead><tr><th style="min-width:130px;">Data / hora</th><th>Registro</th><th>Responsável</th><th>Ação</th><th style="min-width:220px;">Item / equipamento</th><th class="text-center">Qtd.</th><th style="min-width:160px;">Origem</th><th style="min-width:160px;">Destino</th><th style="min-width:180px;">Detalhes / vínculos</th></tr></thead>
     <tbody>
       {% for evento in eventos %}
       <tr>
@@ -84,7 +89,7 @@
         <td class="small">{{evento.origem or '—'}}</td>
         <td class="small">{{evento.destino or '—'}}</td>
         <td class="small">
-          {% if evento.detalhes %}<div title="{{evento.detalhes}}">{{evento.detalhes|truncate(110)}}</div>{% endif %}
+          {% if evento.detalhes %}<details><summary>Ver detalhes</summary><div class="mt-1" style="white-space:pre-wrap;">{{evento.detalhes}}</div></details>{% endif %}
           <div class="d-flex flex-wrap gap-2 mt-1">
             {% if evento.viagem_id %}<a href="{{url_for('viagem_detalhe', viagem_id=evento.viagem_id)}}">{{evento.viagem_numero}}</a>{% endif %}
             {% if evento.equipamento_id %}<a href="{{url_for('editar_equipamento', equip_id=evento.equipamento_id)}}">Equipamento #{{evento.equipamento_id}}</a>{% endif %}
@@ -112,7 +117,7 @@
 {% endif %}
 
 <div class="alert alert-light border small mt-3 mb-4">
-  Consulta dos registros já existentes. Conferências e retornos de viagem aparecem apenas quando suas datas foram gravadas; alterações antigas sem usuário ou timestamp permanecem limitadas aos dados originais. O CSV exporta até {{paginacao.limite_exportacao}} linhas do filtro atual.
+  Consulta dos registros existentes, sem alterar saldos. Uma entrega pode aparecer como saída de estoque e como evento da viagem: são registros relacionados, não duas entregas. Conferências e retornos aparecem quando suas datas foram gravadas. O CSV exporta até {{paginacao.limite_exportacao}} linhas do filtro atual.
 </div>
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
