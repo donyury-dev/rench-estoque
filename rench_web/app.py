@@ -5,6 +5,7 @@ import hashlib
 import difflib
 import unicodedata
 import json
+import uuid
 import re
 import csv
 import io
@@ -427,10 +428,6 @@ def _converter_esteira_para_transfer():
             WHERE LOWER(tipo_suprimento) = 'esteira'
         """)
         cur.execute("""
-            DELETE FROM estoque
-            WHERE modelo_impressora IS NULL OR TRIM(modelo_impressora) = ''
-        """)
-        cur.execute("""
             SELECT modelo_impressora, COALESCE(marca,'') as marca
             FROM estoque
             WHERE tipo_suprimento = 'Transfer'
@@ -820,6 +817,47 @@ def init_db():
     """)
 
     cur.execute("""
+        CREATE TABLE IF NOT EXISTS operacoes_entregas_mobile (
+            operacao_id UUID PRIMARY KEY,
+            dados_hash VARCHAR(64) NOT NULL,
+            operador VARCHAR(255) NOT NULL,
+            entrega_id INTEGER NOT NULL,
+            data_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS operacoes_entregas_autorizadas (
+            operacao_id UUID PRIMARY KEY REFERENCES operacoes_entregas_mobile(operacao_id),
+            usuario_helpdesk UUID NOT NULL,
+            unidade_helpdesk UUID NOT NULL,
+            chamados_esperados JSONB NOT NULL,
+            dados_retomada JSONB NOT NULL,
+            concluida_em TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS operacoes_entregas_canceladas (
+            operacao_id UUID PRIMARY KEY,
+            operador TEXT NOT NULL,
+            usuario_helpdesk UUID NOT NULL,
+            cancelada_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS operacoes_entregas_chamados (
+            operacao_id UUID NOT NULL REFERENCES operacoes_entregas_mobile(operacao_id),
+            chamado_id BIGINT NOT NULL,
+            evento_id UUID NOT NULL UNIQUE,
+            descricao TEXT NOT NULL,
+            sincronizado_em TIMESTAMP,
+            PRIMARY KEY (operacao_id, chamado_id)
+        )
+    """)
+
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS suprimentos_itens (
             id SERIAL PRIMARY KEY,
             entrega_id INTEGER NOT NULL REFERENCES suprimentos_entregas(id) ON DELETE CASCADE,
@@ -830,6 +868,19 @@ def init_db():
             motivo_padrao VARCHAR(50),
             defeito TEXT
         )
+    """)
+
+    cur.execute("ALTER TABLE operacoes_entregas_mobile ENABLE ROW LEVEL SECURITY")
+    cur.execute("ALTER TABLE operacoes_entregas_autorizadas ENABLE ROW LEVEL SECURITY")
+    cur.execute("ALTER TABLE operacoes_entregas_canceladas ENABLE ROW LEVEL SECURITY")
+    cur.execute("ALTER TABLE operacoes_entregas_chamados ENABLE ROW LEVEL SECURITY")
+    cur.execute("""
+        DO $$ BEGIN
+          IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN
+            GRANT SELECT ON operacoes_entregas_mobile, operacoes_entregas_autorizadas,
+                            operacoes_entregas_chamados TO service_role;
+          END IF;
+        END $$
     """)
 
     cur.execute("""
@@ -1238,12 +1289,12 @@ def movimentar_estoque(cur, estoque_id, tipo_movimento, quantidade, saldo_antes,
         raise
 
 
-def verificar_saldo(cur, tipo_suprimento, modelo_impressora, quantidade, marca=None):
+def verificar_saldo(cur, tipo_suprimento, modelo_impressora, quantidade, marca=None, bloquear=False):
     tipo, modelo, marca = _chave_estoque(tipo_suprimento, modelo_impressora, marca)
-    cur.execute(
-        "SELECT quantidade FROM estoque WHERE tipo_suprimento=%s AND modelo_impressora=%s AND COALESCE(marca,'')=%s AND ativo=TRUE",
-        (tipo, modelo, marca or '')
-    )
+    sql = "SELECT quantidade FROM estoque WHERE tipo_suprimento=%s AND modelo_impressora=%s AND COALESCE(marca,'')=%s AND ativo=TRUE"
+    if bloquear:
+        sql += " FOR UPDATE"
+    cur.execute(sql, (tipo, modelo, marca or ''))
     row = cur.fetchone()
     saldo = row['quantidade'] if row else 0
     return saldo >= quantidade, saldo
@@ -1258,12 +1309,12 @@ def _chave_item_saida(item):
     return _chave_estoque(tipo, item.get('modelo_impressora'), item.get('marca'))
 
 
-def _verificar_faltantes_entrega(cur, itens, alocacao=None):
+def _verificar_faltantes_entrega(cur, itens, alocacao=None, bloquear=False):
     """Confere o saldo do estoque Rench para os itens da entrega (sem movimentar).
 
     Retorna lista de faltantes; vazia quando tudo pode ser debitado.
     """
-    faltantes, debitos = [], []
+    faltantes, debitos, totais = [], [], {}
     for idx, item in enumerate(itens):
         tipo, modelo, marca = _chave_item_saida(item)
         qtd = int(item.get('quantidade') or 1)
@@ -1271,11 +1322,14 @@ def _verificar_faltantes_entrega(cur, itens, alocacao=None):
             qtd = alocacao[idx]['rench']
         if qtd <= 0:
             continue
-        ok, saldo = verificar_saldo(cur, tipo, modelo, qtd, marca)
+        chave = (tipo, modelo, marca or '')
+        totais[chave] = totais.get(chave, 0) + qtd
+    for (tipo, modelo, marca), qtd in sorted(totais.items()):
+        ok, saldo = verificar_saldo(cur, tipo, modelo, qtd, marca, bloquear=bloquear)
         if not ok:
-            faltantes.append({'tipo': tipo, 'modelo': modelo, 'marca': marca, 'saldo': saldo, 'solicitado': qtd})
+            faltantes.append({'tipo': tipo, 'modelo': modelo, 'marca': marca or None, 'saldo': saldo, 'solicitado': qtd})
         else:
-            debitos.append((tipo, modelo, marca, qtd))
+            debitos.append((tipo, modelo, marca or None, qtd))
     return faltantes, debitos
 
 
@@ -1288,7 +1342,7 @@ def debitar_estoque_entrega(cur, entrega_id, itens, responsavel=None, alocacao=N
     debitada do estoque; itens coletados em fornecedor nunca passaram pelo
     estoque da Rench.
     """
-    faltantes, debitos = _verificar_faltantes_entrega(cur, itens, alocacao)
+    faltantes, debitos = _verificar_faltantes_entrega(cur, itens, alocacao, bloquear=True)
     if faltantes:
         return faltantes
 
@@ -1304,7 +1358,7 @@ def debitar_estoque_entrega(cur, entrega_id, itens, responsavel=None, alocacao=N
     return []
 
 
-def vincular_entrega_a_viagem(cur, entrega_id, alocacao=None):
+def vincular_entrega_a_viagem(cur, entrega_id, alocacao=None, chamados_selecionados=None):
     """Vincula uma entrega (saida) a viagem/parada correspondente.
 
     - Se a entrega ja tem parada_id (selecionado no formulario), usa-a.
@@ -1314,6 +1368,21 @@ def vincular_entrega_a_viagem(cur, entrega_id, alocacao=None):
       parada como atendida. Nao cria nenhuma movimentacao de estoque extra.
     Retorna dict com os dados do vinculo (ou None).
     """
+    ids_selecionados = None
+    if chamados_selecionados is not None:
+        if not chamados_selecionados:
+            raise ValueError('Selecione pelo menos um chamado para vincular à entrega.')
+        try:
+            ids_brutos = [chamado['chamado_id'] for chamado in chamados_selecionados]
+            if any(not isinstance(valor, (int, str)) or isinstance(valor, bool)
+                   or not str(valor).isascii() or not str(valor).isdigit() for valor in ids_brutos):
+                raise ValueError('Seleção de chamados inválida.')
+            ids_selecionados = {int(valor) for valor in ids_brutos}
+        except (KeyError, TypeError, ValueError):
+            raise ValueError('Seleção de chamados inválida.')
+        if len(ids_selecionados) != len(chamados_selecionados) or any(id_chamado <= 0 for id_chamado in ids_selecionados):
+            raise ValueError('Seleção de chamados inválida ou repetida.')
+
     cur.execute("""
         SELECT id, unidade_id, viagem_id, parada_id, chamado_id, chamado_protocolo
         FROM suprimentos_entregas WHERE id=%s
@@ -1323,7 +1392,7 @@ def vincular_entrega_a_viagem(cur, entrega_id, alocacao=None):
         return None
 
     parada_id = entrega['parada_id']
-    if not parada_id:
+    if not parada_id and chamados_selecionados is None:
         cur.execute("""
             SELECT vp.id, vp.viagem_id
             FROM viagens_paradas vp
@@ -1374,11 +1443,15 @@ def vincular_entrega_a_viagem(cur, entrega_id, alocacao=None):
             'chamado_protocolo': parada['chamado_protocolo'],
         })
 
-    cur.execute("""
-        UPDATE suprimentos_entregas
-        SET viagem_id=%s, chamado_id=%s, chamado_protocolo=%s
-        WHERE id=%s
-    """, (viagem_id, parada['chamado_id'], parada['chamado_protocolo'], entrega_id))
+    if chamados_selecionados is None:
+        cur.execute("""
+            UPDATE suprimentos_entregas
+            SET viagem_id=%s, chamado_id=%s, chamado_protocolo=%s
+            WHERE id=%s
+        """, (viagem_id, parada['chamado_id'], parada['chamado_protocolo'], entrega_id))
+    else:
+        cur.execute("UPDATE suprimentos_entregas SET viagem_id=%s WHERE id=%s",
+                    (viagem_id, entrega_id))
 
     # Aplica as quantidades entregues na carga da viagem: consome primeiro os
     # itens de origem Rench e depois as coletas de fornecedor que podem ser
@@ -1417,7 +1490,9 @@ def vincular_entrega_a_viagem(cur, entrega_id, alocacao=None):
                     """, (usar, linha['id']))
                     restante -= usar
 
-    cur.execute("UPDATE viagens_paradas SET status='atendida' WHERE id=%s", (parada_id,))
+    ids_parada = {int(chamado['chamado_id']) for chamado in chamados_parada}
+    if ids_selecionados is None or ids_parada.issubset(ids_selecionados):
+        cur.execute("UPDATE viagens_paradas SET status='atendida' WHERE id=%s", (parada_id,))
 
     # Se todas as paradas foram atendidas, viagem aguarda retorno
     cur.execute("""
@@ -1435,13 +1510,15 @@ def vincular_entrega_a_viagem(cur, entrega_id, alocacao=None):
     return {
         'viagem_id': viagem_id,
         'parada_id': parada_id,
-        'chamado_id': parada['chamado_id'],
-        'chamado_protocolo': parada['chamado_protocolo'],
-        'chamados': chamados_parada,
+        'chamado_id': (parada['chamado_id'] if chamados_selecionados is None
+                       else entrega['chamado_id']),
+        'chamado_protocolo': (parada['chamado_protocolo'] if chamados_selecionados is None
+                              else entrega['chamado_protocolo']),
+        'chamados': chamados_parada if chamados_selecionados is None else chamados_selecionados,
     }
 
 
-def validar_saida_contra_viagem(cur, parada_id, unidade_id, itens, exigir_viagem=False):
+def validar_saida_contra_viagem(cur, parada_id, unidade_id, itens, exigir_viagem=False, bloquear=False):
     """Controla que a saida de suprimentos so use a carga da viagem.
 
     So e permitido dar saida do que foi levado no carro (carga conferida da
@@ -1519,11 +1596,19 @@ def validar_saida_contra_viagem(cur, parada_id, unidade_id, itens, exigir_viagem
         return None, None, alocacao, []
 
     viagem_id = parada['viagem_id']
-    cur.execute("""
+    if bloquear:
+        cur.execute("SELECT status FROM viagens WHERE id=%s FOR UPDATE", (viagem_id,))
+        viagem_atual = cur.fetchone()
+        if not viagem_atual or viagem_atual['status'] not in ('conferido', 'em_rota'):
+            return None, None, None, ['A viagem não está disponível para registrar a saída.']
+    sql_carga = """
         SELECT tipo_suprimento, modelo_impressora, marca, origem, pode_usar_cliente,
                quantidade_carregada, quantidade_entregue, quantidade_usada_manual
-        FROM viagens_itens WHERE viagem_id = %s
-    """, (viagem_id,))
+        FROM viagens_itens WHERE viagem_id = %s ORDER BY id
+    """
+    if bloquear:
+        sql_carga += " FOR UPDATE"
+    cur.execute(sql_carga, (viagem_id,))
     pool_rench, pool_fornecedor = {}, {}
     for r in cur.fetchall():
         if not r['pode_usar_cliente']:
@@ -1555,9 +1640,12 @@ def validar_saida_contra_viagem(cur, parada_id, unidade_id, itens, exigir_viagem
                 "Adicione o item a viagem ou registre a coleta do fornecedor.")
             continue
         qtd_rench = min(qtd, max(0, rench_disp))
+        qtd_fornecedor = qtd - qtd_rench
+        pool_rench[chave] = rench_disp - qtd_rench
+        pool_fornecedor[chave] = forn_disp - qtd_fornecedor
         alocacao.append({
             'chave': chave, 'tipo': tipo, 'modelo': modelo, 'marca': marca,
-            'quantidade': qtd, 'rench': qtd_rench, 'fornecedor': qtd - qtd_rench})
+            'quantidade': qtd, 'rench': qtd_rench, 'fornecedor': qtd_fornecedor})
     if erros:
         return None, None, None, erros
     return parada['id'], viagem_id, alocacao, []
@@ -1575,7 +1663,7 @@ def helpdesk_configurado():
     return bool(HELPDESK_SUPABASE_URL and HELPDESK_SUPABASE_SERVICE_KEY)
 
 
-def _helpdesk_request(caminho, metodo='GET', payload=None, timeout=6):
+def _helpdesk_request(caminho, metodo='GET', payload=None, timeout=6, headers=None):
     """Chamada REST (PostgREST) ao Supabase do helpdesk. Retorna (status, dados)."""
     if not helpdesk_configurado():
         return 503, {'erro': 'Integração com o sistema de chamados não configurada.'}
@@ -1587,6 +1675,8 @@ def _helpdesk_request(caminho, metodo='GET', payload=None, timeout=6):
     req.add_header('apikey', HELPDESK_SUPABASE_SERVICE_KEY)
     req.add_header('Authorization', 'Bearer ' + HELPDESK_SUPABASE_SERVICE_KEY)
     req.add_header('Content-Type', 'application/json')
+    for nome, valor in (headers or {}).items():
+        req.add_header(nome, valor)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             corpo = resp.read().decode('utf-8')
@@ -1647,6 +1737,81 @@ def helpdesk_buscar_chamados(busca='', limite=50):
     ][:limite]
 
 
+def _autenticar_helpdesk_para_entrega(token):
+    if not token or not isinstance(token, str) or len(token) > 8192:
+        return None, 'Entre no sistema de chamados para continuar.', 403
+    status, usuario = _helpdesk_request('/auth/v1/user', headers={'Authorization': 'Bearer ' + token})
+    if status != 200 or not isinstance(usuario, dict):
+        if status in (401, 403):
+            return None, 'Sessão de chamados inválida ou expirada.', 403
+        return None, 'Não foi possível verificar a sessão de chamados.', 503
+    try:
+        usuario_id = str(uuid.UUID(str(usuario.get('id'))))
+    except (ValueError, TypeError, AttributeError):
+        return None, 'Sessão de chamados inválida.', 403
+    status, perfis = _helpdesk_request(
+        '/rest/v1/users?select=id,role,ativo&id=eq.' + usuario_id + '&limit=1')
+    if status != 200 or not isinstance(perfis, list):
+        return None, 'Não foi possível verificar as permissões de chamados.', 503
+    if len(perfis) != 1 or not perfis[0].get('ativo') or perfis[0].get('role') not in ('admin', 'tecnico'):
+        return None, 'Usuário sem permissão para fechar chamados.', 403
+    return {'id': usuario_id, 'role': perfis[0]['role']}, None, 200
+
+
+def _validar_chamados_entrega(cur, unidade_id, chamados_ids, usuario):
+    status, chamados = _helpdesk_request(
+        '/rest/v1/tickets?select=id,protocolo,status,unit_id,company_id,units(nome),companies(nome)'
+        '&id=in.(' + ','.join(str(chamado_id) for chamado_id in chamados_ids) + ')')
+    if status != 200 or not isinstance(chamados, list):
+        return None, 'Não foi possível verificar os chamados selecionados.', 503
+    por_id = {int(chamado['id']): chamado for chamado in chamados if chamado.get('id') is not None}
+    if len(por_id) != len(chamados_ids) or set(por_id) != set(chamados_ids):
+        return None, 'Um dos chamados selecionados não foi encontrado.', 409
+    unidades = {chamado.get('unit_id') for chamado in chamados}
+    empresas = {chamado.get('company_id') for chamado in chamados}
+    if len(unidades) != 1 or None in unidades or len(empresas) != 1 or None in empresas:
+        return None, 'Os chamados selecionados não pertencem à mesma unidade.', 409
+    for chamado in chamados:
+        if chamado.get('status') not in HELPDESK_STATUS_ABERTOS:
+            return None, 'Um dos chamados selecionados não está mais aberto.', 409
+        if usuario['role'] == 'tecnico' and chamado.get('status') == 'aberto':
+            return None, 'O técnico precisa colocar os chamados em atendimento antes de fechá-los.', 403
+    unidade_helpdesk = chamados[0].get('units') or {}
+    empresa_helpdesk = chamados[0].get('companies') or {}
+    if not isinstance(unidade_helpdesk, dict) or not isinstance(empresa_helpdesk, dict):
+        return None, 'Não foi possível conferir os dados da unidade no chamado.', 409
+    nome_unidade = ' '.join(normalizar_busca(unidade_helpdesk.get('nome')).split())
+    nome_empresa = ' '.join(normalizar_busca(empresa_helpdesk.get('nome')).split())
+    if not nome_unidade or not nome_empresa:
+        return None, 'O chamado precisa ter unidade e empresa identificadas.', 409
+    cur.execute("""
+        SELECT u.id, u.nome AS unidade_nome, e.nome AS empresa_nome
+        FROM unidades u JOIN empresas e ON e.id=u.empresa_id
+        WHERE u.ativo=1 AND e.ativo=1
+    """)
+    correspondentes = [linha for linha in cur.fetchall()
+                       if ' '.join(normalizar_busca(linha['unidade_nome']).split()) == nome_unidade
+                       and ' '.join(normalizar_busca(linha['empresa_nome']).split()) == nome_empresa]
+    if len(correspondentes) != 1 or correspondentes[0]['id'] != unidade_id:
+        return None, 'A unidade e a empresa do estoque não correspondem de forma única ao chamado.', 409
+    try:
+        empresa_id = str(uuid.UUID(str(next(iter(empresas)))))
+    except (ValueError, TypeError, AttributeError):
+        return None, 'Não foi possível conferir a empresa do chamado.', 409
+    status, unidades_empresa = _helpdesk_request(
+        '/rest/v1/units?select=id,nome&company_id=eq.' + empresa_id + '&ativo=eq.true&limit=1000')
+    if status != 200 or not isinstance(unidades_empresa, list) or len(unidades_empresa) >= 1000:
+        return None, 'Não foi possível confirmar a unidade de forma segura.', 503
+    unidades_iguais = [item for item in unidades_empresa
+                       if ' '.join(normalizar_busca(item.get('nome')).split()) == nome_unidade]
+    if len(unidades_iguais) != 1 or unidades_iguais[0].get('id') != next(iter(unidades)):
+        return None, 'Há unidades com o mesmo nome; confira o cadastro antes de continuar.', 409
+    selecionados = [{'chamado_id': chamado_id, 'chamado_protocolo': por_id[chamado_id]['protocolo'],
+                     'unit_id': por_id[chamado_id]['unit_id'], 'status': por_id[chamado_id]['status']}
+                    for chamado_id in chamados_ids]
+    return selecionados, None, 200
+
+
 def helpdesk_registrar_evento_suprimentos(chamado_id, descricao):
     """Adiciona evento no historico do chamado. Falha silenciosa (best-effort)."""
     if not chamado_id or not helpdesk_configurado():
@@ -1658,6 +1823,44 @@ def helpdesk_registrar_evento_suprimentos(chamado_id, descricao):
     )
     return status in (200, 201)
 
+
+def _preparar_historicos_entrega(cur, operacao_id, chamado_ids, descricao):
+    namespace = uuid.UUID(operacao_id)
+    for chamado_id in chamado_ids:
+        evento_id = str(uuid.uuid5(namespace, f'suprimentos:{chamado_id}'))
+        cur.execute("""
+            INSERT INTO operacoes_entregas_chamados
+                (operacao_id, chamado_id, evento_id, descricao)
+            VALUES (%s, %s, %s, %s)
+        """, (operacao_id, chamado_id, evento_id, descricao))
+
+
+def _sincronizar_historicos_entrega(db, operacao_id):
+    cur = db.cursor()
+    cur.execute("""
+        SELECT chamado_id, evento_id, descricao
+        FROM operacoes_entregas_chamados
+        WHERE operacao_id=%s AND sincronizado_em IS NULL
+        ORDER BY chamado_id
+    """, (operacao_id,))
+    pendentes = cur.fetchall()
+    db.commit()
+    falhas = []
+    for evento in pendentes:
+        status, _ = _helpdesk_request(
+            '/rest/v1/ticket_events?on_conflict=id', metodo='POST',
+            payload={'id': str(evento['evento_id']), 'ticket_id': evento['chamado_id'],
+                     'tipo': 'comentario', 'descricao': evento['descricao']},
+            headers={'Prefer': 'resolution=ignore-duplicates,return=minimal'})
+        if status not in (200, 201, 204):
+            falhas.append(evento['chamado_id'])
+            continue
+        cur.execute("""
+            UPDATE operacoes_entregas_chamados SET sincronizado_em=CURRENT_TIMESTAMP
+            WHERE operacao_id=%s AND chamado_id=%s AND sincronizado_em IS NULL
+        """, (operacao_id, evento['chamado_id']))
+        db.commit()
+    return falhas
 
 
 def estornar_estoque_entrega(cur, entrega_id, responsavel=None):
@@ -3514,7 +3717,7 @@ def suprimento_mobile():
 
         parada_id = request.form.get('parada_id', '').strip() or None
         parada_resolvida, viagem_id_saida, alocacao, erros_viagem = validar_saida_contra_viagem(
-            cur, parada_id, unidade_id, itens)
+            cur, parada_id, unidade_id, itens, bloquear=True)
         if erros_viagem:
             flash('Saída bloqueada: ' + ' '.join(erros_viagem), 'danger')
             cur.execute("""
@@ -3645,7 +3848,7 @@ def novo_suprimento():
 
         parada_id = request.form.get('parada_id', '').strip() or None
         parada_resolvida, viagem_id_saida, alocacao, erros_viagem = validar_saida_contra_viagem(
-            cur, parada_id, unidade_id, itens)
+            cur, parada_id, unidade_id, itens, bloquear=True)
         if erros_viagem:
             flash('Saída bloqueada: ' + ' '.join(erros_viagem), 'danger')
             return redirect(url_for('novo_suprimento'))
@@ -3742,6 +3945,15 @@ def excluir_suprimento(entrega_id):
     db = get_db()
     cur = db.cursor()
     try:
+        cur.execute("""
+            SELECT 1 FROM operacoes_entregas_mobile o
+            JOIN operacoes_entregas_autorizadas a ON a.operacao_id=o.operacao_id
+            WHERE o.entrega_id=%s
+        """, (entrega_id,))
+        if cur.fetchone():
+            db.rollback()
+            flash('Esta entrega está vinculada ao fechamento conjunto de chamados e não pode ser excluída diretamente.', 'danger')
+            return redirect(url_for('lista_suprimentos'))
         resultado = estornar_estoque_entrega(cur, entrega_id, responsavel=operador_atual())
         if isinstance(resultado, dict) and resultado.get('bloqueado'):
             db.rollback()
@@ -8463,7 +8675,7 @@ def _parse_entrega_mobile(dados):
     if not itens:
         return 'Adicione pelo menos um suprimento antes de salvar a entrega.', None
 
-    return None, {
+    campos = {
         'unidade_id': unidade_id,
         'data_entrega': data_entrega,
         'responsavel': responsavel,
@@ -8473,6 +8685,64 @@ def _parse_entrega_mobile(dados):
         'chamado_protocolo': chamado_protocolo,
         'itens': itens,
     }
+    if 'chamados_ids' in dados:
+        selecionados = dados['chamados_ids']
+        if not isinstance(selecionados, list) or not 2 <= len(selecionados) <= 20:
+            return 'Selecione entre 2 e 20 chamados.', None
+        if any(not isinstance(valor, (int, str)) or isinstance(valor, bool)
+               or not str(valor).isascii() or not str(valor).isdigit() for valor in selecionados):
+            return 'Seleção de chamados inválida.', None
+        ids = [int(valor) for valor in selecionados]
+        if any(valor <= 0 for valor in ids) or len(set(ids)) != len(ids) or chamado_id not in ids:
+            return 'Seleção de chamados inválida ou repetida.', None
+        campos['chamados_ids'] = sorted(ids)
+    return None, campos
+
+
+def _parse_fechamento_entrega(dados):
+    if not isinstance(dados, dict):
+        return None
+    try:
+        unidade_id = str(uuid.UUID(str(dados.get('unit_id'))))
+    except (ValueError, TypeError, AttributeError):
+        return None
+    assinatura = dados.get('signature_url')
+    nome = dados.get('signer_name')
+    descricao = dados.get('solution')
+    if not all(isinstance(valor, str) for valor in (assinatura, nome, descricao)):
+        return None
+    nome, descricao = nome.strip(), descricao.strip()
+    url, base = urlparse(assinatura), urlparse(HELPDESK_SUPABASE_URL or '')
+    if (not nome or len(nome) > 255 or '\n' in nome or '\r' in nome or
+            not descricao or len(descricao) > 10000 or len(assinatura) > 2000 or
+            base.scheme != 'https' or not base.netloc or
+            (url.scheme, url.netloc) != (base.scheme, base.netloc) or
+            not url.path.startswith('/storage/v1/object/public/ticket-attachments/signatures/') or
+            not url.path.endswith('.png') or url.query or url.fragment):
+        return None
+    return {'unit_id': unidade_id, 'signature_url': assinatura,
+            'signer_name': nome, 'solution': descricao}
+
+
+def _identificar_operacao_entrega(cur, operacao_id, campos, operador):
+    dados_hash = hashlib.sha256(json.dumps(
+        campos, sort_keys=True, ensure_ascii=False, separators=(',', ':')
+    ).encode('utf-8')).hexdigest()
+    cur.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))', (operacao_id,))
+    cur.execute("""
+        SELECT o.dados_hash, o.operador, o.entrega_id, e.id AS entrega_existente,
+               u.nome AS unidade
+        FROM operacoes_entregas_mobile o
+        LEFT JOIN suprimentos_entregas e ON e.id = o.entrega_id
+        LEFT JOIN unidades u ON u.id = e.unidade_id
+        WHERE o.operacao_id = %s
+    """, (operacao_id,))
+    anterior = cur.fetchone()
+    if anterior and (anterior['dados_hash'] != dados_hash or anterior['operador'] != operador):
+        return dados_hash, None, 'Esta operação já foi usada com outros dados.'
+    if anterior and not anterior['entrega_existente']:
+        return dados_hash, None, 'A entrega desta operação foi excluída. Confira o histórico antes de continuar.'
+    return dados_hash, anterior, None
 
 
 def _mensagens_faltantes(faltantes):
@@ -8500,6 +8770,15 @@ def api_mobile_entrega_validar():
 
     db = get_db()
     cur = db.cursor()
+    if campos.get('chamados_ids'):
+        usuario, erro_usuario, status_usuario = _autenticar_helpdesk_para_entrega(
+            request.headers.get('X-Helpdesk-Token'))
+        if erro_usuario:
+            return jsonify({'erro': erro_usuario}), status_usuario
+        _selecionados, erro_chamados, status_chamados = _validar_chamados_entrega(
+            cur, campos['unidade_id'], campos['chamados_ids'], usuario)
+        if erro_chamados:
+            return jsonify({'erro': erro_chamados}), status_chamados
     parada_resolvida, _viagem_id, alocacao, erros_viagem = validar_saida_contra_viagem(
         cur, campos['parada_id'], campos['unidade_id'], campos['itens'],
         exigir_viagem=bool(campos['chamado_id']))
@@ -8511,6 +8790,79 @@ def api_mobile_entrega_validar():
         return jsonify({'erro': _mensagens_faltantes(faltantes)}), 400
 
     return jsonify({'ok': True, 'parada_id': parada_resolvida})
+
+
+@app.route('/api/mobile/entregas/operacoes-pendentes', methods=['GET'])
+@api_mobile_auth
+def api_mobile_operacoes_entrega_pendentes():
+    usuario, erro, status = _autenticar_helpdesk_para_entrega(request.headers.get('X-Helpdesk-Token'))
+    if erro:
+        return jsonify({'erro': erro}), status
+    cur = get_db().cursor()
+    cur.execute("""
+        SELECT a.dados_retomada
+        FROM operacoes_entregas_autorizadas a
+        JOIN operacoes_entregas_mobile o ON o.operacao_id=a.operacao_id
+        WHERE a.usuario_helpdesk=%s AND o.operador=%s AND a.concluida_em IS NULL
+        ORDER BY o.data_registro DESC LIMIT 50
+    """, (usuario['id'], g.operador_mobile))
+    return jsonify({'operacoes': [linha['dados_retomada'] for linha in cur.fetchall()]})
+
+
+@app.route('/api/mobile/entregas/operacoes/<operacao_id>/cancelar-nao-registrada', methods=['POST'])
+@api_mobile_auth
+def api_mobile_cancelar_operacao_nao_registrada(operacao_id):
+    try:
+        operacao_id = str(uuid.UUID(operacao_id))
+    except (ValueError, TypeError, AttributeError):
+        return jsonify({'erro': 'Operação inválida.'}), 400
+    usuario, erro, status = _autenticar_helpdesk_para_entrega(request.headers.get('X-Helpdesk-Token'))
+    if erro:
+        return jsonify({'erro': erro}), status
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))', (operacao_id,))
+    cur.execute('SELECT 1 FROM operacoes_entregas_mobile WHERE operacao_id=%s', (operacao_id,))
+    if cur.fetchone():
+        return jsonify({'erro': 'A saída já foi registrada. Retome o fechamento, não crie outra entrega.'}), 409
+    cur.execute("""
+        INSERT INTO operacoes_entregas_canceladas (operacao_id, operador, usuario_helpdesk)
+        VALUES (%s, %s, %s) ON CONFLICT (operacao_id) DO NOTHING
+    """, (operacao_id, g.operador_mobile, usuario['id']))
+    db.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/mobile/entregas/operacoes/<operacao_id>/concluir', methods=['POST'])
+@api_mobile_auth
+def api_mobile_concluir_operacao_entrega(operacao_id):
+    try:
+        operacao_id = str(uuid.UUID(operacao_id))
+    except (ValueError, TypeError, AttributeError):
+        return jsonify({'erro': 'Operação inválida.'}), 400
+    usuario, erro, status = _autenticar_helpdesk_para_entrega(request.headers.get('X-Helpdesk-Token'))
+    if erro:
+        return jsonify({'erro': erro}), status
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        SELECT a.usuario_helpdesk FROM operacoes_entregas_autorizadas a
+        JOIN operacoes_entregas_mobile o ON o.operacao_id=a.operacao_id
+        WHERE a.operacao_id=%s AND o.operador=%s
+    """, (operacao_id, g.operador_mobile))
+    autorizacao = cur.fetchone()
+    if not autorizacao or str(autorizacao['usuario_helpdesk']) != usuario['id']:
+        return jsonify({'erro': 'Operação não encontrada ou não autorizada.'}), 404
+    status_remoto, fechamento = _helpdesk_request(
+        '/rest/v1/ticket_batch_delivery_closures?select=operation_id,actor_id'
+        '&operation_id=eq.' + operacao_id + '&actor_id=eq.' + usuario['id'] + '&limit=1')
+    if status_remoto != 200 or not isinstance(fechamento, list):
+        return jsonify({'erro': 'Não foi possível confirmar o fechamento dos chamados.'}), 503
+    if len(fechamento) != 1:
+        return jsonify({'erro': 'Os chamados ainda não foram fechados nesta operação.'}), 409
+    cur.execute('UPDATE operacoes_entregas_autorizadas SET concluida_em=COALESCE(concluida_em,CURRENT_TIMESTAMP) WHERE operacao_id=%s', (operacao_id,))
+    db.commit()
+    return jsonify({'ok': True})
 
 
 @app.route('/api/mobile/entregas', methods=['POST'])
@@ -8528,13 +8880,76 @@ def api_mobile_entrega_criar():
     chamado_id = campos['chamado_id']
     chamado_protocolo = campos['chamado_protocolo']
     itens = campos['itens']
+    operacao_id = dados.get('operacao_id')
+    if operacao_id is not None:
+        try:
+            operacao_id = str(uuid.UUID(str(operacao_id)))
+        except (ValueError, TypeError, AttributeError):
+            return jsonify({'erro': 'Identificador da operação inválido.'}), 400
+
+    chamados_ids = campos.get('chamados_ids')
+    if chamados_ids and not operacao_id:
+        return jsonify({'erro': 'O fechamento conjunto exige um identificador de operação.'}), 400
+    usuario = None
+    fechamento = None
+    if chamados_ids:
+        fechamento = _parse_fechamento_entrega(dados.get('fechamento'))
+        if not fechamento:
+            return jsonify({'erro': 'Dados do fechamento compartilhado inválidos.'}), 400
+        campos['fechamento'] = fechamento
+        usuario, erro_usuario, status_usuario = _autenticar_helpdesk_para_entrega(
+            request.headers.get('X-Helpdesk-Token'))
+        if erro_usuario:
+            return jsonify({'erro': erro_usuario}), status_usuario
 
     db = get_db()
     cur = db.cursor()
+    if operacao_id:
+        dados_hash, anterior, erro_operacao = _identificar_operacao_entrega(
+            cur, operacao_id, campos, g.operador_mobile)
+        if erro_operacao:
+            return jsonify({'erro': erro_operacao}), 409
+        if anterior:
+            if chamados_ids:
+                cur.execute("SELECT usuario_helpdesk FROM operacoes_entregas_autorizadas WHERE operacao_id=%s", (operacao_id,))
+                autorizacao = cur.fetchone()
+                if not autorizacao or str(autorizacao['usuario_helpdesk']) != usuario['id']:
+                    return jsonify({'erro': 'Esta operação pertence a outro usuário de chamados.'}), 403
+            pendentes = _sincronizar_historicos_entrega(db, operacao_id)
+            return jsonify({'ok': True, 'entrega_id': anterior['entrega_id'],
+                            'unidade': anterior['unidade'], 'repetida': True,
+                            'historicos_pendentes': pendentes})
+        if chamados_ids:
+            cur.execute("SELECT 1 FROM operacoes_entregas_canceladas WHERE operacao_id=%s", (operacao_id,))
+            if cur.fetchone():
+                return jsonify({'erro': 'Esta operação foi cancelada antes da saída. Inicie outra operação.'}), 409
+    chamados_selecionados = None
+    if chamados_ids:
+        for id_selecionado in chamados_ids:
+            cur.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))',
+                        ('entrega-chamado:' + str(id_selecionado),))
+        cur.execute("""
+            SELECT ec.chamado_id FROM operacoes_entregas_chamados ec
+            JOIN operacoes_entregas_autorizadas a ON a.operacao_id=ec.operacao_id
+            WHERE ec.chamado_id = ANY(%s) AND a.concluida_em IS NULL LIMIT 1
+        """, (chamados_ids,))
+        if cur.fetchone():
+            return jsonify({'erro': 'Há uma entrega conjunta pendente para um dos chamados. Retome a operação existente.'}), 409
+        chamados_selecionados, erro_chamados, status_chamados = _validar_chamados_entrega(
+            cur, unidade_id, chamados_ids, usuario)
+        if erro_chamados:
+            return jsonify({'erro': erro_chamados}), status_chamados
+        if fechamento['unit_id'] != chamados_selecionados[0]['unit_id']:
+            return jsonify({'erro': 'A unidade do fechamento não corresponde aos chamados.'}), 409
+        principal = next(chamado for chamado in chamados_selecionados if chamado['chamado_id'] == chamado_id)
+        if chamado_protocolo != principal['chamado_protocolo']:
+            return jsonify({'erro': 'Protocolo do chamado principal não corresponde ao cadastro.'}), 409
     parada_resolvida, viagem_id_saida, alocacao, erros_viagem = validar_saida_contra_viagem(
-        cur, parada_id, unidade_id, itens, exigir_viagem=bool(chamado_id))
+        cur, parada_id, unidade_id, itens, exigir_viagem=bool(chamado_id), bloquear=True)
     if erros_viagem:
         return jsonify({'erro': 'Saída bloqueada: ' + ' '.join(erros_viagem)}), 400
+    if chamados_ids and str(parada_resolvida or '') != str(parada_id or ''):
+        return jsonify({'erro': 'A viagem disponível mudou após a confirmação. Revise a entrega antes de continuar.'}), 409
     if parada_resolvida:
         parada_id = parada_resolvida
 
@@ -8568,8 +8983,50 @@ def api_mobile_entrega_criar():
               item.get('cor_selecionada'), item.get('marca'), item['quantidade'],
               mp or None, defeito.strip() or None, motivo_texto))
 
-    vinculo = vincular_entrega_a_viagem(cur, entrega_id, alocacao=alocacao)
+    vinculo = vincular_entrega_a_viagem(cur, entrega_id, alocacao=alocacao,
+                                       chamados_selecionados=chamados_selecionados)
+    historicos_pendentes = []
+    if operacao_id:
+        cur.execute("""
+            INSERT INTO operacoes_entregas_mobile
+                (operacao_id, dados_hash, operador, entrega_id)
+            VALUES (%s, %s, %s, %s)
+        """, (operacao_id, dados_hash, g.operador_mobile, entrega_id))
+        if chamados_selecionados:
+            dados_retomada = dict(campos)
+            dados_retomada['operacao_id'] = operacao_id
+            dados_retomada['itens'] = [dict(item, motivo=item['outro']) for item in itens]
+            cur.execute("""
+                INSERT INTO operacoes_entregas_autorizadas
+                    (operacao_id, usuario_helpdesk, unidade_helpdesk, chamados_esperados, dados_retomada)
+                VALUES (%s, %s, %s, %s::jsonb, %s::jsonb)
+            """, (operacao_id, usuario['id'], chamados_selecionados[0]['unit_id'],
+                  json.dumps(chamados_selecionados), json.dumps(dados_retomada)))
+            resumo = '; '.join(
+                f"{i['quantidade']}x {i['tipo_suprimento']} {i['cor_selecionada'] or ''} "
+                f"{i['modelo_impressora'] or ''}".strip() for i in itens)
+            _preparar_historicos_entrega(
+                cur, operacao_id, chamados_ids,
+                f"[Suprimentos] Saída compartilhada (entrega #{entrega_id}): {resumo}")
+        elif vinculo and vinculo.get('chamados'):
+            resumo = '; '.join(
+                f"{i['quantidade']}x {i['tipo_suprimento']} {i['modelo_impressora'] or ''}".strip()
+                for i in itens)
+            ids = sorted({ch['chamado_id'] for ch in vinculo['chamados']})
+            _preparar_historicos_entrega(
+                cur, operacao_id, ids,
+                f"[Suprimentos] Saída vinculada à viagem (entrega #{entrega_id}): {resumo}")
+        elif chamado_id:
+            resumo = '; '.join(
+                f"{i['quantidade']}x {i['tipo_suprimento']} {i['cor_selecionada'] or ''} "
+                f"{i['modelo_impressora'] or ''}".strip() for i in itens)
+            _preparar_historicos_entrega(
+                cur, operacao_id, [chamado_id],
+                f"[Suprimentos] Saída no atendimento do chamado "
+                f"{chamado_protocolo or chamado_id} (entrega #{entrega_id}): {resumo}")
     db.commit()
+    if operacao_id:
+        historicos_pendentes = _sincronizar_historicos_entrega(db, operacao_id)
 
     cur.execute("SELECT u.nome FROM unidades u WHERE u.id=%s", (unidade_id,))
     unidade_row = cur.fetchone()
@@ -8578,7 +9035,7 @@ def api_mobile_entrega_criar():
         enviar_notificacao_push('Saida de suprimento', f'Entrega registrada para {unidade_nome}', url_for('suprimento_mobile'))
     except Exception:
         pass
-    if vinculo and vinculo.get('chamados'):
+    if not operacao_id and vinculo and vinculo.get('chamados'):
         resumo = '; '.join(
             f"{i['quantidade']}x {i['tipo_suprimento']} {i['modelo_impressora'] or ''}".strip()
             for i in itens)
@@ -8586,7 +9043,7 @@ def api_mobile_entrega_criar():
             helpdesk_registrar_evento_suprimentos(
                 ch['chamado_id'],
                 f"[Suprimentos] Saída vinculada à viagem (entrega #{entrega_id}): {resumo}")
-    elif chamado_id:
+    elif not operacao_id and chamado_id:
         resumo = '; '.join(
             f"{i['quantidade']}x {i['tipo_suprimento']} {i['cor_selecionada'] or ''} "
             f"{i['modelo_impressora'] or ''}".strip()
@@ -8596,7 +9053,8 @@ def api_mobile_entrega_criar():
             f"[Suprimentos] Saída no atendimento do chamado "
             f"{chamado_protocolo or chamado_id} (entrega #{entrega_id}): {resumo}")
 
-    return jsonify({'ok': True, 'entrega_id': entrega_id, 'unidade': unidade_nome})
+    return jsonify({'ok': True, 'entrega_id': entrega_id, 'unidade': unidade_nome,
+                    'historicos_pendentes': historicos_pendentes})
 
 
 # Para produção (Render / Gunicorn)
