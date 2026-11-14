@@ -7461,6 +7461,71 @@ def api_mobile_unidades():
     return jsonify({'locais': [dict(l) for l in locais]})
 
 
+@app.route('/api/mobile/unidades/tipos-impressora')
+@api_mobile_auth
+def api_mobile_unidades_tipos_impressora():
+    """Tipos de impressora (jato/laser) de uma unidade, para o APK avisar
+    quando a saída de suprimento não bate com as impressoras do local.
+
+    A detecção usa os equipamentos cadastrados: cada modelo é classificado
+    pelos insumos cadastrados (toner/drum → laser; tinta → jato) e, na falta
+    deles, pelo nome do modelo. Sem impressoras cadastradas retorna neutro.
+    """
+    unidade_id = request.args.get('unidade_id', type=int)
+    if not unidade_id:
+        return jsonify({'erro': 'unidade_id é obrigatório'}), 400
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        SELECT DISTINCT modelo FROM equipamentos
+        WHERE unidade_id=%s AND ativo=1 AND modelo IS NOT NULL AND modelo<>''
+          AND (tipo_equipamento IS NULL OR tipo_equipamento ILIKE '%%impressora%%')
+    """, (unidade_id,))
+    modelos = [r['modelo'].strip() for r in cur.fetchall() if r['modelo'] and r['modelo'].strip()]
+    if not modelos:
+        return jsonify({'tipos': None, 'origem': 'neutro', 'impressoras': []})
+
+    def _norm(txt):
+        return _remover_acentos(txt or '').strip().lower()
+
+    cur.execute("SELECT id, nome FROM modelos_impressora WHERE ativo=1")
+    cad_por_nome = {_norm(r['nome']): r['id'] for r in cur.fetchall()}
+    ids = [cad_por_nome[_norm(m)] for m in modelos if _norm(m) in cad_por_nome]
+    insumos_por_id = {}
+    if ids:
+        cur.execute("SELECT modelo_id, tipo_suprimento FROM modelo_insumos WHERE ativo=1 AND modelo_id = ANY(%s)", (ids,))
+        for r in cur.fetchall():
+            insumos_por_id.setdefault(r['modelo_id'], []).append((r['tipo_suprimento'] or '').lower())
+
+    laser_kw = ('laser', 'hl-', 'mfc-', 'dcp-', 'taskalfa', 'ecosys', 'scx-', 'plx-', 'imagerunner')
+    jato_kw = ('ecotank', 'megatank', 'deskjet', 'officejet', 'workforce', 'stylus', 'pixma', 'tank', 'jato', 'inkjet')
+
+    def _classificar(modelo):
+        mid = cad_por_nome.get(_norm(modelo))
+        if mid and mid in insumos_por_id:
+            lista = insumos_por_id[mid]
+            tem_toner = any('toner' in t or 'drum' in t for t in lista)
+            tem_tinta = any('tinta' in t or 'papel fotogr' in t for t in lista)
+            if tem_toner and not tem_tinta:
+                return 'laser'
+            if tem_tinta and not tem_toner:
+                return 'jato'
+        nome = _norm(modelo)
+        if any(k in nome for k in laser_kw):
+            return 'laser'
+        if any(k in nome for k in jato_kw):
+            return 'jato'
+        return None
+
+    impressoras = [{'modelo': m, 'tipo': _classificar(m)} for m in modelos]
+    tipos = sorted({i['tipo'] for i in impressoras if i['tipo']})
+    return jsonify({
+        'tipos': tipos if tipos else None,
+        'origem': 'impressoras' if tipos else 'neutro',
+        'impressoras': impressoras,
+    })
+
+
 @app.route('/api/mobile/chamados')
 @api_mobile_auth
 def api_mobile_chamados():
